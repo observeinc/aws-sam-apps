@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Hello world.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-filedropper
+    Description: A hello world
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-testing
+    SemanticVersion: 0.0.2
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required parameters
+        Parameters:
+          - Name
+          - BucketNames
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 20
+    MemorySize: 128
+
+Parameters:
+  Name:
+    Type: String
+    Description: >-
+      Name of IAM role expected by Filedrop. This role will be created as part
+      of this stack, and must therefore be unique within the account.
+  DataAccessPointArn:
+    Type: String
+    Description: >-
+      The access point ARN for your Filedrop.
+  BucketNames:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of bucket names which we are allowed to copy files from into
+      Filedrop. 
+      To subscribe a bucket you must ensure S3 notifications are sent
+      to Eventbridge.
+  DestinationUri:
+    Type: String
+    Description: >-
+      The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101:secret/`
+  SourceTopicArns:
+    Type: CommaDelimitedList
+    Description: A list of SNS topics.
+    Default: ""
+
+Resources:
+  DeadLetter:
+    Type: AWS::SQS::Queue
+  Queue:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn : !GetAtt DeadLetter.Arn
+        maxReceiveCount : 4
+      VisibilityTimeout: 20
+  QueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties: 
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - sqs:SendMessage
+          Resource: !GetAtt Queue.Arn
+          Principal:
+            Service:
+              - s3.amazonaws.com
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !Split
+                - ","
+                - !Sub
+                  - "arn:aws:s3:::${Joined}"
+                  - Joined: !Join
+                    - ",arn:aws:s3:::"
+                    - !Ref BucketNames
+        - Effect: Allow
+          Action:
+          - sqs:SendMessage
+          Resource: !GetAtt Queue.Arn
+          Principal:
+            Service:
+              - sns.amazonaws.com
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !Ref SourceTopicArns
+      Queues: 
+        - !Ref Queue
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref Name
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logging
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Name}*"
+        - PolicyName: writer
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectTagging
+                Resource: "*"
+                Condition:
+                  StringLike:
+                    s3:DataAccessPointArn:
+                      - !Ref DataAccessPointArn
+        - PolicyName: reader
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Split
+                  - ","
+                  - !Sub
+                    - "arn:aws:s3:::${Joined}"
+                    - Joined: !Join
+                      - ",arn:aws:s3:::"
+                      - !Ref BucketNames
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectTagging
+                Resource: !Split
+                  - ","
+                  - !Sub
+                    - "arn:aws:s3:::${Joined}*"
+                    - Joined: !Join
+                      - "*,arn:aws:s3:::"
+                      - !Ref BucketNames
+        - PolicyName: queue
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt Queue.Arn
+  LogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !Ref 'Name'
+      RetentionInDays: 365
+  Function:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    DependsOn: LogGroup
+    Properties:
+      FunctionName: !Ref Name
+      Role: !GetAtt Role.Arn
+      CodeUri: ../../cmd/filedropper/
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      Events:
+        Items:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt Queue.Arn
+            BatchSize: 10
+            Enabled: true
+      Environment:
+        Variables:
+          DESTINATION_URI: !Ref DestinationUri
+          VERBOSITY: 9
+
+Outputs:
+  Function:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt Function.Arn
+  Queue:
+    Description: "SQS Queue ARN"
+    Value: !GetAtt Queue.Arn
+  Role:
+    Description: "IAM Role ARN"
+    Value: !GetAtt Role.Arn

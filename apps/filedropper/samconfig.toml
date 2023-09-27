@@ -1,0 +1,33 @@
+# More information about the configuration file can be found here:
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-config.html
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "filedropper"
+parameter_overrides="ParameterKey=BucketNames,ParameterValue=* ParameterKey=Name,ParameterValue=filedropper-us-west-2 ParameterKey=DataAccessPointArn,ParameterValue=arn:aws:s3:us-west-2:723346149663:accesspoint/157675308050 ParameterKey=DestinationUri,ParameterValue=s3://157675308050-s1n88tucur4944c6p3ymbu6hr758gusw2a-s3alias/ds1pXOFUn7eUFYpD4dZD/"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+
+[default.package.parameters]
+resolve_s3 = true
+
+
+[default.sync.parameters]
+watch = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"

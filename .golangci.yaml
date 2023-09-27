@@ -1,0 +1,33 @@
+linters:
+  disable-all: true
+  # Disable specific linter
+  # https://golangci-lint.run/usage/linters/#disabled-by-default-linters--e--enable
+  enable:
+  - asciicheck
+  - errcheck
+  - forcetypeassert
+  - errname
+  - exportloopref
+  - gocritic
+  - godot
+  - goerr113
+  - gofmt
+  - gofumpt
+  - goimports
+  - gosimple
+  - govet
+  - ineffassign
+  - misspell
+  - nestif
+  - nilerr
+  - promlinter
+  - revive
+  - staticcheck
+  - tenv
+  - testpackage
+  - thelper
+  - tparallel
+  - typecheck
+  - unused
+  - whitespace
+  - wrapcheck
