@@ -35,14 +35,34 @@ SUBDIR = $(shell ls apps)
 sam-lint-all:
 	@ for dir in $(SUBDIR); do APP=$$dir $(MAKE) sam-lint || exit 1; done
 
-.PHONY: sam-package
-## sam-package: package cloudformation templates and push assets to S3
-sam-package:
+.PHONY: sam-build
+## sam-build: build assets
+sam-build:
 	@ if [ -z "$(APP)" ]; then echo >&2 please set directory via variable APP; exit 2; fi
 	@ mkdir -p build/
 	# build the lambda
 	# requires Go to be installed
 	@ sam build --template apps/$(APP)/template.yaml
+
+.PHONY: sam-package
+## sam-package: package cloudformation templates and push assets to S3
+sam-package: sam-build
 	# requires AWS credentials.
 	# currently dynamically generates bucket. We will want to use a fixed set of buckets for our production artifacts.
-	@ sam package --template apps/$(APP)/template.yaml --output-template-file build/$(APP).yaml --region us-east-1
+	@ if [ -z "$(AWS_REGION)" ]; then echo >&2 please set AWS_REGION explicitly; exit 2; fi
+	@ sam package --template apps/$(APP)/template.yaml --output-template-file build/$(APP).yaml --region $(AWS_REGION)
+
+.PHONY: sam-publish
+## sam-publish: publish serverless repo app
+sam-publish: sam-package
+	@ sam publish --template-file build/$(APP).yaml --region $(AWS_REGION)
+
+.PHONY: sam-package-all
+## sam-package-all: package all cloudformation templates and push assets to S3
+sam-package-all:
+	@ for dir in $(SUBDIR); do APP=$$dir $(MAKE) sam-package || exit 1; done
+ 
+.PHONY: sam-publish-all
+## sam-publish-all: publish all apps
+sam-publish-all:
+	@ for dir in $(SUBDIR); do APP=$$dir $(MAKE) sam-publish || exit 1; done
