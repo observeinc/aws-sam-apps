@@ -126,9 +126,6 @@ github.com/aws/smithy-go/time
 github.com/aws/smithy-go/transport/http
 github.com/aws/smithy-go/transport/http/internal/io
 github.com/aws/smithy-go/waiter
-# github.com/davecgh/go-spew v1.1.1
-## explicit
-github.com/davecgh/go-spew/spew
 # github.com/go-logr/logr v1.2.4
 ## explicit; go 1.16
 github.com/go-logr/logr
@@ -148,15 +145,8 @@ github.com/google/go-cmp/cmp/internal/value
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
-# github.com/pmezard/go-difflib v1.0.0
-## explicit
-github.com/pmezard/go-difflib/difflib
 # github.com/sethvargo/go-envconfig v0.9.0
 ## explicit; go 1.17
 github.com/sethvargo/go-envconfig
 # github.com/stretchr/testify v1.8.4
 ## explicit; go 1.20
-github.com/stretchr/testify/assert
-# gopkg.in/yaml.v3 v3.0.1
-## explicit
-gopkg.in/yaml.v3
