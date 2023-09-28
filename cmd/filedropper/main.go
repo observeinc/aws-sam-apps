@@ -63,6 +63,7 @@ func realInit() error {
 		return fmt.Errorf("failed to get destination region: %w", err)
 	}
 
+	logging.Info("hello")
 	if awsCfg.Region != region {
 		logger.V(6).Info("modifying s3 client region", "region", region)
 		regionCfg := awsCfg.Copy()
