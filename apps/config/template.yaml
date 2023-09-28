@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  A stack to set up AWS Config
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-aws-config
+    Description: A stack to set up AWS Config
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-testing
+    SemanticVersion: 0.0.2
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required parameters
+        Parameters:
+          - BucketName
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: >-
+      The name of the S3 bucket used to store the configuration history.
+  TopicARN:
+    Type: String
+    Description: >-
+      The ARN of the SNS topic that AWS Config delivers notifications to.
+    Default: ""
+  Prefix:
+    Type: String
+    Description: >-
+    Default: ""
+  DeliveryFrequency:
+    Description: >-
+      The frequency with which AWS Config delivers configuration snapshots.
+    Type: String
+    Default: Three_Hours
+    AllowedValues:
+    - One_Hour
+    - Three_Hours
+    - Six_Hours
+    - Twelve_Hours
+    - TwentyFour_Hours
+
+Conditions:
+  DisableSNS: !Equals
+    - !Ref TopicARN
+    - ""
+
+Resources:
+  ConfigurationRecorderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - config.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
+      Policies:
+        - PolicyName: writer
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetBucketAcl
+                  - s3:ListObject
+                Resource: !Sub "arn:aws:s3:::${BucketName}"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${BucketName}/${Prefix}AWSLogs/*"
+        - !If
+          - DisableSNS
+          - !Ref AWS::NoValue
+          - PolicyName: notifications
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - sns:Publish
+                  Resource: !Ref TopicARN
+  ConfigurationRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    Properties:
+      Name: default
+      RecordingGroup:
+        AllSupported: true
+        IncludeGlobalResourceTypes: true
+      RoleARN: !GetAtt ConfigurationRecorderRole.Arn
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    DependsOn: ConfigurationRecorder
+    Properties:
+      Name: default
+      ConfigSnapshotDeliveryProperties:
+        DeliveryFrequency: !Ref DeliveryFrequency
+      S3BucketName: !Ref BucketName
+      SnsTopicARN: !If
+        - DisableSNS
+        - !Ref AWS::NoValue
+        - !Ref TopicARN
