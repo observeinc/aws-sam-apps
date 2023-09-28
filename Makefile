@@ -23,14 +23,17 @@ go-test:
 	@ go build ./...
 	@ go test -v -race ./...
 
-# currently just do stuff for filedropper app
-APP=filedropper
-
 .PHONY: sam-lint
 ## sam-lint: validate and lint cloudformation templates
 sam-lint:
 	@ if [ -z "$(APP)" ]; then echo >&2 please set directory via variable APP; exit 2; fi
 	@ sam validate --lint --template apps/$(APP)/template.yaml
+
+SUBDIR = $(shell ls apps)
+.PHONY: sam-lint
+## sam-lint-all: validate and lint cloudformation templates
+sam-lint-all:
+	@ for dir in $(SUBDIR); do APP=$$dir $(MAKE) sam-lint || exit 1; done
 
 .PHONY: sam-package
 ## sam-package: package cloudformation templates and push assets to S3
