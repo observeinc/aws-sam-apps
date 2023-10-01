@@ -11,7 +11,7 @@ Metadata:
     SpdxLicenseId: Apache-2.0
     ReadmeUrl: README.md
     HomePageUrl: https://github.com/observeinc/aws-sam-testing
-    SemanticVersion: 0.0.2
+    SemanticVersion: 0.0.4
     SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
 
   AWS::CloudFormation::Interface:
