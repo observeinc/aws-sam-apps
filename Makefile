@@ -39,11 +39,11 @@ sam-lint-all:
 ## sam-build: build assets
 sam-build:
 	@ if [ -z "$(APP)" ]; then echo >&2 please set directory via variable APP; exit 2; fi
-	@ mkdir -p build/
+	@ if [ -z "$(AWS_REGION)" ]; then echo >&2 please set AWS_REGION explicitly; exit 2; fi
 	# build the lambda
 	# requires Go to be installed
 	# Ideally we'd use a provided container here (-u), but alas https://github.com/aws/aws-sam-cli/issues/5280
-	@ sam build --template apps/$(APP)/template.yaml
+	@ cd apps/$(APP) && sam build --region $(AWS_REGION)
 
 .PHONY: sam-package
 ## sam-package: package cloudformation templates and push assets to S3
@@ -51,12 +51,12 @@ sam-package: sam-build
 	# requires AWS credentials.
 	# currently dynamically generates bucket. We will want to use a fixed set of buckets for our production artifacts.
 	@ if [ -z "$(AWS_REGION)" ]; then echo >&2 please set AWS_REGION explicitly; exit 2; fi
-	@ sam package --template apps/$(APP)/template.yaml --output-template-file build/$(APP).yaml --region $(AWS_REGION)
+	sam package --template apps/$(APP)/.aws-sam/build/template.yaml --output-template-file apps/$(APP)/.aws-sam/build/packaged.yaml --region $(AWS_REGION) --debug --resolve-s3
 
 .PHONY: sam-publish
 ## sam-publish: publish serverless repo app
 sam-publish: sam-package
-	@ sam publish --template-file build/$(APP).yaml --region $(AWS_REGION)
+	@ sam publish --template-file apps/$(APP)/.aws-sam/build/packaged.yaml --region $(AWS_REGION)
 
 .PHONY: sam-package-all
 ## sam-package-all: package all cloudformation templates and push assets to S3
