@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Collect AWS data towards Observe 
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-aws-collection
+    Description: Collect resource, logs and metrics data from AWS
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-testing
+    SemanticVersion: 0.0.1
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
+
+Parameters:
+  Name:
+    Type: String
+    Description: >-
+      Name of IAM role expected by Filedrop. This role will be created as part
+      of this stack, and must therefore be unique within the account.
+    Default: ""
+  DataAccessPointArn:
+    Type: String
+    Description: >-
+      The access point ARN for your Filedrop.
+    Default: ""
+  DestinationUri:
+    Type: String
+    Description: >-
+      S3 URI to write data to.
+  InstallConfig:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+    Description: >-
+      Set to `true` to install AWS Config. AWS Config can only be configured
+      once per region. If you already have an existing AWS Config Recorder
+      installed, set this value to `false` and subscribe the S3 bucket
+      containing the configuration snapshots.
+
+Conditions:
+  EnableConfig: !Equals
+    - !Ref InstallConfig
+    - "true"
+
+Resources:
+  Topic:
+    Type: "AWS::SNS::Topic"
+  TopicPolicy:
+    Type: "AWS::SNS::TopicPolicy"
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "Config"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "config.amazonaws.com"
+            Action:
+              - "sns:Subscribe"
+              - "sns:Receive"
+              - "sns:ListSubscriptionsByTopic"
+            Resource:
+              - !Ref Topic
+          - Sid: "S3"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "s3.amazonaws.com"
+            Action:
+              - "sns:Publish"
+            Resource:
+              - !Ref Topic
+          - Sid: "Cloudformation"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action:
+              - "sns:Publish"
+            Resource:
+              - !Ref Topic
+      Topics:
+        - !Ref Topic
+  Bucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    DependsOn: TopicPolicy
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 1
+            Status: Enabled
+      NotificationConfiguration:
+        TopicConfigurations:
+          - Event: "s3:ObjectCreated:*"
+            Topic: !Ref Topic
+  Forwarder:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:739672403694:applications/observe-filedropper
+        SemanticVersion: 0.0.4
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        Name: !Ref Name
+        DataAccessPointArn: !Ref DataAccessPointArn
+        DestinationUri: !Ref DestinationUri
+        BucketNames: !Ref Bucket
+        SourceTopicArns: !Ref Topic
+  TopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties: 
+      Endpoint: !GetAtt
+        - Forwarder
+        - Outputs.Queue
+      Protocol: sqs
+      TopicArn: !Ref Topic
+  Config:
+    Type: AWS::Serverless::Application
+    DependsOn: Forwarder
+    Condition: EnableConfig
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:739672403694:applications/observe-aws-config
+        SemanticVersion: 0.0.4
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        BucketName: !Ref Bucket
+        TopicARN: !Ref Topic
+

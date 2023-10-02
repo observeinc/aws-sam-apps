@@ -50,7 +50,6 @@ sam-build:
 sam-package: sam-build
 	# requires AWS credentials.
 	# currently dynamically generates bucket. We will want to use a fixed set of buckets for our production artifacts.
-	@ if [ -z "$(AWS_REGION)" ]; then echo >&2 please set AWS_REGION explicitly; exit 2; fi
 	sam package --template apps/$(APP)/.aws-sam/build/template.yaml --output-template-file apps/$(APP)/.aws-sam/build/packaged.yaml --region $(AWS_REGION) --debug --resolve-s3
 
 .PHONY: sam-publish
