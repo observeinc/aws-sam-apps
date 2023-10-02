@@ -45,6 +45,7 @@ Parameters:
       Filedrop. 
       To subscribe a bucket you must ensure S3 notifications are sent
       to Eventbridge.
+    Default: ''
   DestinationUri:
     Type: String
     Description: >-
@@ -53,6 +54,13 @@ Parameters:
     Type: CommaDelimitedList
     Description: A list of SNS topics.
     Default: ""
+
+Conditions:
+  DisableSourceS3: !Equals
+    - !Join
+       - ""
+       - !Ref BucketNames
+    - ""
 
 Resources:
   DeadLetter:
@@ -72,22 +80,25 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Action:
-          - sqs:SendMessage
-          Resource: !GetAtt Queue.Arn
-          Principal:
-            Service:
-              - s3.amazonaws.com
-          Condition:
-            ArnEquals:
-              aws:SourceArn: !Split
-                - ","
-                - !Sub
-                  - "arn:aws:s3:::${Joined}"
-                  - Joined: !Join
-                    - ",arn:aws:s3:::"
-                    - !Ref BucketNames
+        - !If
+          - DisableSourceS3
+          - !Ref 'AWS::NoValue'
+          - Effect: Allow
+            Action:
+            - sqs:SendMessage
+            Resource: !GetAtt Queue.Arn
+            Principal:
+              Service:
+                - s3.amazonaws.com
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Split
+                  - ","
+                  - !Sub
+                    - "arn:aws:s3:::${Joined}"
+                    - Joined: !Join
+                      - ",arn:aws:s3:::"
+                      - !Ref BucketNames
         - Effect: Allow
           Action:
           - sqs:SendMessage
@@ -138,31 +149,34 @@ Resources:
                   StringLike:
                     s3:DataAccessPointArn:
                       - !Ref DataAccessPointArn
-        - PolicyName: reader
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                Resource: !Split
-                  - ","
-                  - !Sub
-                    - "arn:aws:s3:::${Joined}"
-                    - Joined: !Join
-                      - ",arn:aws:s3:::"
-                      - !Ref BucketNames
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:GetObjectTagging
-                Resource: !Split
-                  - ","
-                  - !Sub
-                    - "arn:aws:s3:::${Joined}*"
-                    - Joined: !Join
-                      - "*,arn:aws:s3:::"
-                      - !Ref BucketNames
+        - !If
+          - DisableSourceS3
+          - !Ref 'AWS::NoValue'
+          - PolicyName: reader
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:ListBucket
+                  Resource: !Split
+                    - ","
+                    - !Sub
+                      - "arn:aws:s3:::${Joined}"
+                      - Joined: !Join
+                        - ",arn:aws:s3:::"
+                        - !Ref BucketNames
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:GetObjectTagging
+                  Resource: !Split
+                    - ","
+                    - !Sub
+                      - "arn:aws:s3:::${Joined}*"
+                      - Joined: !Join
+                        - "*,arn:aws:s3:::"
+                        - !Ref BucketNames
         - PolicyName: queue
           PolicyDocument:
             Version: 2012-10-17
