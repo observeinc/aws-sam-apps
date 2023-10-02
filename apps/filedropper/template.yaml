@@ -181,15 +181,15 @@ Resources:
         - - /aws/lambda/
           - !Ref 'Name'
       RetentionInDays: 365
-  Function:
+  FiledropperFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: go1.x
+      BuildMethod: makefile
     DependsOn: LogGroup
     Properties:
       FunctionName: !Ref Name
       Role: !GetAtt Role.Arn
-      CodeUri: ../../cmd/filedropper/
+      CodeUri: ../..
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:
@@ -209,7 +209,7 @@ Resources:
 Outputs:
   Function:
     Description: "Lambda Function ARN"
-    Value: !GetAtt Function.Arn
+    Value: !GetAtt FiledropperFunction.Arn
   Queue:
     Description: "SQS Queue ARN"
     Value: !GetAtt Queue.Arn

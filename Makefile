@@ -42,6 +42,7 @@ sam-build:
 	@ mkdir -p build/
 	# build the lambda
 	# requires Go to be installed
+	# Ideally we'd use a provided container here (-u), but alas https://github.com/aws/aws-sam-cli/issues/5280
 	@ sam build --template apps/$(APP)/template.yaml
 
 .PHONY: sam-package
@@ -66,3 +67,12 @@ sam-package-all:
 ## sam-publish-all: publish all apps
 sam-publish-all:
 	@ for dir in $(SUBDIR); do APP=$$dir $(MAKE) sam-publish || exit 1; done
+
+build-App:
+	@ if [ -z "$(APP)" ]; then echo >&2 please set APP explicitly; exit 2; fi
+	@ if [ -z "$(ARTIFACTS_DIR)" ]; then echo >&2 please set ARTIFACTS_DIR explicitly; exit 2; fi
+	GOARCH=arm64 GOOS=linux go build -tags lambda.norpc -o ./bootstrap cmd/$(APP)/main.go
+	cp ./bootstrap $(ARTIFACTS_DIR)/.
+
+build-FiledropperFunction:
+	APP=filedropper $(MAKE) build-App
