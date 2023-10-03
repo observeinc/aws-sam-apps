@@ -1,17 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Hello world.
-
+  Forward data to Observe via S3.
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: observe-forwarder
-    Description: A hello world
+    Description: Forward data to Observe via S3.
     Author: Observe Inc
     SpdxLicenseId: Apache-2.0
     ReadmeUrl: README.md
     HomePageUrl: https://github.com/observeinc/aws-sam-testing
-    SemanticVersion: 0.0.4
+    SemanticVersion: 0.0.5
     SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
 
   AWS::CloudFormation::Interface:
@@ -19,8 +18,12 @@ Metadata:
       - Label:
           default: Required parameters
         Parameters:
-          - Name
-          - BucketNames
+          - DataAccessPointArn
+      - Label:
+          default: Data Sources
+        Parameters:
+          - SourceBucketNames
+          - SourceTopicArns
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -29,45 +32,56 @@ Globals:
     MemorySize: 128
 
 Parameters:
-  Name:
-    Type: String
-    Description: >-
-      Name of IAM role expected by Filedrop. This role will be created as part
-      of this stack, and must therefore be unique within the account.
   DataAccessPointArn:
     Type: String
     Description: >-
       The access point ARN for your Filedrop.
-  BucketNames:
-    Type: CommaDelimitedList
-    Description: >-
-      A list of bucket names which we are allowed to copy files from into
-      Filedrop. 
-      To subscribe a bucket you must ensure S3 notifications are sent
-      to Eventbridge.
-    Default: ''
   DestinationUri:
     Type: String
     Description: >-
       The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
+  SourceBucketNames:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of bucket names which the forwarder is allowed to read from.
+    Default: ""
   SourceTopicArns:
     Type: CommaDelimitedList
-    Description: A list of SNS topics.
+    Description: A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ""
-
+  NameOverride:
+    Type: String
+    Description: >-
+      Name of IAM role expected by Filedrop. This role will be created as part
+      of this stack, and must therefore be unique within the account.
+    Default: ""
 Conditions:
   DisableSourceS3: !Equals
     - !Join
        - ""
-       - !Ref BucketNames
+       - !Ref SourceBucketNames
+    - ""
+  UseStackName: !Equals
+    - !Ref NameOverride
     - ""
 
 Resources:
   DeadLetter:
     Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub
+       - '${Name}-deadletter'
+       - Name: !If
+          - UseStackName
+          - !Ref 'AWS::StackName'
+          - !Ref NameOverride
   Queue:
     Type: AWS::SQS::Queue
     Properties:
+      QueueName: !If
+        - UseStackName
+        - !Ref 'AWS::StackName'
+        - !Ref NameOverride
       DelaySeconds: 0
       MessageRetentionPeriod: 1209600
       RedrivePolicy:
@@ -98,7 +112,7 @@ Resources:
                     - "arn:aws:s3:::${Joined}"
                     - Joined: !Join
                       - ",arn:aws:s3:::"
-                      - !Ref BucketNames
+                      - !Ref SourceBucketNames
         - Effect: Allow
           Action:
           - sqs:SendMessage
@@ -114,7 +128,10 @@ Resources:
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
-      RoleName: !Ref Name
+      RoleName: !If
+        - UseStackName
+        - !Ref 'AWS::StackName'
+        - !Ref NameOverride
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -135,7 +152,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Name}*"
+                Resource: !GetAtt LogGroup.Arn
         - PolicyName: writer
           PolicyDocument:
             Version: 2012-10-17
@@ -165,7 +182,7 @@ Resources:
                       - "arn:aws:s3:::${Joined}"
                       - Joined: !Join
                         - ",arn:aws:s3:::"
-                        - !Ref BucketNames
+                        - !Ref SourceBucketNames
                 - Effect: Allow
                   Action:
                     - s3:GetObject
@@ -176,7 +193,7 @@ Resources:
                       - "arn:aws:s3:::${Joined}/*"
                       - Joined: !Join
                         - "/*,arn:aws:s3:::"
-                        - !Ref BucketNames
+                        - !Ref SourceBucketNames
         - PolicyName: queue
           PolicyDocument:
             Version: 2012-10-17
@@ -191,9 +208,12 @@ Resources:
     Type: 'AWS::Logs::LogGroup'
     Properties:
       LogGroupName: !Join
-        - ''
+        - ""
         - - /aws/lambda/
-          - !Ref 'Name'
+          - !If
+            - UseStackName
+            - !Ref 'AWS::StackName'
+            - !Ref NameOverride
       RetentionInDays: 365
   Forwarder:
     Type: AWS::Serverless::Function
@@ -201,7 +221,10 @@ Resources:
       BuildMethod: makefile
     DependsOn: LogGroup
     Properties:
-      FunctionName: !Ref Name
+      FunctionName: !If
+        - UseStackName
+        - !Ref 'AWS::StackName'
+        - !Ref NameOverride
       Role: !GetAtt Role.Arn
       CodeUri: ../..
       Handler: bootstrap
