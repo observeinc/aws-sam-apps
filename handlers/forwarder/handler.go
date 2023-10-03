@@ -102,8 +102,9 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 		m := &SQSMessage{SQSMessage: record}
 		for _, sourceURI := range m.GetObjectCreated() {
 			copyInput := GetCopyObjectInput(sourceURI, h.DestinationURI)
-			if _, m.Error = h.S3Client.CopyObject(ctx, copyInput); m.Error != nil {
-				logger.Error(m.Error, "error copying file")
+			if _, cerr := h.S3Client.CopyObject(ctx, copyInput); cerr != nil {
+				logger.Error(cerr, "error copying file")
+				m.ErrorMessage = cerr.Error()
 				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
 					ItemIdentifier: record.MessageId,
 				})

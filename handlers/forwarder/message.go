@@ -11,15 +11,7 @@ import (
 
 type SQSMessage struct {
 	events.SQSMessage
-	Error error `json:"error,omitempty"`
-}
-
-func getS3URI(bucketName string, objectKey string) *url.URL {
-	s := fmt.Sprintf("s3://%s/%s", bucketName, objectKey)
-	if u, err := url.ParseRequestURI(s); err == nil {
-		return u
-	}
-	return nil
+	ErrorMessage string `json:"error,omitempty"`
 }
 
 func (m *SQSMessage) GetObjectCreated() (uris []*url.URL) {
@@ -36,6 +28,14 @@ func (m *SQSMessage) GetObjectCreated() (uris []*url.URL) {
 		uris = append(uris, processS3Event(message)...)
 	}
 	return
+}
+
+func getS3URI(bucketName string, objectKey string) *url.URL {
+	s := fmt.Sprintf("s3://%s/%s", bucketName, objectKey)
+	if u, err := url.ParseRequestURI(s); err == nil {
+		return u
+	}
+	return nil
 }
 
 func processS3Event(message []byte) (uris []*url.URL) {
