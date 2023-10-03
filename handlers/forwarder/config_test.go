@@ -1,10 +1,10 @@
-package filedropper_test
+package forwarder_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/observeinc/aws-sam-testing/handlers/filedropper"
+	"github.com/observeinc/aws-sam-testing/handlers/forwarder"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -12,27 +12,27 @@ import (
 
 func TestConfig(t *testing.T) {
 	testcases := []struct {
-		filedropper.Config
+		forwarder.Config
 		ExpectError error
 	}{
 		{
-			ExpectError: filedropper.ErrMissingS3Client,
+			ExpectError: forwarder.ErrMissingS3Client,
 		},
 		{
-			ExpectError: filedropper.ErrInvalidDestination,
+			ExpectError: forwarder.ErrInvalidDestination,
 		},
 		{
-			Config: filedropper.Config{
+			Config: forwarder.Config{
 				DestinationURI: "s3://test",
 				S3Client:       &MockS3Client{},
 			},
 		},
 		{
-			Config: filedropper.Config{
+			Config: forwarder.Config{
 				DestinationURI: "https://example.com",
 				S3Client:       &MockS3Client{},
 			},
-			ExpectError: filedropper.ErrInvalidDestination,
+			ExpectError: forwarder.ErrInvalidDestination,
 		},
 	}
 

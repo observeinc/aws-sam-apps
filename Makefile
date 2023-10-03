@@ -73,5 +73,5 @@ build-App:
 	GOARCH=arm64 GOOS=linux go build -tags lambda.norpc -o ./bootstrap cmd/$(APP)/main.go
 	cp ./bootstrap $(ARTIFACTS_DIR)/.
 
-build-FiledropperFunction:
-	APP=filedropper $(MAKE) build-App
+build-Forwarder:
+	APP=forwarder $(MAKE) build-App

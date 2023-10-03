@@ -5,7 +5,7 @@ Description: >
 
 Metadata:
   AWS::ServerlessRepo::Application:
-    Name: observe-filedropper
+    Name: observe-forwarder
     Description: A hello world
     Author: Observe Inc
     SpdxLicenseId: Apache-2.0
@@ -49,7 +49,7 @@ Parameters:
   DestinationUri:
     Type: String
     Description: >-
-      The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101:secret/`
+      The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
   SourceTopicArns:
     Type: CommaDelimitedList
     Description: A list of SNS topics.
@@ -195,7 +195,7 @@ Resources:
         - - /aws/lambda/
           - !Ref 'Name'
       RetentionInDays: 365
-  FiledropperFunction:
+  Forwarder:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: makefile
@@ -223,7 +223,7 @@ Resources:
 Outputs:
   Function:
     Description: "Lambda Function ARN"
-    Value: !GetAtt FiledropperFunction.Arn
+    Value: !GetAtt Forwarder.Arn
   Queue:
     Description: "SQS Queue ARN"
     Value: !GetAtt Queue.Arn

@@ -1,4 +1,4 @@
-package filedropper
+package forwarder
 
 import (
 	"bytes"
@@ -55,7 +55,7 @@ func GetRecordInput(lctx *lambdacontext.LambdaContext, destination *url.URL, r i
 		return nil
 	}
 
-	key := strings.TrimLeft(fmt.Sprintf("%s/filedropper/%s/%s", strings.Trim(destination.Path, "/"), lctx.InvokedFunctionArn, lctx.AwsRequestID), "/")
+	key := strings.TrimLeft(fmt.Sprintf("%s/forwarder/%s/%s", strings.Trim(destination.Path, "/"), lctx.InvokedFunctionArn, lctx.AwsRequestID), "/")
 
 	return &s3.PutObjectInput{
 		Bucket:      &destination.Host,

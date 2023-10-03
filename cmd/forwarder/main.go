@@ -13,7 +13,7 @@ import (
 	"github.com/go-logr/stdr"
 	"github.com/sethvargo/go-envconfig"
 
-	"github.com/observeinc/aws-sam-testing/handlers/filedropper"
+	"github.com/observeinc/aws-sam-testing/handlers/forwarder"
 )
 
 var env struct {
@@ -22,7 +22,7 @@ var env struct {
 }
 
 var logger logr.Logger
-var handler *filedropper.Handler
+var handler *forwarder.Handler
 
 func init() {
 	if err := realInit(); err != nil {
@@ -49,7 +49,7 @@ func realInit() error {
 
 	s3client := s3.NewFromConfig(awsCfg)
 
-	handler, err = filedropper.New(&filedropper.Config{
+	handler, err = forwarder.New(&forwarder.Config{
 		DestinationURI: env.DestinationURI,
 		S3Client:       s3client,
 		Logger:         &logger,

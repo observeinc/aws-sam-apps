@@ -104,7 +104,7 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:739672403694:applications/observe-filedropper
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:739672403694:applications/observe-forwarder
         SemanticVersion: 0.0.4
       NotificationARNs:
         - !Ref Topic

@@ -1,4 +1,4 @@
-package filedropper
+package forwarder
 
 import (
 	"encoding/json"

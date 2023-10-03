@@ -1,11 +1,11 @@
-package filedropper_test
+package forwarder_test
 
 import (
 	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/observeinc/aws-sam-testing/handlers/filedropper"
+	"github.com/observeinc/aws-sam-testing/handlers/forwarder"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -67,7 +67,7 @@ func TestObjectCreated(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
-			var message filedropper.SQSMessage
+			var message forwarder.SQSMessage
 			if err := json.Unmarshal([]byte(tc.Message), &message); err != nil {
 				t.Fatal(err)
 			}
