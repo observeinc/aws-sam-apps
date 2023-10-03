@@ -173,9 +173,9 @@ Resources:
                   Resource: !Split
                     - ","
                     - !Sub
-                      - "arn:aws:s3:::${Joined}*"
+                      - "arn:aws:s3:::${Joined}/*"
                       - Joined: !Join
-                        - "*,arn:aws:s3:::"
+                        - "/*,arn:aws:s3:::"
                         - !Ref BucketNames
         - PolicyName: queue
           PolicyDocument:
