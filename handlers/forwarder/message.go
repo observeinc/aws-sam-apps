@@ -27,6 +27,11 @@ func (m *SQSMessage) GetObjectCreated() (uris []*url.URL) {
 	if len(uris) == 0 {
 		uris = append(uris, processS3Event(message)...)
 	}
+
+	if len(uris) == 0 {
+		uris = append(uris, processCopyEvent(message)...)
+	}
+
 	return
 }
 
@@ -48,6 +53,28 @@ func processS3Event(message []byte) (uris []*url.URL) {
 				if u := getS3URI(record.S3.Bucket.Name, record.S3.Object.Key); u != nil {
 					uris = append(uris, u)
 				}
+			}
+		}
+	}
+	return
+}
+
+type CopyEvent struct {
+	Copy []CopyRecord `"json"`
+}
+
+type CopyRecord struct {
+	URI string `"uri"`
+}
+
+func processCopyEvent(message []byte) (uris []*url.URL) {
+	var copyEvent CopyEvent
+	err := json.Unmarshal(message, &copyEvent)
+
+	if err == nil {
+		for _, record := range copyEvent.Copy {
+			if u, err := url.ParseRequestURI(record.URI); err == nil {
+				uris = append(uris, u)
 			}
 		}
 	}
