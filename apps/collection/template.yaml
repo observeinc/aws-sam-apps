@@ -14,21 +14,29 @@ Metadata:
     SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
 
 Parameters:
-  Name:
+  DataAccessPointArn:
+    Type: String
+    Description: >-
+      The access point ARN for your Filedrop.
+  DestinationUri:
+    Type: String
+    Description: >-
+      The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
+  SourceBucketNames:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of bucket names which the forwarder is allowed to read from.
+    Default: ""
+  SourceTopicArns:
+    Type: CommaDelimitedList
+    Description: A list of SNS topics the forwarder is allowed to be subscribed to.
+    Default: ""
+  NameOverride:
     Type: String
     Description: >-
       Name of IAM role expected by Filedrop. This role will be created as part
       of this stack, and must therefore be unique within the account.
     Default: ""
-  DataAccessPointArn:
-    Type: String
-    Description: >-
-      The access point ARN for your Filedrop.
-    Default: ""
-  DestinationUri:
-    Type: String
-    Description: >-
-      S3 URI to write data to.
   InstallConfig:
     Type: String
     AllowedValues:
@@ -45,6 +53,9 @@ Conditions:
   EnableConfig: !Equals
     - !Ref InstallConfig
     - "true"
+  UseStackName: !Equals
+    - !Ref NameOverride
+    - ""
 
 Resources:
   Topic:
@@ -105,15 +116,18 @@ Resources:
     Properties:
       Location:
         ApplicationId: arn:aws:serverlessrepo:us-east-1:739672403694:applications/observe-forwarder
-        SemanticVersion: 0.0.4
+        SemanticVersion: 0.0.5
       NotificationARNs:
         - !Ref Topic
       Parameters:
-        Name: !Ref Name
         DataAccessPointArn: !Ref DataAccessPointArn
         DestinationUri: !Ref DestinationUri
-        BucketNames: !Ref Bucket
+        SourceBucketNames: !Ref Bucket
         SourceTopicArns: !Ref Topic
+        NameOverride: !If
+          - UseStackName
+          - !Ref 'AWS::StackName'
+          - !Ref NameOverride
   TopicSubscription:
     Type: AWS::SNS::Subscription
     Properties: 
