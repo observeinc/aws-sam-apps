@@ -13,6 +13,24 @@ Metadata:
     SemanticVersion: 0.0.1
     SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
 
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required parameters
+        Parameters:
+          - DataAccessPointArn
+          - DestinationArn
+      - Label:
+          default: Components
+        Parameters:
+          - InstallConfig
+      - Label:
+          default: Forwarder Options
+        Parameters:
+          - SourceBucketNames
+          - SourceTopicArns
+          - NameOverride
+
 Parameters:
   DataAccessPointArn:
     Type: String
@@ -149,4 +167,3 @@ Resources:
       Parameters:
         BucketName: !Ref Bucket
         TopicARN: !Ref Topic
-
