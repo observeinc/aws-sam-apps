@@ -19,6 +19,7 @@ Metadata:
           default: Required parameters
         Parameters:
           - DataAccessPointArn
+          - DestinationUri
       - Label:
           default: Data Sources
         Parameters:
@@ -114,17 +115,41 @@ Resources:
                       - ",arn:aws:s3:::"
                       - !Ref SourceBucketNames
         - Effect: Allow
-          Action:
-          - sqs:SendMessage
+          Action: sqs:SendMessage
           Resource: !GetAtt Queue.Arn
           Principal:
-            Service:
-              - sns.amazonaws.com
+            Service: sns.amazonaws.com
           Condition:
             ArnEquals:
               aws:SourceArn: !Ref SourceTopicArns
+        - Effect: Allow
+          Action: sqs:SendMessage
+          Resource: !GetAtt Queue.Arn
+          Principal:
+            Service: events.amazonaws.com
       Queues: 
         - !Ref Queue
+  Rule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Trigger copy for object created events"
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+        # NOTE: it would be nice to filter events to match source buckets only.
+        # SourceBucketArns however allows for wildcards, which aren't easily
+        # converted into the appropriate EventBridge filter. We instead filter
+        # within the lambda.
+      Targets:
+        - Arn: !GetAtt Queue.Arn
+          Id: "Forwarder"
+          InputTransformer:
+            InputPathsMap:
+              bucketName: "$.detail.bucket.name"
+              objectKey: "$.detail.object.key"
+            InputTemplate: '{"copy": [{"uri": "s3://<bucketName>/<objectKey>"}]}'
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
