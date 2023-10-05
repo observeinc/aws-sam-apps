@@ -1,7 +1,8 @@
+---
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Collect AWS data towards Observe 
+  Collect AWS data towards Observe.
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: observe-aws-collection
@@ -47,7 +48,8 @@ Parameters:
     Default: ""
   SourceTopicArns:
     Type: CommaDelimitedList
-    Description: A list of SNS topics the forwarder is allowed to be subscribed to.
+    Description: >-
+      A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ""
   NameOverride:
     Type: String
@@ -75,10 +77,10 @@ Conditions:
     - !Ref NameOverride
     - ""
   EmptySourceBucketNames: !Equals
-    - !Join [ ",", !Ref SourceBucketNames ]
+    - !Join [",", !Ref SourceBucketNames]
     - ""
   EmptySourceTopicArns: !Equals
-    - !Join [ ",", !Ref SourceTopicArns ]
+    - !Join [",", !Ref SourceTopicArns]
     - ""
 
 Resources:
@@ -148,27 +150,27 @@ Resources:
         DestinationUri: !Ref DestinationUri
         SourceBucketNames: !If
           - EmptySourceBucketNames
-          - [ !Ref Bucket ]
+          - [!Ref Bucket]
           - !Split
             - ","
             - !Sub
               - "${Bucket},${buckets}"
-              - buckets: !Join [ ",", !Ref SourceBucketNames ]
+              - buckets: !Join [",", !Ref SourceBucketNames]
         SourceTopicArns: !If
           - EmptySourceTopicArns
-          - [ !Ref Topic ]
+          - [!Ref Topic]
           - !Split
             - ","
             - !Sub
               - "${Topic},${topics}"
-              - topics: !Join [ ",", !Ref SourceTopicArns ]
+              - topics: !Join [",", !Ref SourceTopicArns]
         NameOverride: !If
           - UseStackName
           - !Ref 'AWS::StackName'
           - !Ref NameOverride
   TopicSubscription:
     Type: AWS::SNS::Subscription
-    Properties: 
+    Properties:
       Endpoint: !GetAtt
         - Forwarder
         - Outputs.Queue

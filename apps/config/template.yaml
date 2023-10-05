@@ -1,3 +1,4 @@
+---
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
@@ -41,11 +42,11 @@ Parameters:
     Type: String
     Default: Three_Hours
     AllowedValues:
-    - One_Hour
-    - Three_Hours
-    - Six_Hours
-    - Twelve_Hours
-    - TwentyFour_Hours
+      - One_Hour
+      - Three_Hours
+      - Six_Hours
+      - Twelve_Hours
+      - TwentyFour_Hours
 
 Conditions:
   DisableSNS: !Equals
@@ -59,12 +60,11 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - config.amazonaws.com
-          Action:
-          - sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action:
+              - sts:AssumeRole
       Path: /
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
