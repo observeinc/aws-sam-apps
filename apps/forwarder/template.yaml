@@ -1,7 +1,7 @@
+---
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  Forward data to Observe via S3.
+Description: 'Forward data to Observe via S3.'
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: observe-forwarder
@@ -10,23 +10,23 @@ Metadata:
     SpdxLicenseId: Apache-2.0
     ReadmeUrl: README.md
     HomePageUrl: https://github.com/observeinc/aws-sam-testing
-    SemanticVersion: 0.0.5
+    SemanticVersion: '0.0.5'
     SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Required parameters
+          default: Filedrop Configuration
         Parameters:
           - DataAccessPointArn
           - DestinationUri
+          - NameOverride
       - Label:
           default: Data Sources
         Parameters:
           - SourceBucketNames
           - SourceTopicArns
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 20
@@ -41,93 +41,96 @@ Parameters:
     Type: String
     Description: >-
       The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
-  SourceBucketNames:
-    Type: CommaDelimitedList
-    Description: >-
-      A list of bucket names which the forwarder is allowed to read from.
-    Default: ""
-  SourceTopicArns:
-    Type: CommaDelimitedList
-    Description: A list of SNS topics the forwarder is allowed to be subscribed to.
-    Default: ""
   NameOverride:
     Type: String
     Description: >-
-      Name of IAM role expected by Filedrop. This role will be created as part
-      of this stack, and must therefore be unique within the account.
-    Default: ""
+      Name of IAM role expected by Filedrop. This name will also be applied to
+      the SQS Queue and Lambda Function processing events. In the absence of a
+      value, the stack name will be used.
+    Default: ''
+  SourceBucketNames:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of bucket names which the forwarder is allowed to read from.  This
+      list only affects permissions, and supports wildcards. In order to have
+      files copied to Filedrop, you must also subscribe S3 Bucket Notifications
+      to the forwarder.
+    Default: ''
+  SourceTopicArns:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of SNS topics the forwarder is allowed to be subscribed to.
+    Default: ''
 Conditions:
   DisableSourceS3: !Equals
     - !Join
-       - ""
-       - !Ref SourceBucketNames
-    - ""
+      - ''
+      - !Ref SourceBucketNames
+    - ''
   UseStackName: !Equals
     - !Ref NameOverride
-    - ""
+    - ''
 
 Resources:
   DeadLetter:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub
-       - '${Name}-deadletter'
-       - Name: !If
-          - UseStackName
-          - !Ref 'AWS::StackName'
-          - !Ref NameOverride
+        - '${Name}-deadletter'
+        - Name: !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
   Queue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !If
         - UseStackName
-        - !Ref 'AWS::StackName'
+        - !Ref AWS::StackName
         - !Ref NameOverride
       DelaySeconds: 0
       MessageRetentionPeriod: 1209600
       RedrivePolicy:
-        deadLetterTargetArn : !GetAtt DeadLetter.Arn
-        maxReceiveCount : 4
+        deadLetterTargetArn: !GetAtt DeadLetter.Arn
+        maxReceiveCount: 4
       VisibilityTimeout: 20
   QueuePolicy:
     Type: AWS::SQS::QueuePolicy
-    Properties: 
+    Properties:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - !If
-          - DisableSourceS3
-          - !Ref 'AWS::NoValue'
+          - !If
+            - DisableSourceS3
+            - !Ref AWS::NoValue
+            - Effect: Allow
+              Action: sqs:SendMessage
+              Resource: !GetAtt Queue.Arn
+              Principal:
+                Service: s3.amazonaws.com
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: !Split
+                    - ","
+                    - !Sub
+                      - "arn:aws:s3:::${Joined}"
+                      - Joined: !Join
+                          - ",arn:aws:s3:::"
+                          - !Ref SourceBucketNames
           - Effect: Allow
-            Action:
-            - sqs:SendMessage
+            Action: sqs:SendMessage
             Resource: !GetAtt Queue.Arn
             Principal:
-              Service:
-                - s3.amazonaws.com
+              Service: sns.amazonaws.com
             Condition:
               ArnEquals:
-                aws:SourceArn: !Split
-                  - ","
-                  - !Sub
-                    - "arn:aws:s3:::${Joined}"
-                    - Joined: !Join
-                      - ",arn:aws:s3:::"
-                      - !Ref SourceBucketNames
-        - Effect: Allow
-          Action: sqs:SendMessage
-          Resource: !GetAtt Queue.Arn
-          Principal:
-            Service: sns.amazonaws.com
-          Condition:
-            ArnEquals:
-              aws:SourceArn: !Ref SourceTopicArns
-        - Effect: Allow
-          Action: sqs:SendMessage
-          Resource: !GetAtt Queue.Arn
-          Principal:
-            Service: events.amazonaws.com
-      Queues: 
+                aws:SourceArn: !Ref SourceTopicArns
+          - Effect: Allow
+            Action: sqs:SendMessage
+            Resource: !GetAtt Queue.Arn
+            Principal:
+              Service: events.amazonaws.com
+      Queues:
         - !Ref Queue
   Rule:
     Type: AWS::Events::Rule
@@ -138,10 +141,10 @@ Resources:
           - "aws.s3"
         detail-type:
           - "Object Created"
-        # NOTE: it would be nice to filter events to match source buckets only.
-        # SourceBucketArns however allows for wildcards, which aren't easily
-        # converted into the appropriate EventBridge filter. We instead filter
-        # within the lambda.
+      # NOTE: it would be nice to filter events to match source buckets only.
+      # SourceBucketArns however allows for wildcards, which aren't easily
+      # converted into the appropriate EventBridge filter. We instead filter
+      # within the lambda.
       Targets:
         - Arn: !GetAtt Queue.Arn
           Id: "Forwarder"
@@ -149,13 +152,14 @@ Resources:
             InputPathsMap:
               bucketName: "$.detail.bucket.name"
               objectKey: "$.detail.object.key"
-            InputTemplate: '{"copy": [{"uri": "s3://<bucketName>/<objectKey>"}]}'
+            InputTemplate: >-
+              {"copy": [{"uri": "s3://<bucketName>/<objectKey>"}]}
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
       RoleName: !If
         - UseStackName
-        - !Ref 'AWS::StackName'
+        - !Ref AWS::StackName
         - !Ref NameOverride
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -193,7 +197,7 @@ Resources:
                       - !Ref DataAccessPointArn
         - !If
           - DisableSourceS3
-          - !Ref 'AWS::NoValue'
+          - !Ref AWS::NoValue
           - PolicyName: reader
             PolicyDocument:
               Version: 2012-10-17
@@ -206,8 +210,8 @@ Resources:
                     - !Sub
                       - "arn:aws:s3:::${Joined}"
                       - Joined: !Join
-                        - ",arn:aws:s3:::"
-                        - !Ref SourceBucketNames
+                          - ",arn:aws:s3:::"
+                          - !Ref SourceBucketNames
                 - Effect: Allow
                   Action:
                     - s3:GetObject
@@ -217,8 +221,8 @@ Resources:
                     - !Sub
                       - "arn:aws:s3:::${Joined}/*"
                       - Joined: !Join
-                        - "/*,arn:aws:s3:::"
-                        - !Ref SourceBucketNames
+                          - "/*,arn:aws:s3:::"
+                          - !Ref SourceBucketNames
         - PolicyName: queue
           PolicyDocument:
             Version: 2012-10-17
@@ -233,11 +237,11 @@ Resources:
     Type: 'AWS::Logs::LogGroup'
     Properties:
       LogGroupName: !Join
-        - ""
+        - ''
         - - /aws/lambda/
           - !If
             - UseStackName
-            - !Ref 'AWS::StackName'
+            - !Ref AWS::StackName
             - !Ref NameOverride
       RetentionInDays: 365
   Forwarder:
@@ -248,7 +252,7 @@ Resources:
     Properties:
       FunctionName: !If
         - UseStackName
-        - !Ref 'AWS::StackName'
+        - !Ref AWS::StackName
         - !Ref NameOverride
       Role: !GetAtt Role.Arn
       CodeUri: ../..
