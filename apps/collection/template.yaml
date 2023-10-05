@@ -140,9 +140,7 @@ Resources:
   Forwarder:
     Type: AWS::Serverless::Application
     Properties:
-      Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:739672403694:applications/observe-forwarder
-        SemanticVersion: 0.0.5
+      Location: ../forwarder/template.yaml
       NotificationARNs:
         - !Ref Topic
       Parameters:
@@ -181,9 +179,7 @@ Resources:
     DependsOn: Forwarder
     Condition: EnableConfig
     Properties:
-      Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:739672403694:applications/observe-aws-config
-        SemanticVersion: 0.0.4
+      Location: ../config/template.yaml
       NotificationARNs:
         - !Ref Topic
       Parameters:
