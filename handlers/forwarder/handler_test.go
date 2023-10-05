@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"testing"
@@ -184,6 +185,51 @@ func TestHandler(t *testing.T) {
 
 			if diff := cmp.Diff(response, tc.ExpectResponse); diff != "" {
 				t.Error("unexpected response", diff)
+			}
+		})
+	}
+}
+
+func TestRecorder(t *testing.T) {
+	t.Parallel()
+
+	testcases := []struct {
+		Context        *lambdacontext.LambdaContext
+		Prefix         string
+		DestinationURI string
+		Expect         *s3.PutObjectInput
+	}{
+		{
+			Context: &lambdacontext.LambdaContext{
+				InvokedFunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:test",
+				AwsRequestID:       "c8ee04d5-5925-541a-b113-5942a0fc5985",
+			},
+			Prefix:         "test/",
+			DestinationURI: "s3://my-bucket/path/to",
+			Expect: &s3.PutObjectInput{
+				Bucket:      aws.String("my-bucket"),
+				Key:         aws.String("path/to/test/arn:aws:lambda:us-east-1:123456789012:function:test/c8ee04d5-5925-541a-b113-5942a0fc5985"),
+				ContentType: aws.String("application/x-ndjson"),
+			},
+		},
+	}
+
+	for i, tc := range testcases {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+			u, err := url.ParseRequestURI(tc.DestinationURI)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var body io.Reader
+
+			tc.Expect.Body = body
+			got := forwarder.GetLogInput(tc.Context, tc.Prefix, u, body)
+
+			if diff := cmp.Diff(got, tc.Expect, cmpopts.IgnoreUnexported(s3.PutObjectInput{})); diff != "" {
+				t.Fatal(diff)
 			}
 		})
 	}

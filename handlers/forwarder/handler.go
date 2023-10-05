@@ -26,6 +26,7 @@ type S3Client interface {
 
 type Handler struct {
 	DestinationURI *url.URL
+	LogPrefix      string
 	S3Client       S3Client
 	Logger         logr.Logger
 }
@@ -50,12 +51,12 @@ func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 	}
 }
 
-func GetRecordInput(lctx *lambdacontext.LambdaContext, destination *url.URL, r io.Reader) *s3.PutObjectInput {
+func GetLogInput(lctx *lambdacontext.LambdaContext, prefix string, destination *url.URL, r io.Reader) *s3.PutObjectInput {
 	if lctx == nil || destination == nil {
 		return nil
 	}
 
-	key := strings.TrimLeft(fmt.Sprintf("%s/forwarder/%s/%s", strings.Trim(destination.Path, "/"), lctx.InvokedFunctionArn, lctx.AwsRequestID), "/")
+	key := strings.TrimLeft(fmt.Sprintf("%s/%s%s/%s", strings.Trim(destination.Path, "/"), prefix, lctx.InvokedFunctionArn, lctx.AwsRequestID), "/")
 
 	return &s3.PutObjectInput{
 		Bucket:      &destination.Host,
@@ -88,15 +89,15 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 		}
 	}()
 
-	var records bytes.Buffer
+	var messages bytes.Buffer
 	defer func() {
 		if err == nil {
-			logger.V(3).Info("recording results")
-			_, err = h.S3Client.PutObject(ctx, GetRecordInput(lctx, h.DestinationURI, &records))
+			logger.V(3).Info("logging messages")
+			_, err = h.S3Client.PutObject(ctx, GetLogInput(lctx, h.LogPrefix, h.DestinationURI, &messages))
 		}
 	}()
 
-	encoder := json.NewEncoder(&records)
+	encoder := json.NewEncoder(&messages)
 
 	for _, record := range request.Records {
 		m := &SQSMessage{SQSMessage: record}
@@ -128,6 +129,7 @@ func New(cfg *Config) (*Handler, error) {
 
 	h := &Handler{
 		DestinationURI: u,
+		LogPrefix:      cfg.LogPrefix,
 		S3Client:       cfg.S3Client,
 		Logger:         logr.Discard(),
 	}

@@ -18,11 +18,14 @@ import (
 
 var env struct {
 	DestinationURI string `env:"DESTINATION_URI,required"`
+	LogPrefix      string `env:"LOG_PREFIX,default=forwarder/"`
 	Verbosity      int    `env:"VERBOSITY,default=1"`
 }
 
-var logger logr.Logger
-var handler *forwarder.Handler
+var (
+	logger  logr.Logger
+	handler *forwarder.Handler
+)
 
 func init() {
 	if err := realInit(); err != nil {
@@ -51,6 +54,7 @@ func realInit() error {
 
 	handler, err = forwarder.New(&forwarder.Config{
 		DestinationURI: env.DestinationURI,
+		LogPrefix:      env.LogPrefix,
 		S3Client:       s3client,
 		Logger:         &logger,
 	})
