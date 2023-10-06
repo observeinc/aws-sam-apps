@@ -2,3 +2,11 @@
 .aws-sam/
 .*.swp
 build/
+
+.terraform
+terraform.tfstate
+*.tfstate*
+terraform.tfvars
+tfplan
+
+.terraform.lock.hcl
