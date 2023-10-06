@@ -18,6 +18,9 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
 
+    - name: build
+      run: make sam-build-all
+
     - name: Setup AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
@@ -43,6 +46,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: aws sam release
-      run: |
-        echo "VERSION=${{ steps.prerelease.outputs.release-version }}" >> $GITHUB_ENV
-        make sam-package-all-regions
+      run: make sam-package-all-regions
+      env:
+        VERSION: ${{ steps.prerelease.outputs.release-version }}
+      

@@ -45,6 +45,13 @@ sam-lint-all:
 		APP=$$dir $(MAKE) sam-lint || exit 1;
 	done
 
+.PHONY: sam-build-all
+## sam-build-all: build assets for all SAM applications
+sam-build-all:
+	@ for app in $(SUBDIR); do \
+		APP=$$app $(MAKE) sam-build || exit 1; \
+	done
+
 ## sam-build: build assets
 sam-build:
 	$(call check_var,APP)
