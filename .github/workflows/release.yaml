@@ -1,9 +1,8 @@
 on:
   push:
-    tags:
-      - v*
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   release:
@@ -13,7 +12,16 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
 
-    - name: semantic-release
+    - name: pre-release
+      if: github.event_name == 'push'
       uses: ahmadnassri/action-semantic-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: full release
+      if: github.event_name == 'workflow_dispatch'
+      uses: ahmadnassri/action-semantic-release@v2
+      with:
+        config: .releaserc-release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
