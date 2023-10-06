@@ -2,6 +2,10 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .ONESHELL:
 
+REGIONS := us-west-1 us-east-1
+S3_BUCKET_PREFIX ?= observeinc
+VERSION ?= unreleased
+
 define check_var
 	@if [ -z "$($1)" ]; then
 		echo >&2 "Please set the $1 variable";
@@ -47,11 +51,6 @@ sam-build:
 	$(call check_var,AWS_REGION)
 	cd apps/$(APP) && sam build --region $(AWS_REGION)
 
-## sam-package: package cloudformation templates and push assets to S3
-sam-package: sam-build
-	$(call check_var,AWS_REGION)
-	sam package --template apps/$(APP)/.aws-sam/build/template.yaml --output-template-file apps/$(APP)/.aws-sam/build/packaged.yaml --region $(AWS_REGION) --debug --resolve-s3
-
 ## sam-publish: publish serverless repo app
 sam-publish: sam-package
 	$(call check_var,AWS_REGION)
@@ -61,6 +60,21 @@ sam-publish: sam-package
 sam-package-all:
 	for dir in $(SUBDIR); do
 		APP=$$dir $(MAKE) sam-package || exit 1;
+	done
+
+## sam-package: package cloudformation templates and push assets to S3
+sam-package: sam-build
+	$(call check_var,APP)
+	$(call check_var,AWS_REGION)
+	sam package --template-file apps/$(APP)/.aws-sam/build/template.yaml --output-template-file apps/$(APP)/.aws-sam/build/packaged.yaml --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --s3-prefix apps/$(APP)/$(VERSION) --region $(AWS_REGION) --debug
+
+.PHONY: sam-package-all-regions
+## sam-package-all-regions: Packages and uploads all SAM applications to S3 in multiple regions
+sam-package-all-regions:
+	@ for app in $(SUBDIR); do \
+		for region in $(REGIONS); do \
+			APP=$$app AWS_REGION=$$region $(MAKE) sam-package || exit 1; \
+		done \
 	done
 
 ## sam-publish-all: publish all apps
@@ -79,3 +93,4 @@ build-Forwarder:
 	APP=forwarder $(MAKE) build-App
 
 .PHONY: help go-lint go-lint-all go-test sam-lint sam-lint-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
+
