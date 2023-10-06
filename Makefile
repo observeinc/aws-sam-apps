@@ -4,6 +4,7 @@ SHELL := /bin/bash
 
 REGIONS := us-west-1 us-east-1
 S3_BUCKET_PREFIX ?= observeinc
+VERSION ?= unreleased
 
 define check_var
 	@if [ -z "$($1)" ]; then
@@ -65,7 +66,7 @@ sam-package-all:
 sam-package: sam-build
 	$(call check_var,APP)
 	$(call check_var,AWS_REGION)
-	sam package --template-file apps/$(APP)/.aws-sam/build/template.yaml --output-template-file apps/$(APP)/.aws-sam/build/packaged.yaml --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --s3-prefix apps/$(APP)/unreleased --region $(AWS_REGION) --debug
+	sam package --template-file apps/$(APP)/.aws-sam/build/template.yaml --output-template-file apps/$(APP)/.aws-sam/build/packaged.yaml --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --s3-prefix apps/$(APP)/$(VERSION) --region $(AWS_REGION) --debug
 
 .PHONY: sam-package-all-regions
 ## sam-package-all-regions: Packages and uploads all SAM applications to S3 in multiple regions
