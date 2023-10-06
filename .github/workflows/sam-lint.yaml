@@ -1,3 +1,5 @@
+name: Run Lint
+
 on:
   push:
     branches:
