@@ -23,12 +23,8 @@ jobs:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: us-west-2
 
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
-      with:
-        limit-access-to-actor: true
-
-    - name: pre-release
+    - name: github pre-release
+      id: prerelease
       if: github.event_name == 'push'
       uses: ahmadnassri/action-semantic-release@v2
       with:
@@ -36,10 +32,16 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: full release
+    - name: github full release
+      id: fullrelease
       if: github.event_name == 'workflow_dispatch'
       uses: ahmadnassri/action-semantic-release@v2
       with:
         config: ${{ github.workspace }}/.releaserc-release.json
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: aws sam release
+      run: |
+        echo "VERSION=${{ steps.prerelease.outputs.release-version }}" >> $GITHUB_ENV
+        make sam-package-all-regions
