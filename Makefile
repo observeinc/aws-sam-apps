@@ -46,22 +46,27 @@ sam-lint-all:
 	done
 
 .PHONY: sam-build-all
-## sam-build-all: build assets for all SAM applications
+## sam-build-all: build assets for all SAM applications across all regions
 sam-build-all:
 	@ for app in $(SUBDIR); do \
-		APP=$$app $(MAKE) sam-build || exit 1; \
+		for region in $(REGIONS); do \
+			APP=$$app AWS_REGION=$$region $(MAKE) sam-build || exit 1; \
+		done \
 	done
 
 ## sam-build: build assets
 sam-build:
 	$(call check_var,APP)
 	$(call check_var,AWS_REGION)
-	cd apps/$(APP) && sam build --region $(AWS_REGION)
+	cd apps/$(APP) && sam build --region $(AWS_REGION) --build-dir .aws-sam/build/$(AWS_REGION)
+
 
 ## sam-publish: publish serverless repo app
 sam-publish: sam-package
 	$(call check_var,AWS_REGION)
-	sam publish --template-file apps/$(APP)/.aws-sam/build/packaged.yaml --region $(AWS_REGION)
+	sam publish \
+	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
+	    --region $(AWS_REGION)
 
 ## sam-package-all: package all cloudformation templates and push assets to S3
 sam-package-all:
@@ -73,7 +78,13 @@ sam-package-all:
 sam-package: sam-build
 	$(call check_var,APP)
 	$(call check_var,AWS_REGION)
-	sam package --template-file apps/$(APP)/.aws-sam/build/template.yaml --output-template-file apps/$(APP)/.aws-sam/build/packaged.yaml --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --s3-prefix apps/$(APP)/$(VERSION) --region $(AWS_REGION) --debug
+	sam package \
+	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
+	    --output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
+	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
+	    --s3-prefix apps/$(APP)/$(VERSION) \
+	    --region $(AWS_REGION) \
+	    --debug
 
 .PHONY: sam-package-all-regions
 ## sam-package-all-regions: Packages and uploads all SAM applications to S3 in multiple regions
