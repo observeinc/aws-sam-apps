@@ -14,7 +14,8 @@ var (
 )
 
 type Config struct {
-	DestinationURI string
+	DestinationURI string // S3 URI to write messages and copy files to
+	LogPrefix      string // prefix used when writing SQS messages to S3
 	S3Client       S3Client
 	Logger         *logr.Logger
 }
