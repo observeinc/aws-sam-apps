@@ -17,6 +17,8 @@ jobs:
     - name: pre-release
       if: github.event_name == 'push'
       uses: ahmadnassri/action-semantic-release@v2
+      with:
+        config: ${{ github.workspace }}/.releaserc
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
