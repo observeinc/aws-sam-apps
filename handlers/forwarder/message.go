@@ -60,11 +60,11 @@ func processS3Event(message []byte) (uris []*url.URL) {
 }
 
 type CopyEvent struct {
-	Copy []CopyRecord `"json"`
+	Copy []CopyRecord `json:"copy"`
 }
 
 type CopyRecord struct {
-	URI string `"uri"`
+	URI string `json:"uri"`
 }
 
 func processCopyEvent(message []byte) (uris []*url.URL) {
