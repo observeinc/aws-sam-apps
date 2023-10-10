@@ -86,8 +86,8 @@ sam-package: sam-build
 	    --output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
 	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
 	    --s3-prefix apps/$(APP)/$(VERSION) \
-	    --region $(AWS_REGION) \
-	    --debug
+	    --region $(AWS_REGION)
+	aws s3 cp apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
 
 .PHONY: sam-package-all-regions
 ## sam-package-all-regions: Packages and uploads all SAM applications to S3 in multiple regions
