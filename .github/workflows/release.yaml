@@ -27,6 +27,9 @@ jobs:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: us-west-2
 
+    - name: AWS Info
+      run: aws sts get-caller-identity
+
     - name: github pre-release
       id: prerelease
       if: github.event_name == 'push'

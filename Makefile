@@ -15,6 +15,9 @@ endef
 
 SUBDIR = $(shell ls apps)
 
+clean-aws-sam:
+	rm -rf apps/*/.aws-sam/*
+
 ## help: shows this help message
 help:
 	@echo "Usage: make [target]"
