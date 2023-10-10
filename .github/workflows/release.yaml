@@ -16,13 +16,13 @@ jobs:
 
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.1.0
 
     - name: build
       run: make sam-build-all
 
     - name: Setup AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v4.0.1
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: us-west-2
@@ -51,5 +51,5 @@ jobs:
     - name: aws sam release
       run: make sam-package-all-regions
       env:
-        VERSION: ${{ steps.prerelease.outputs.release-version }}
+        VERSION: ${{ (steps.prerelease.outputs.release-version != '') && steps.prerelease.outputs.release-version || steps.fullrelease.outputs.release-version }}
       
