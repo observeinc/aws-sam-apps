@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.40.0
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/stdr v1.2.2
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.6.0
 	github.com/sethvargo/go-envconfig v0.9.0
 )
 
