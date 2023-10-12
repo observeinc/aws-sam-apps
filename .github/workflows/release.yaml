@@ -7,9 +7,77 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  fetch-regions:
     runs-on: ubuntu-latest
     if: ${{ github.actor != 'dependabot[bot]' }}
+    permissions:
+      id-token: write
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+    - name: Setup AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4.0.1
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: us-west-2
+
+    - name: AWS Info
+      run: aws sts get-caller-identity
+
+    - name: Fetch available AWS regions
+      id: fetch-regions
+      run: |
+        regions=$(aws ec2 describe-regions --query "Regions[].RegionName" --output text | tr '\t' '\n' | jq -R -s -c 'split("\n")[:-1]')
+        echo "Regions: $regions"
+        echo "regions_json=$regions" >> "$GITHUB_ENV"
+    
+    - name: Set Matrix for aws-release job
+      id: set-matrix
+      run: echo "matrix=${regions_json}" >> "$GITHUB_OUTPUT"
+
+  github-release:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    outputs:
+      version: ${{ steps.prerelease.outputs.release-version }}
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: github release (beta)
+      if: github.event_name == 'push'
+      id: prerelease
+      uses: ahmadnassri/action-semantic-release@v2
+      with:
+        config: ${{ github.workspace }}/.releaserc.json
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: github release (stable)
+      if: github.event_name == 'workflow_dispatch'
+      id: fullrelease
+      uses: ahmadnassri/action-semantic-release@v2
+      with:
+        config: ${{ github.workspace }}/.releaserc-release.json
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set version for aws-release job
+      id: set-version
+      run: |
+        version=${{ steps.prerelease.outputs.release-version }}
+        if [ -z "$version" ]; then
+          version=${{ steps.fullrelease.outputs.release-version }}
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+  
+  aws-release:
+    needs: [fetch-regions, github-release]
+    runs-on: ubuntu-latest
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    strategy:
+      matrix:
+        region: ${{fromJson(needs.fetch-regions.outputs.matrix)}}
     permissions:
       contents: write
       id-token: write
@@ -31,37 +99,22 @@ jobs:
     - name: AWS Info
       run: aws sts get-caller-identity
 
-    - name: github release (beta)
-      id: prerelease
-      if: github.event_name == 'push'
-      uses: ahmadnassri/action-semantic-release@v2
-      with:
-        config: ${{ github.workspace }}/.releaserc.json
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: github release (stable)
-      id: fullrelease
-      if: github.event_name == 'workflow_dispatch'
-      uses: ahmadnassri/action-semantic-release@v2
-      with:
-        config: ${{ github.workspace }}/.releaserc-release.json
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: aws sam release (versioned)
-      run: make sam-package-all-regions
+      run: make sam-package-all
       env:
-        VERSION: ${{ (steps.prerelease.outputs.release-version != '') && steps.prerelease.outputs.release-version || steps.fullrelease.outputs.release-version }}
+        VERSION: ${{ needs.github-release.outputs.version }}
+        AWS_REGION: ${{ matrix.region }}
 
     - name: aws sam release (beta)
       if: github.event_name == 'push'
-      run: make sam-package-all-regions
+      run: make sam-package-all
       env:
         VERSION: beta
+        AWS_REGION: ${{ matrix.region }}
 
     - name: aws sam release (stable)
       if: github.event_name == 'workflow_dispatch'
-      run: make sam-package-all-regions
+      run: make sam-package-all
       env:
         VERSION: latest
+        AWS_REGION: ${{ matrix.region }}
