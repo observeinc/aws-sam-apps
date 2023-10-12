@@ -81,13 +81,21 @@ sam-package-all:
 sam-package: sam-build
 	$(call check_var,APP)
 	$(call check_var,AWS_REGION)
+	echo "Packaging for app: $(APP) in region: $(AWS_REGION)"
 	sam package \
 	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
 	    --output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
 	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
 	    --s3-prefix apps/$(APP)/$(VERSION) \
 	    --region $(AWS_REGION)
+	echo "Copying packaged.yaml to S3"
 	aws s3 cp apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
+	echo "Fetching objects with prefix: apps/$(APP)/$(VERSION)/"
+	objects=`aws s3api list-objects --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --prefix apps/$(APP)/$(VERSION)/ --query "Contents[].Key" --output text`; \
+	for object in $$objects; do \
+		echo "Setting ACL for object: $$object"; \
+		aws s3api put-object-acl --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --key $$object --acl public-read; \
+	done
 
 .PHONY: sam-package-all-regions
 ## sam-package-all-regions: Packages and uploads all SAM applications to S3 in multiple regions
