@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .ONESHELL:
 
 REGIONS := us-west-1 us-east-1
-S3_BUCKET_PREFIX ?= colin-observeinc
+S3_BUCKET_PREFIX ?= observeinc
 VERSION ?= unreleased
 
 define check_var
