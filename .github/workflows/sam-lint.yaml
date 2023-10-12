@@ -1,3 +1,5 @@
+name: Run Lint
+
 on:
   push:
     branches:
@@ -7,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: aws-actions/setup-sam@v2
         with:
           use-installer: true

@@ -146,22 +146,22 @@ Resources:
       Parameters:
         DataAccessPointArn: !Ref DataAccessPointArn
         DestinationUri: !Ref DestinationUri
-        SourceBucketNames: !If
-          - EmptySourceBucketNames
-          - [!Ref Bucket]
-          - !Split
-            - ","
-            - !Sub
-              - "${Bucket},${buckets}"
-              - buckets: !Join [",", !Ref SourceBucketNames]
-        SourceTopicArns: !If
-          - EmptySourceTopicArns
-          - [!Ref Topic]
-          - !Split
-            - ","
-            - !Sub
-              - "${Topic},${topics}"
-              - topics: !Join [",", !Ref SourceTopicArns]
+        SourceBucketNames: 
+          !If
+            - EmptySourceBucketNames
+            - !Sub "${Bucket}"
+            - !Join 
+                - ","
+                - - !Ref Bucket
+                  - !Join [",", !Ref SourceBucketNames]
+        SourceTopicArns:
+          !If
+            - EmptySourceTopicArns
+            - !Sub "${Topic}"
+            - !Join 
+                - ","
+                - - !Ref Topic
+                  - !Join [",", !Ref SourceTopicArns]
         NameOverride: !If
           - UseStackName
           - !Ref 'AWS::StackName'

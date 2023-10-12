@@ -88,3 +88,26 @@ The following metadata of application "arn:aws:serverlessrepo:us-west-2:73967240
 Click the link below to view your application in AWS console:
 https://console.aws.amazon.com/serverlessrepo/home?region=us-west-2#/published-applications/arn:aws:serverlessrepo:us-west-2:739672403694:applications~hello-world-thing
 ```
+## Release Workflow
+
+Our release process is automated using GitHub Actions, ensuring consistency and reliability in each release.
+
+### Release Steps
+
+1. **Pre-release (Beta Releases on `main` branch):**
+   Whenever changes are pushed to the `main` branch, our automated workflow triggers a beta release. This provides early access versions for testing and validation purposes.
+
+2. **Full Release (Manual Trigger):**
+   For creating an official release, manually trigger the release workflow from the GitHub Actions interface. This performs a full release.
+
+3. **AWS SAM Build & Deployment:**
+   - The AWS SAM application is built once at the beginning of the release phase to ensure consistency across regions.
+   - AWS SAM resources are packaged and deployed across multiple AWS regions, specified in the `REGIONS` variable of our Makefile.
+
+### Notes
+
+- All semantic versioning is handled automatically by the `semantic-release` tool. This determines the version number based on the commit messages since the last release.
+  
+- Always ensure commit messages adhere to the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard, as our release tooling relies on this format.
+
+- For region-specific AWS SAM builds or configurations, check the build artifacts located in `.aws-sam/build/<REGION_NAME>/`.
