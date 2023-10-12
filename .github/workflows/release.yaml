@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.actor != 'dependabot[bot]' }}
     outputs:
-      version: ${{ steps.prerelease.outputs.release-version }}
+      version: ${{ steps.release-version.outputs.VERSION }}
     steps:
     - name: checkout
       uses: actions/checkout@v4
@@ -63,14 +63,12 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set version for aws-release job
-      id: set-version
+      id: release-version
       run: |
-        version=${{ steps.prerelease.outputs.release-version }}
-        if [ -z "$version" ]; then
-          version=${{ steps.fullrelease.outputs.release-version }}
-        fi
-        echo "version=$version" >> "$GITHUB_OUTPUT"
-  
+        echo "VERSION=${{ env.VERSION }}" >> "$GITHUB_OUTPUT"
+      env:
+        VERSION: ${{ (steps.prerelease.outputs.release-version != '') && steps.prerelease.outputs.release-version || steps.fullrelease.outputs.release-version }}
+      
   aws-release:
     needs: [fetch-regions, github-release]
     runs-on: ubuntu-latest
@@ -102,7 +100,7 @@ jobs:
     - name: aws sam release (versioned)
       run: make sam-package-all
       env:
-        VERSION: ${{ needs.github-release.outputs.version }}
+        VERSION: ${{ needs.github-release.outputs.VERSION }}
         AWS_REGION: ${{ matrix.region }}
 
     - name: aws sam release (beta)
