@@ -81,6 +81,7 @@ sam-package-all:
 sam-package: sam-build
 	$(call check_var,APP)
 	$(call check_var,AWS_REGION)
+	$(call check_var,VERSION)
 	echo "Packaging for app: $(APP) in region: $(AWS_REGION)"
 	sam package \
 	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
