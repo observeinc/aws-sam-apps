@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-lambda-go v1.41.0
 	github.com/aws/aws-sdk-go-v2 v1.21.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.44
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.87
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.89
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.40.1
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/stdr v1.2.2
