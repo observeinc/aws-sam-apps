@@ -72,7 +72,9 @@ jobs:
   aws-release:
     needs: [fetch-regions, github-release]
     runs-on: ubuntu-latest
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      needs.github-release.outputs.version != ''
     strategy:
       matrix:
         region: ${{fromJson(needs.fetch-regions.outputs.matrix)}}
