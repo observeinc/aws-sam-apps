@@ -6,6 +6,10 @@ REGIONS := us-west-1 us-east-1
 S3_BUCKET_PREFIX ?= observeinc
 VERSION ?= unreleased
 
+SAM_BUILD_DIR ?= .aws-sam/build
+SAM_CONFIG_FILE := $(shell pwd)/.samconfig.toml
+SAM_CONFIG_ENV ?= default
+
 define check_var
 	@if [ -z "$($1)" ]; then
 		echo >&2 "Please set the $1 variable";
@@ -16,7 +20,7 @@ endef
 SUBDIR = $(shell ls apps)
 
 clean-aws-sam:
-	rm -rf apps/*/.aws-sam/*
+	rm -rf .aws-sam/*
 
 ## help: shows this help message
 help:
@@ -37,10 +41,17 @@ go-test:
 	go build ./...
 	go test -v -race ./...
 
+populate-config:
+	envsubst < samconfig.toml.env > $(SAM_CONFIG_FILE)
+
 ## sam-lint: validate and lint cloudformation templates
-sam-lint:
+sam-lint: populate-config
 	$(call check_var,APP)
-	sam validate --lint --template apps/$(APP)/template.yaml
+	sam validate \
+		--template apps/$(APP)/template.yaml \
+		--config-file $(SAM_CONFIG_FILE) \
+	   	--config-env $(SAM_CONFIG_ENV)
+
 
 ## sam-lint-all: validate and lint all cloudformation templates
 sam-lint-all:
@@ -58,18 +69,24 @@ sam-build-all:
 	done
 
 ## sam-build: build assets
-sam-build:
+sam-build: populate-config
 	$(call check_var,APP)
 	$(call check_var,AWS_REGION)
-	cd apps/$(APP) && sam build --region $(AWS_REGION) --build-dir .aws-sam/build/$(AWS_REGION)
-
+	sam build \
+		--template-file apps/$(APP)/template.yaml \
+		--build-dir $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION) \
+		--region $(AWS_REGION) \
+		--config-file $(SAM_CONFIG_FILE) \
+	   	--config-env $(SAM_CONFIG_ENV)
 
 ## sam-publish: publish serverless repo app
 sam-publish: sam-package
 	$(call check_var,AWS_REGION)
 	sam publish \
-	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
-	    --region $(AWS_REGION)
+	    --template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
+	    --region $(AWS_REGION) \
+		--config-file $(SAM_CONFIG_FILE) \
+	   	--config-env $(SAM_CONFIG_ENV)
 
 ## sam-package-all: package all cloudformation templates and push assets to S3
 sam-package-all:
@@ -84,13 +101,15 @@ sam-package: sam-build
 	$(call check_var,VERSION)
 	echo "Packaging for app: $(APP) in region: $(AWS_REGION)"
 	sam package \
-	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
-	    --output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
-	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
-	    --s3-prefix apps/$(APP)/$(VERSION) \
-	    --region $(AWS_REGION)
+		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml \
+		--output-template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
+		--config-file $(SAM_CONFIG_FILE) \
+	   	--config-env $(SAM_CONFIG_ENV)
+
+release: sam-package
+	$(call check_var,VERSION)
 	echo "Copying packaged.yaml to S3"
-	aws s3 cp apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
+	aws s3 cp $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
 	echo "Fetching objects with prefix: apps/$(APP)/$(VERSION)/"
 	objects=`aws s3api list-objects --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --prefix apps/$(APP)/$(VERSION)/ --query "Contents[].Key" --output text`; \
 	for object in $$objects; do \
