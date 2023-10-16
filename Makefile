@@ -3,8 +3,9 @@ SHELL := /bin/bash
 .ONESHELL:
 
 REGIONS := us-west-1 us-east-1
-S3_BUCKET_PREFIX ?= observeinc
 VERSION ?= unreleased
+# leave this undefined for the purposes of development
+S3_BUCKET_PREFIX ?= 
 
 define check_var
 	@if [ -z "$($1)" ]; then
@@ -83,12 +84,36 @@ sam-package: sam-build
 	$(call check_var,AWS_REGION)
 	$(call check_var,VERSION)
 	echo "Packaging for app: $(APP) in region: $(AWS_REGION)"
+ifeq ($(S3_BUCKET_PREFIX),)
+	sam package \
+		--template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
+		--output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
+		--resolve-s3 \
+		--region $(AWS_REGION)
+else
 	sam package \
 	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
 	    --output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
 	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
 	    --s3-prefix apps/$(APP)/$(VERSION) \
 	    --region $(AWS_REGION)
+endif
+
+## release-all: make sure S3_BUCKET_PREFIX isn't empty, run release for all apps
+release-all:
+ifeq ($(S3_BUCKET_PREFIX),)
+	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release-all.)
+endif
+	for dir in $(SUBDIR); do \
+		APP=$$dir $(MAKE) release || exit 1; \
+	done
+
+## release: make sure S3_BUCKET_PREFIX isn't empty, run sam-package, then set the s3 acl
+release:
+ifeq ($(S3_BUCKET_PREFIX),)
+	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release.)
+endif
+	$(MAKE) sam-package
 	echo "Copying packaged.yaml to S3"
 	aws s3 cp apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
 	echo "Fetching objects with prefix: apps/$(APP)/$(VERSION)/"
