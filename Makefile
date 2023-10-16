@@ -43,12 +43,6 @@ sam-lint:
 	$(call check_var,APP)
 	sam validate --lint --template apps/$(APP)/template.yaml
 
-## sam-lint-all: validate and lint all cloudformation templates
-sam-lint-all:
-	for dir in $(SUBDIR); do
-		APP=$$dir $(MAKE) sam-lint || exit 1;
-	done
-
 .PHONY: sam-build-all
 ## sam-build-all: build assets for all SAM applications across all regions
 sam-build-all:
@@ -72,12 +66,6 @@ sam-publish: sam-package
 	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
 	    --region $(AWS_REGION)
 
-## sam-package-all: package all cloudformation templates and push assets to S3
-sam-package-all:
-	for dir in $(SUBDIR); do
-		APP=$$dir $(MAKE) sam-package || exit 1;
-	done
-
 ## sam-package: package cloudformation templates and push assets to S3
 sam-package: sam-build
 	$(call check_var,APP)
@@ -99,13 +87,18 @@ else
 	    --region $(AWS_REGION)
 endif
 
-## release-all: make sure S3_BUCKET_PREFIX isn't empty, run release for all apps
-release-all:
-ifeq ($(S3_BUCKET_PREFIX),)
-	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release-all.)
-endif
+# Generalized pattern for "*-all" tasks
+%-all:
 	for dir in $(SUBDIR); do \
-		APP=$$dir $(MAKE) release || exit 1; \
+		APP=$$dir $(MAKE) $* || exit 1; \
+	done
+
+# Generalized pattern for "*-all-regions" tasks
+%-all-regions:
+	@ for app in $(SUBDIR); do \
+		for region in $(REGIONS); do \
+			APP=$$app AWS_REGION=$$region $(MAKE) $* || exit 1; \
+		done \
 	done
 
 ## release: make sure S3_BUCKET_PREFIX isn't empty, run sam-package, then set the s3 acl
@@ -123,21 +116,6 @@ endif
 		aws s3api put-object-acl --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --key $$object --acl public-read; \
 	done
 
-.PHONY: sam-package-all-regions
-## sam-package-all-regions: Packages and uploads all SAM applications to S3 in multiple regions
-sam-package-all-regions:
-	@ for app in $(SUBDIR); do \
-		for region in $(REGIONS); do \
-			APP=$$app AWS_REGION=$$region $(MAKE) sam-package || exit 1; \
-		done \
-	done
-
-## sam-publish-all: publish all apps
-sam-publish-all:
-	for dir in $(SUBDIR); do
-		APP=$$dir $(MAKE) sam-publish || exit 1;
-	done
-
 build-App:
 	$(call check_var,APP)
 	$(call check_var,ARTIFACTS_DIR)
@@ -147,5 +125,5 @@ build-App:
 build-Forwarder:
 	APP=forwarder $(MAKE) build-App
 
-.PHONY: help go-lint go-lint-all go-test sam-lint sam-lint-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
+.PHONY: help go-test clean-aws-sam go-lint go-lint-all sam-lint sam-lint-all %-all %-all-regions
 
