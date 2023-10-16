@@ -6,6 +6,7 @@ REGIONS := us-west-1 us-east-1
 VERSION ?= unreleased
 # leave this undefined for the purposes of development
 S3_BUCKET_PREFIX ?= 
+AWS_REGION ?= $(shell aws configure get region)
 
 define check_var
 	@if [ -z "$($1)" ]; then
@@ -61,13 +62,11 @@ sam-build-all:
 ## sam-build: build assets
 sam-build:
 	$(call check_var,APP)
-	$(call check_var,AWS_REGION)
 	cd apps/$(APP) && sam build --region $(AWS_REGION) --build-dir .aws-sam/build/$(AWS_REGION)
 
 
 ## sam-publish: publish serverless repo app
 sam-publish: sam-package
-	$(call check_var,AWS_REGION)
 	sam publish \
 	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
 	    --region $(AWS_REGION)
@@ -81,7 +80,6 @@ sam-package-all:
 ## sam-package: package cloudformation templates and push assets to S3
 sam-package: sam-build
 	$(call check_var,APP)
-	$(call check_var,AWS_REGION)
 	$(call check_var,VERSION)
 	echo "Packaging for app: $(APP) in region: $(AWS_REGION)"
 ifeq ($(S3_BUCKET_PREFIX),)
