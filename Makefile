@@ -7,6 +7,9 @@ VERSION ?= unreleased
 # leave this undefined for the purposes of development
 S3_BUCKET_PREFIX ?= 
 AWS_REGION ?= $(shell aws configure get region)
+SAM_BUILD_DIR ?= .aws-sam/build
+SAM_CONFIG_FILE ?= $(shell pwd)/samconfig.yaml
+SAM_CONFIG_ENV ?= default
 
 define check_var
 	@if [ -z "$($1)" ]; then
@@ -18,7 +21,7 @@ endef
 SUBDIR = $(shell ls apps)
 
 clean-aws-sam:
-	rm -rf apps/*/.aws-sam/*
+	rm -rf $(SAM_BUILD_DIR)
 
 ## help: shows this help message
 help:
@@ -39,15 +42,18 @@ go-test:
 	go build ./...
 	go test -v -race ./...
 
-## sam-lint: validate and lint cloudformation templates
-sam-lint:
+## sam-validate: validate cloudformation templates
+sam-validate:
 	$(call check_var,APP)
-	sam validate --lint --template apps/$(APP)/template.yaml
+	sam validate \
+		--template apps/$(APP)/template.yaml \
+		--config-file $(SAM_CONFIG_FILE) \
+		--config-env $(SAM_CONFIG_ENV)
 
-## sam-lint-all: validate and lint all cloudformation templates
-sam-lint-all:
+## sam-validate-all: validate all cloudformation templates
+sam-validate-all:
 	for dir in $(SUBDIR); do
-		APP=$$dir $(MAKE) sam-lint || exit 1;
+		APP=$$dir $(MAKE) sam-validate || exit 1;
 	done
 
 .PHONY: sam-build-all
@@ -62,14 +68,19 @@ sam-build-all:
 ## sam-build: build assets
 sam-build:
 	$(call check_var,APP)
-	cd apps/$(APP) && sam build --region $(AWS_REGION) --build-dir .aws-sam/build/$(AWS_REGION)
-
+	sam build \
+		--template-file apps/$(APP)/template.yaml \
+		--build-dir $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION) \
+		--config-file $(SAM_CONFIG_FILE) \
+		--config-env $(SAM_CONFIG_ENV)
 
 ## sam-publish: publish serverless repo app
 sam-publish: sam-package
 	sam publish \
-	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
-	    --region $(AWS_REGION)
+		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
+		--region $(AWS_REGION) \
+		--config-file $(SAM_CONFIG_FILE) \
+		--config-env $(SAM_CONFIG_ENV)
 
 ## sam-package-all: package all cloudformation templates and push assets to S3
 sam-package-all:
@@ -84,17 +95,21 @@ sam-package: sam-build
 	echo "Packaging for app: $(APP) in region: $(AWS_REGION)"
 ifeq ($(S3_BUCKET_PREFIX),)
 	sam package \
-		--template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
-		--output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
+		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml \
+		--output-template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
+		--region $(AWS_REGION) \
 		--resolve-s3 \
-		--region $(AWS_REGION)
+		--config-file $(SAM_CONFIG_FILE) \
+		--config-env $(SAM_CONFIG_ENV)
 else
 	sam package \
-	    --template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/template.yaml \
-	    --output-template-file apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml \
+		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml \
+		--output-template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
+		--region $(AWS_REGION) \
 	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
 	    --s3-prefix apps/$(APP)/$(VERSION) \
-	    --region $(AWS_REGION)
+		--config-file $(SAM_CONFIG_FILE) \
+		--config-env $(SAM_CONFIG_ENV)
 endif
 
 ## release-all: make sure S3_BUCKET_PREFIX isn't empty, run release for all apps
@@ -145,5 +160,5 @@ build-App:
 build-Forwarder:
 	APP=forwarder $(MAKE) build-App
 
-.PHONY: help go-lint go-lint-all go-test sam-lint sam-lint-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
+.PHONY: help go-lint go-lint-all go-test sam-validate sam-validate-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
 
