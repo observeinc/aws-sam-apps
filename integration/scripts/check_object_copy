@@ -1,0 +1,41 @@
+#!/bin/bash
+# Write file to source bucket, verify it is copied over to destination bucket
+[[ -z "${SOURCE}" ]] && echo "source not set" && exit 1
+[[ -z "${DESTINATION}" ]] && echo "destination not set" && exit 1
+
+cleanup() {
+    rm -f "$TMPFILE"
+}
+
+trap cleanup EXIT
+
+TMPFILE=$(mktemp)
+TMPNAME=$(basename ${TMPFILE})
+
+echo "{\"hello\": \"world\"}" > "$TMPFILE"
+
+aws s3 cp ${TMPFILE} s3://${SOURCE} --content-type application/json 1>&2
+if [ $? -ne 0 ]; then
+    echo "failed to copy file to source"
+    exit 1
+fi
+
+ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${TMPNAME} | jq 'del(.LastModified)')
+if [ $? -ne 0 ]; then
+    echo "failed to read file from source"
+    exit 1
+fi
+
+
+COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${TMPNAME} | jq 'del(.LastModified)')
+if [ $? -ne 0 ]; then
+    echo "failed to read file from destination"
+    exit 1
+fi
+
+if [ "$ORIGINAL" = "$COPY" ]; then
+    echo "ok"
+else
+    echo "object differs"
+    exit 1
+fi

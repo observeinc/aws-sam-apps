@@ -1,5 +1,4 @@
 data "external" "check" {
-  program     = var.program
-  query       = var.query
-  working_dir = var.working_dir
+  program = concat(["${path.module}/run"], var.program)
+  query   = var.env_vars
 }

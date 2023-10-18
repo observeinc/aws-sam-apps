@@ -10,19 +10,11 @@ variable "program" {
   nullable    = false
 }
 
-variable "query" {
+variable "env_vars" {
   description = <<-EOF
-    A map of string values to pass to the external program as the query
-    arguments. If not supplied, the program will receive an empty object as its
-    input.
+    Environment variables
   EOF
   type        = map(string)
   default     = {}
   nullable    = false
-}
-
-variable "working_dir" {
-  description = "Working directory of the program"
-  type        = string
-  default     = null
 }

@@ -4,11 +4,11 @@ output "id" {
 }
 
 output "source" {
-  value       = aws_s3_access_point.source
+  value       = aws_s3_bucket.source
   description = "S3 bucket where files are copied from"
 }
 
 output "destination" {
-  value       = aws_s3_bucket.destination
-  description = "S3 bucket where files are copied to"
+  value       = aws_s3_access_point.destination
+  description = "S3 access point where files are copied to"
 }

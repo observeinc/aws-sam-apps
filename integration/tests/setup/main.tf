@@ -3,14 +3,16 @@ resource "random_pet" "run" {
 }
 
 resource "aws_s3_bucket" "source" {
-  bucket = "${random_pet.run.id}-source"
+  bucket        = "${random_pet.run.id}-source"
+  force_destroy = true
 }
 
 resource "aws_s3_bucket" "destination" {
-  bucket = "${random_pet.run.id}-destination"
+  bucket        = "${random_pet.run.id}-destination"
+  force_destroy = true
 }
 
-resource "aws_s3_access_point" "source" {
-  bucket = aws_s3_bucket.source.id
+resource "aws_s3_access_point" "destination" {
+  bucket = aws_s3_bucket.destination.id
   name   = random_pet.run.id
 }

@@ -6,7 +6,3 @@ resource "aws_cloudformation_stack" "this" {
   parameters    = var.parameters
   capabilities  = var.capabilities
 }
-
-output "stack" {
-  value = aws_cloudformation_stack.this
-}
