@@ -185,3 +185,11 @@ Resources:
       Parameters:
         BucketName: !Ref Bucket
         TopicARN: !Ref Topic
+
+Outputs:
+  Bucket:
+    Description: "S3 Bucket ARN"
+    Value: !GetAtt Bucket.Arn
+  Topic:
+    Description: "SNS Topic ARN"
+    Value: !Ref Topic
