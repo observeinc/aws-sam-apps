@@ -1,7 +1,8 @@
 #!/bin/bash
-[[ -z "${SOURCE}" ]] && echo "source not set" && exit 1
+set -euo pipefail
 
-if [[ -z $(aws s3 ls ${SOURCE}) ]];then
-   echo "bucket is empty"
-   exit 1
-fi
+DIE() { echo "$*" 1>&2; exit 1; }
+
+[[ ! -z "${SOURCE}" ]] || DIE "source not set"
+
+[[ ! -z $(aws s3 ls ${SOURCE}) ]] || DIE "bucket is empty"
