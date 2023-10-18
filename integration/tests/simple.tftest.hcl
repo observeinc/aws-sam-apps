@@ -10,14 +10,14 @@ run "check" {
   }
 
   variables {
-    program = ["./scripts/check_bucket_not_empty"]
+    command = "./scripts/check_bucket_not_empty"
     env_vars = {
       SOURCE = run.setup.source.bucket
     }
   }
 
   assert {
-    condition     = output.result.error == ""
+    condition     = output.exitcode == 0
     error_message = "Bucket not empty check failed"
   }
 }

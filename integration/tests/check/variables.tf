@@ -1,15 +1,19 @@
-variable "program" {
+variable "command" {
   description = <<-EOF
-    A list of strings, whose first element is the program to run and whose
-    subsequent elements are optional command line arguments to the program.
-    Terraform does not execute the program through a shell, so it is not
-    necessary to escape shell metacharacters nor add quotes around arguments
-    containing spaces.
+    Command to execute
   EOF
-  type        = list(string)
+  type        = string
   nullable    = false
 }
 
+variable "args" {
+  description = <<-EOF
+    Command line arguments
+  EOF
+  type        = list(string)
+  nullable    = false
+  default     = []
+}
 variable "env_vars" {
   description = <<-EOF
     Environment variables

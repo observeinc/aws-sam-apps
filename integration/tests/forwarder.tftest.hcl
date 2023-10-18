@@ -20,6 +20,25 @@ run "install_forwarder" {
   }
 }
 
+run "check_file_not_copied" {
+  module {
+    source = "./tests/check"
+  }
+
+  variables {
+    command = "./scripts/check_object_copy"
+    env_vars = {
+      SOURCE      = run.setup.source.bucket
+      DESTINATION = run.setup.destination.bucket
+    }
+  }
+
+  assert {
+    condition     = output.result.error == "failed to read file from destination"
+    error_message = "Unexpected error"
+  }
+}
+
 run "subscribe_bucket_notifications_to_sqs" {
   module {
     source = "./tests/bucket_subscription"
@@ -31,13 +50,13 @@ run "subscribe_bucket_notifications_to_sqs" {
   }
 }
 
-run "check" {
+run "check_copy_succeeds" {
   module {
     source = "./tests/check"
   }
 
   variables {
-    program  = ["./scripts/check_object_copy"]
+    command  = "./scripts/check_object_copy"
     env_vars = {
       SOURCE      = run.setup.source.bucket
       DESTINATION = run.setup.destination.bucket

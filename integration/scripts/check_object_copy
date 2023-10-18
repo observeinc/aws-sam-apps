@@ -18,24 +18,9 @@ TMPNAME=$(basename ${TMPFILE})
 
 echo "{\"hello\": \"world\"}" > "$TMPFILE"
 
-aws s3 cp ${TMPFILE} s3://${SOURCE} --content-type application/json 1>&2
-if [ $? -ne 0 ]; then
-    DIE "failed to copy file to source"
-fi
+aws s3 cp ${TMPFILE} s3://${SOURCE} --content-type application/json 1>&2 || DIE "failed to copy file to source"
 
-ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${TMPNAME} | jq 'del(.LastModified)')
-if [ $? -ne 0 ]; then
-    DIE "failed to read file from source"
-fi
+ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${TMPNAME} | jq 'del(.LastModified)' || DIE "failed to read file from source")
+COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${TMPNAME} | jq 'del(.LastModified)' || DIE "failed to read file from destination")
 
-
-COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${TMPNAME} | jq 'del(.LastModified)')
-if [ $? -ne 0 ]; then
-    DIE "failed to read file from destination"
-fi
-
-if [ "$ORIGINAL" = "$COPY" ]; then
-    echo "ok"
-else
-    DIE "object differs"
-fi
+[ "$ORIGINAL" = "$COPY" ] || DIE "object differs"

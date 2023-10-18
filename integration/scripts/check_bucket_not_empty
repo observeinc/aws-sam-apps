@@ -3,6 +3,7 @@ set -euo pipefail
 
 DIE() { echo "$*" 1>&2; exit 1; }
 
-[[ ! -z "${SOURCE}" ]] || DIE "source not set"
+[[ ! -z "${SOURCE:-}" ]] || DIE "source not set"
 
+echo "listing ${SOURCE}"
 [[ ! -z $(aws s3 ls ${SOURCE}) ]] || DIE "bucket is empty"

@@ -21,5 +21,6 @@ if [ $RESULT -ne 0 ]; then
     ERROR=$(echo -n "$OUTPUT" | tail -n1 | jq -Rsa .)
 fi
 
+# terraform external data source expects all arguments to be strings
+echo "{\"error\": ${ERROR}, \"exitcode\": \"${RESULT}\", \"output\": $(echo -n "$OUTPUT" | jq -Rsa .)}"
 # always return 0, let caller decide if error message warrants any action
-echo "{\"error\": ${ERROR}}"
