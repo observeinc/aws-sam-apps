@@ -34,7 +34,7 @@ run "check_file_not_copied" {
   }
 
   assert {
-    condition     = output.result.error == "failed to read file from destination"
+    condition     = output.error == "failed to read file from destination"
     error_message = "Unexpected error"
   }
 }
@@ -64,7 +64,7 @@ run "check_copy_succeeds" {
   }
 
   assert {
-    condition     = output.result.error == ""
+    condition     = output.error == ""
     error_message = "Failed to copy object"
   }
 }
