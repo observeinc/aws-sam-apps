@@ -1,0 +1,26 @@
+#!/bin/bash
+# Write file to source bucket, verify it is copied over to destination bucket
+set -euo pipefail
+
+DIE() { echo "$*" 1>&2; exit 1; }
+
+[[ ! -z "${SOURCE}" ]] || DIE "source not set"
+[[ ! -z "${DESTINATION}" ]] || DIE "destination not set"
+
+cleanup() {
+    rm -f "$TMPFILE"
+}
+
+trap cleanup EXIT
+
+TMPFILE=$(mktemp)
+TMPNAME=$(basename ${TMPFILE})
+
+echo "{\"hello\": \"world\"}" > "$TMPFILE"
+
+aws s3 cp ${TMPFILE} s3://${SOURCE} --content-type application/json 1>&2 || DIE "failed to copy file to source"
+
+ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${TMPNAME} | jq 'del(.LastModified)' || DIE "failed to read file from source")
+COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${TMPNAME} | jq 'del(.LastModified)' || DIE "failed to read file from destination")
+
+[ "$ORIGINAL" = "$COPY" ] || DIE "object differs"

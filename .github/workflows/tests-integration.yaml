@@ -1,0 +1,98 @@
+name: Run IAC Integration Tests
+
+on:
+  push:
+    branches:
+      - joao/tftest
+
+jobs:
+  permission_check:
+    runs-on: ubuntu-latest
+    outputs:
+      can-write: ${{ steps.check.outputs.can-write }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    steps:
+    - id: check
+      run: |
+        # If the AWS_ACCESS_KEY_ID secret is MIA we can't run tests
+        if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
+            echo "can-write=false" >> $GITHUB_OUTPUT
+        else
+            echo "can-write=true" >> $GITHUB_OUTPUT
+        fi
+
+  test-integration:
+    runs-on: ubuntu-latest
+    needs: [permission_check]
+    if: needs.permission_check.outputs.can-write == 'true'
+    steps:
+    - name: Install DCE CLI
+      run: |
+        # Download dce-cli
+        wget -q https://github.com/Optum/dce-cli/releases/download/v0.5.0/dce_linux_amd64.zip
+
+        # Validate checksum
+        expected_sha="cb140c743373e28a6c1bd4ba3fe1b81a7431dd538e1ad430fede3c1aff4508db"
+        test $(shasum -a256 ./dce_linux_amd64.zip | awk '{print $1}') == "${expected_sha}"
+
+        unzip ./dce_linux_amd64.zip -d ./
+        mv dce /usr/local/bin/
+
+    - name: Create DCE Configuration
+      run: |
+        mkdir ~/.dce
+        echo "api:" >> ~/.dce/config.yaml
+        echo "  host: playground.observe-blunderdome.com" >> ~/.dce/config.yaml
+        echo "  basepath: /" >> ~/.dce/config.yaml
+        echo "region: us-west-2" >> ~/.dce/config.yaml
+
+    - name: Setup AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4.0.1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+    
+    - name: AWS Info
+      run: aws sts get-caller-identity
+
+    - name: Set Principal ID
+      run: |
+        echo "PRINCIPAL_ID=gha-${GITHUB_RUN_ID}" >> $GITHUB_ENV
+    
+    - name: Check for Existing DCE Lease
+      run: |
+        lease_id=$(dce leases list --status Active --principal-id $PRINCIPAL_ID | jq -r '.[0].id')
+        echo "LEASE_ID=$lease_id" >> $GITHUB_ENV
+
+    - name: If lease not found, create a new DCE Lease
+      if: env.LEASE_ID == 'null'
+      run: |
+        dce leases create --budget-amount 100.0 --budget-currency USD --email colin.hutchinson+gha@observeinc.com --principal-id $PRINCIPAL_ID
+        lease_id=$(dce leases list --status Active --principal-id $PRINCIPAL_ID | jq -r '.[0].id')
+        echo "LEASE_ID=$lease_id" >> $GITHUB_ENV
+
+    - name: checkout
+      uses: actions/checkout@v4
+    
+    - name: Integration tests
+      run: |
+        eval $(dce leases login --print-creds $LEASE_ID)
+        aws sts get-caller-identity
+        make integration-test
+      env:
+        APP: forwarder
+
+    - name: Cleanup DCE Lease
+      if: always()
+      run: |
+        # Logic to cleanup DCE Lease
+        if [[ ! -z "$LEASE_ID" && "$LEASE_ID" != "null" ]]; then
+          account_id=$(dce leases list --principal-id $PRINCIPAL_ID | jq -r ".[] | select(.id == \"$LEASE_ID\") | .accountId")
+          if [[ ! -z "$account_id" ]]; then
+            dce leases end \
+              -p $PRINCIPAL_ID \
+              -a $account_id
+          fi
+        fi

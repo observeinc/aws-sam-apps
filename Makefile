@@ -11,6 +11,8 @@ SAM_BUILD_DIR ?= .aws-sam/build
 SAM_CONFIG_FILE ?= $(shell pwd)/samconfig.yaml
 SAM_CONFIG_ENV ?= default
 
+DEBUG_TESTS ?= 0
+
 define check_var
 	@if [ -z "$($1)" ]; then
 		echo >&2 "Please set the $1 variable";
@@ -41,6 +43,15 @@ go-lint-all:
 go-test:
 	go build ./...
 	go test -v -race ./...
+
+.PHONY: integration-test
+integration-test: sam-package
+	cd integration && terraform init && \
+	if [ "$(DEBUG)" = "1" ]; then \
+		CHECK_DEBUG_FILE=debug.sh terraform test -filter=tests/forwarder.tftest.hcl -verbose; \
+	else \
+		terraform test -filter=tests/forwarder.tftest.hcl; \
+	fi
 
 ## sam-validate: validate cloudformation templates
 sam-validate:
