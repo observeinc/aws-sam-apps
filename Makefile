@@ -14,10 +14,7 @@ SAM_CONFIG_ENV ?= default
 DEBUG_TESTS ?= 0
 
 define check_var
-	@if [ -z "$($1)" ]; then
-		echo >&2 "Please set the $1 variable";
-		exit 2;
-	fi
+	@[[ -n "$($1)" ]] || (echo >&2 "The environment variable '$1' is not set." && exit 2)
 endef
 
 SUBDIR = $(shell ls apps)
