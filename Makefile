@@ -44,14 +44,41 @@ go-test:
 	go build ./...
 	go test -v -race ./...
 
-.PHONY: integration-test
-integration-test: sam-package
-	cd integration && terraform init && \
+.PHONY: test/integration/setup
+test/integration/setup: sam-package
+	pushd integration/tests/setup && \
+	terraform init && \
+	terraform apply -auto-approve && \
+	echo "source_bucket = \"$$(terraform output -raw source_bucket)\"" > output.tfvars && \
+	echo "destination_arn = \"$$(terraform output -raw destination_arn)\"" >> output.tfvars && \
+	echo "queue_arn = \"$$(terraform output -raw queue_arn)\"" >> output.tfvars && \
+	popd
+
+.PHONY: test/integration/run-all
+test/integration/run-all: test/integration/setup
+	for test in $(shell ls tests/*.tftest.hcl); do \
+		$(MAKE) test/integration/run TEST_FILE=$$test VAR_FILE=tests/setup/output.tfvars; \
+	done; \
+	EXIT_CODE=$$?; \
+	$(MAKE) test/integration/setup-teardown > /dev/null 2>&1; \
+	exit $$EXIT_CODE
+
+.PHONY: test/integration/run
+test/integration/run:
+	pushd integration && \
+	terraform init && \
 	if [ "$(DEBUG)" = "1" ]; then \
-		CHECK_DEBUG_FILE=debug.sh terraform test -filter=tests/forwarder.tftest.hcl -verbose; \
+		CHECK_DEBUG_FILE=debug.sh terraform test -filter=$(TEST_FILE) -var-file=$(VAR_FILE) -verbose; \
 	else \
-		terraform test -filter=tests/forwarder.tftest.hcl; \
-	fi
+		terraform test -filter=$(TEST_FILE) -var-file=$(VAR_FILE); \
+	fi && \
+	popd
+
+.PHONY: test/integration/setup-teardown
+test/integration/setup-teardown:
+	pushd integration/tests/setup && \
+	terraform destroy -auto-approve && \
+	popd
 
 ## sam-validate: validate cloudformation templates
 sam-validate:
@@ -117,8 +144,8 @@ else
 		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml \
 		--output-template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
 		--region $(AWS_REGION) \
-	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
-	    --s3-prefix apps/$(APP)/$(VERSION) \
+		--s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
+		--s3-prefix apps/$(APP)/$(VERSION) \
 		--config-file $(SAM_CONFIG_FILE) \
 		--config-env $(SAM_CONFIG_ENV)
 endif

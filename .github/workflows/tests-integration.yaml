@@ -3,7 +3,10 @@ name: Run IAC Integration Tests
 on:
   push:
     branches:
-      - joao/tftest
+      - test/event-bridge
+
+env:
+  APP: forwarder
 
 jobs:
   permission_check:
@@ -22,7 +25,7 @@ jobs:
             echo "can-write=true" >> $GITHUB_OUTPUT
         fi
 
-  test-integration:
+  integration_tests:
     runs-on: ubuntu-latest
     needs: [permission_check]
     if: needs.permission_check.outputs.can-write == 'true'
@@ -69,20 +72,40 @@ jobs:
     - name: If lease not found, create a new DCE Lease
       if: env.LEASE_ID == 'null'
       run: |
-        dce leases create --budget-amount 100.0 --budget-currency USD --email colin.hutchinson+gha@observeinc.com --principal-id $PRINCIPAL_ID
+        dce leases create --budget-amount 100.0 --budget-currency USD --email colin.hutchinson+gha@observeinc.com --principal-id $PRINCIPAL_ID -E 1h
         lease_id=$(dce leases list --status Active --principal-id $PRINCIPAL_ID | jq -r '.[0].id')
         echo "LEASE_ID=$lease_id" >> $GITHUB_ENV
 
+    - name: Setup terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_wrapper: false
+
     - name: checkout
       uses: actions/checkout@v4
-    
-    - name: Integration tests
+
+    - name: Run the test setup
       run: |
         eval $(dce leases login --print-creds $LEASE_ID)
         aws sts get-caller-identity
-        make integration-test
-      env:
-        APP: forwarder
+        make test/integration/setup
+
+    - name: Run the tests
+      run: |
+        eval $(dce leases login --print-creds $LEASE_ID)
+        aws sts get-caller-identity
+        for test in $(ls integration/tests/*.tftest.hcl); do
+          test_file=$(basename $test)
+          echo "Running $test_file"
+          make test/integration/run VAR_FILE="tests/setup/output.tfvars" TEST_FILE=tests/$test_file
+        done
+  
+    - name: Test teardown
+      if: always()
+      run: |
+        eval $(dce leases login --print-creds $LEASE_ID)
+        aws sts get-caller-identity
+        make test/integration/setup-teardown
 
     - name: Cleanup DCE Lease
       if: always()
