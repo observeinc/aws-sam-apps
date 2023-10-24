@@ -17,14 +17,13 @@ run "check_file_not_copied" {
   }
 }
 
-run "subscribe_bucket_notifications_to_sqs" {
+run "subscribe_bucket_notifications_to_eventbridge" {
   module {
-    source = "./tests/bucket_subscription"
+    source = "./tests/bucket_eventbridge"
   }
 
   variables {
-    bucket    = var.source_bucket
-    queue_arn = var.queue_arn
+    bucket      = var.source_bucket
   }
 }
 
