@@ -14,6 +14,14 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: "terraform"
-    directory: "/integration/tests/"
+    directory: "/integration/tests/bucket_subscription"
+    schedule:
+      interval: daily
+  - package-ecosystem: "terraform"
+    directory: "/integration/tests/check"
+    schedule:
+      interval: daily
+  - package-ecosystem: "terraform"
+    directory: "/integration/tests/setup"
     schedule:
       interval: daily
