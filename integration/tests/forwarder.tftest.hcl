@@ -1,17 +1,19 @@
 run "setup" {
   module {
-    source = "./tests/setup"
+    source = "./modules/setup/run"
   }
 }
 
 run "install_forwarder" {
   variables {
     name = run.setup.id
-    app = "forwarder"
+    app  = "forwarder"
     parameters = {
-      DataAccessPointArn = run.setup.destination.arn
-      DestinationUri     = "s3://${run.setup.destination.alias}"
-      SourceBucketNames  = run.setup.source.bucket
+      DataAccessPointArn = run.setup.access_point.arn
+      DestinationUri     = "s3://${run.setup.access_point.alias}"
+      SourceBucketNames  = "*"
+      # TODO: wildcard does not appear to work for SNS topics
+      SourceTopicArns    = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:${run.setup.id}"
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",
@@ -20,51 +22,73 @@ run "install_forwarder" {
   }
 }
 
-run "check_file_not_copied" {
+run "setup_subscriptions" {
   module {
-    source = "./tests/check"
+    source = "./modules/setup/subscriptions"
   }
 
   variables {
-    command = "./scripts/check_object_copy"
+    run_id             = run.setup.id
+    queue_arn          = run.install_forwarder.stack.outputs["Queue"]
+    sources            = ["sqs", "eventbridge", "sns"]
+  }
+}
+
+run "check_sqs" {
+  module {
+    source = "./modules/exec"
+  }
+
+  variables {
+    command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.setup.source.bucket
-      DESTINATION = run.setup.destination.bucket
+      SOURCE      = run.setup_subscriptions.buckets["sqs"].bucket
+      DESTINATION = run.setup.access_point.bucket
     }
   }
 
   assert {
-    condition     = output.error == "failed to read file from destination"
-    error_message = "Unexpected error"
+    condition     = output.exitcode == 0
+    error_message = "Failed to copy object using SQS"
   }
 }
 
-run "subscribe_bucket_notifications_to_sqs" {
+run "check_eventbridge" {
   module {
-    source = "./tests/bucket_subscription"
+    source = "./modules/exec"
   }
 
   variables {
-    bucket    = run.setup.source.bucket
-    queue_arn = run.install_forwarder.stack.outputs["Queue"]
-  }
-}
-
-run "check_copy_succeeds" {
-  module {
-    source = "./tests/check"
-  }
-
-  variables {
-    command  = "./scripts/check_object_copy"
+    command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.setup.source.bucket
-      DESTINATION = run.setup.destination.bucket
+      SOURCE      = run.setup_subscriptions.buckets["eventbridge"].bucket
+      DESTINATION = run.setup.access_point.bucket
+      INIT_DELAY  = 2
     }
   }
 
   assert {
-    condition     = output.error == ""
-    error_message = "Failed to copy object"
+    condition     = output.exitcode == 0
+    error_message = "Failed to copy object using Eventbridge"
+  }
+}
+
+run "check_sns" {
+  module {
+    source = "./modules/exec"
+  }
+
+  variables {
+    command = "./scripts/check_object_diff"
+    env_vars = {
+      SOURCE      = run.setup_subscriptions.buckets["sns"].bucket
+      DESTINATION = run.setup.access_point.bucket
+      INIT_DELAY  = 2
+    }
+  }
+
+  assert {
+    condition     = output.exitcode == 0
+    error_message = "Failed to copy object using SNS"
   }
 }
