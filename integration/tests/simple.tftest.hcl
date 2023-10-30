@@ -1,12 +1,12 @@
 run "setup" {
   module {
-    source = "./tests/setup"
+    source = "./modules/setup/run"
   }
 }
 
 run "check" {
   module {
-    source = "./tests/check"
+    source = "./modules/exec"
   }
 
   variables {
