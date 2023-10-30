@@ -3,7 +3,7 @@ name: Run IAC Integration Tests
 on:
   push:
     branches:
-      - joao/tests
+      - main
 
 jobs:
   permission_check:
