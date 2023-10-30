@@ -3,17 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	stdlog "log"
-	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
-	"github.com/go-logr/stdr"
 	"github.com/sethvargo/go-envconfig"
 
 	"github.com/observeinc/aws-sam-testing/handlers/forwarder"
+	"github.com/observeinc/aws-sam-testing/logging"
 )
 
 var env struct {
@@ -41,9 +39,11 @@ func realInit() error {
 		return fmt.Errorf("failed to load environment variables: %w", err)
 	}
 
-	stdr.SetVerbosity(env.Verbosity)
-	logger = stdr.NewWithOptions(stdlog.New(os.Stderr, "", stdlog.LstdFlags), stdr.Options{LogCaller: stdr.All})
-	logger.V(6).Info("initialized", "config", env)
+	logger = logging.New(&logging.Config{
+		Verbosity: env.Verbosity,
+	})
+
+	logger.V(4).Info("initialized", "config", env)
 
 	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -68,7 +68,7 @@ func realInit() error {
 	}
 
 	if awsCfg.Region != region {
-		logger.V(6).Info("modifying s3 client region", "region", region)
+		logger.V(4).Info("modifying s3 client region", "region", region)
 		regionCfg := awsCfg.Copy()
 		regionCfg.Region = region
 		handler.S3Client = s3.NewFromConfig(regionCfg)
