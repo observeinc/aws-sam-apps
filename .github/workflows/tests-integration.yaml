@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-
+  pull_request:
 jobs:
   permission_check:
     runs-on: ubuntu-latest
@@ -75,7 +75,11 @@ jobs:
 
     - name: checkout
       uses: actions/checkout@v4
-    
+
+    - uses: actions/setup-go@v4
+      with:
+        go-version-file: 'go.mod'
+
     - name: Integration tests
       run: |
         eval $(dce leases login --print-creds $LEASE_ID)
