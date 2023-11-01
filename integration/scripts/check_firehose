@@ -25,7 +25,8 @@ aws s3 ls ${DESTINATION}`date +%Y` --recursive && DIE "S3 destination already ha
 FIREHOSE_NAME=$(echo "$FIREHOSE_ARN" | cut -d/ -f2)
 AWS_REGION=$(echo "$FIREHOSE_ARN" | cut -d: -f4)
 
-RANDOM_DATA=$(dd if=/dev/urandom bs=${RECORD_SIZE} count=1 2>/dev/null | base64)
+# base64 in linux sets a default line wrap. Using tr makes script agnostic to this behavior.
+RANDOM_DATA=$(dd if=/dev/urandom bs=${RECORD_SIZE} count=1 2>/dev/null | base64 | tr -d \\n)
 
 echo "[" > ${TMPFILE}
 for ((i = 1; i <= ${RECORD_COUNT}; i++)); do
