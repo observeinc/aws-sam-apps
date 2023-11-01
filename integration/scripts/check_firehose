@@ -44,13 +44,14 @@ aws firehose put-record-batch \
   --no-cli-pager
 
 CHECK_INTERVAL=${CHECK_INTERVAL:-5}
-CHECK_TIMEOUT=${CHECK_TIMEOUT:-60}
+CHECK_TIMEOUT=${CHECK_TIMEOUT:-120}
 
 # Wait up to `CHECK_TIMEOUT` seconds for file to appear
 # A file can take quite a long time to flush after reconfiguring a firehose in
 # particular.
 for i in $(seq 0 ${CHECK_INTERVAL} ${CHECK_TIMEOUT}); do
   if [ $i -gt 0 ]; then
+    echo "waiting"
     sleep ${CHECK_INTERVAL}
   fi
   aws s3 ls ${DESTINATION}`date +%Y` --recursive && exit
