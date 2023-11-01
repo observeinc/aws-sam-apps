@@ -42,12 +42,12 @@ go-test:
 	go test -v -race ./...
 
 .PHONY: integration-test
-integration-test: sam-package
+integration-test: sam-package-all
 	cd integration && terraform init && \
 	if [ "$(DEBUG)" = "1" ]; then \
-		CHECK_DEBUG_FILE=debug.sh terraform test -filter=tests/forwarder.tftest.hcl -verbose; \
+		CHECK_DEBUG_FILE=debug.sh terraform test $(TEST_ARGS); \
 	else \
-		terraform test -filter=tests/forwarder.tftest.hcl; \
+		terraform test $(TEST_ARGS); \
 	fi
 
 ## sam-validate: validate cloudformation templates
@@ -60,8 +60,8 @@ sam-validate:
 
 ## sam-validate-all: validate all cloudformation templates
 sam-validate-all:
-	for dir in $(SUBDIR); do
-		APP=$$dir $(MAKE) sam-validate || exit 1;
+	@ for dir in $(SUBDIR); do \
+		APP=$$dir $(MAKE) sam-validate || exit 1; \
 	done
 
 .PHONY: sam-build-all
@@ -92,8 +92,8 @@ sam-publish: sam-package
 
 ## sam-package-all: package all cloudformation templates and push assets to S3
 sam-package-all:
-	for dir in $(SUBDIR); do
-		APP=$$dir $(MAKE) sam-package || exit 1;
+	@ for dir in $(SUBDIR); do \
+		APP=$$dir $(MAKE) sam-package || exit 1; \
 	done
 
 ## sam-package: package cloudformation templates and push assets to S3
