@@ -1,0 +1,57 @@
+#!/bin/bash
+# Write records to firehose, verify data shows up in S3
+set -euo pipefail
+
+DIE() { echo "$*" 1>&2; exit 1; }
+
+[[ ! -z "${FIREHOSE_ARN:-}" ]] || DIE "FIREHOSE_ARN not set"
+[[ ! -z "${DESTINATION:-}" ]] || DIE "DESTINATION not set"
+
+cleanup() {
+    rm -f "$TMPFILE"
+}
+
+trap cleanup EXIT
+
+TMPFILE=$(mktemp)
+
+# Assuming a 1MB buffer limit, writing 2 x 500KB records will immediately flush
+# a file to S3.
+RECORD_SIZE=${RECORD_SIZE:-500k}
+RECORD_COUNT=${RECORD_COUNT:-2}
+
+aws s3 ls ${DESTINATION}`date +%Y` --recursive && DIE "S3 destination already has records"
+
+FIREHOSE_NAME=$(echo "$FIREHOSE_ARN" | cut -d/ -f2)
+AWS_REGION=$(echo "$FIREHOSE_ARN" | cut -d: -f4)
+
+RANDOM_DATA=$(dd if=/dev/urandom bs=${RECORD_SIZE} count=1 2>/dev/null | base64)
+
+echo "[" > ${TMPFILE}
+for ((i = 1; i <= ${RECORD_COUNT}; i++)); do
+  if [ $i -gt 1 ]; then
+    echo "," >> ${TMPFILE}
+  fi
+  echo "{\"Data\":\"${RANDOM_DATA}\"}" >> ${TMPFILE}
+done
+echo "]" >> ${TMPFILE}
+
+aws firehose put-record-batch \
+  --delivery-stream-name "${FIREHOSE_NAME}" \
+  --records file://${TMPFILE} \
+  --region ${AWS_REGION} \
+  --no-cli-pager
+
+CHECK_INTERVAL=${CHECK_INTERVAL:-5}
+CHECK_TIMEOUT=${CHECK_TIMEOUT:-60}
+
+# Wait up to `CHECK_TIMEOUT` seconds for file to appear
+# A file can take quite a long time to flush after reconfiguring a firehose in
+# particular.
+for i in $(seq 0 ${CHECK_INTERVAL} ${CHECK_TIMEOUT}); do
+  if [ $i -gt 0 ]; then
+    sleep ${CHECK_INTERVAL}
+  fi
+  aws s3 ls ${DESTINATION}`date +%Y` --recursive && exit
+done
+DIE "Records not found"
