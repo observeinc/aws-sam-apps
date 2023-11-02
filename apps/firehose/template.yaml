@@ -1,0 +1,132 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Stream Firehose Records to S3.'
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-cloudwatchlogs
+    Description: Stream Firehose Records to S3.
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-testing
+    SemanticVersion: '0.0.1'
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
+
+Parameters:
+  BucketARN:
+    Type: String
+    Description: >-
+      S3 Bucket ARN to write log records to.
+  Prefix:
+    Type: String
+    Description: >-
+      Optional prefix to write log records to.
+    Default: ''
+  NameOverride:
+    Type: String
+    Description: >-
+      Set Firehose Delivery Stream name. In the absence of a value, the stack
+      name will be used.
+    Default: ''
+  BufferingInterval:
+    Type: Number
+    Default: 60
+    MinValue: 60
+    MaxValue: 900
+    Description: |
+      Buffer incoming data for the specified period of time, in seconds, before
+      delivering it to the destination.
+  BufferingSize:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 64
+    Description: |
+      Buffer incoming data to the specified size, in MiBs, before delivering it
+      to the destination.
+
+Conditions:
+  UseStackName: !Equals
+    - !Ref NameOverride
+    - ''
+
+Resources:
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - firehose.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logging
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LogGroup.Arn
+        - PolicyName: s3writer
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                  - s3:PutObject
+                Resource:
+                  - !Ref BucketARN
+                  - !Sub '${BucketARN}/${Prefix}*'
+  LogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/firehose/
+          - !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+      RetentionInDays: 365
+  LogStream:      
+    Type: 'AWS::Logs::LogStream'
+    Properties: 
+      LogStreamName: s3logs
+      LogGroupName: !Ref LogGroup
+  DeliveryStream:
+    Type: 'AWS::KinesisFirehose::DeliveryStream'
+    Properties:
+      DeliveryStreamName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      DeliveryStreamType: DirectPut
+      S3DestinationConfiguration:
+        BucketARN: !Ref BucketARN
+        RoleARN: !GetAtt Role.Arn
+        Prefix: !Ref Prefix
+        ErrorOutputPrefix: !Ref Prefix
+        BufferingHints:
+          IntervalInSeconds: !Ref BufferingInterval
+          SizeInMBs: !Ref BufferingSize
+        CloudWatchLoggingOptions:
+          Enabled: true
+          LogGroupName: !Ref LogGroup
+          LogStreamName: !Ref LogStream
+
+Outputs:
+  Firehose:
+    Description: 'Firehose ARN'
+    Value: !GetAtt 'DeliveryStream.Arn'

@@ -84,7 +84,7 @@ jobs:
       run: |
         eval $(dce leases login --print-creds $LEASE_ID)
         aws sts get-caller-identity
-        make integration-test
+        TEST_ARGS=-verbose make integration-test
       env:
         APP: forwarder
 
