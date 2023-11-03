@@ -10,7 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-envconfig"
 
-	"github.com/observeinc/aws-sam-testing/handlers/forwarder"
+	"github.com/observeinc/aws-sam-testing/handler/forwarder"
 	"github.com/observeinc/aws-sam-testing/logging"
 )
 

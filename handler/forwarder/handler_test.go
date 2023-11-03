@@ -18,7 +18,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/observeinc/aws-sam-testing/handlers/forwarder"
+	"github.com/observeinc/aws-sam-testing/handler/forwarder"
 )
 
 type MockS3Client struct {
