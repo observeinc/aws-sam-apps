@@ -22,6 +22,7 @@ var errNoLambdaContext = fmt.Errorf("no lambda context found")
 type S3Client interface {
 	CopyObject(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
 	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	HeadObject(context.Context, *s3.HeadObjectInput, ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 }
 
 type Handler struct {
@@ -29,6 +30,32 @@ type Handler struct {
 	LogPrefix      string
 	S3Client       S3Client
 	Logger         logr.Logger
+	SizeLimit      int64
+}
+
+func (h *Handler) IsObjectSizeWithinLimit(ctx context.Context, source *url.URL) (bool, error) {
+	if source == nil {
+		return false, fmt.Errorf("source URL is nil")
+	}
+
+	// Remove any leading slashes from the source.Path
+	key := strings.TrimPrefix(source.Path, "/")
+
+	input := &s3.HeadObjectInput{
+		Bucket: aws.String(source.Host),
+		Key:    aws.String(key),
+	}
+
+	output, err := h.S3Client.HeadObject(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("failed to get object head: %w", err)
+	}
+
+	if output == nil {
+		return false, fmt.Errorf("output is nil")
+	}
+
+	return output.ContentLength <= h.SizeLimit, nil
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -102,9 +129,25 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 	for _, record := range request.Records {
 		m := &SQSMessage{SQSMessage: record}
 		for _, sourceURI := range m.GetObjectCreated() {
+			isWithinLimit, err := h.IsObjectSizeWithinLimit(ctx, sourceURI)
+			if err != nil {
+				logger.Error(err, "error checking object size")
+				continue // continue to next sourceURI or break if you want to stop processing this record
+			}
+
+			if !isWithinLimit {
+				err := fmt.Errorf("object size exceeds %.1f GB limit", float64(h.SizeLimit)/(1024*1024*1024))
+				logger.Error(err, "error copying file due to size limit")
+				m.ErrorMessage = err.Error()
+				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
+					ItemIdentifier: record.MessageId,
+				})
+				continue // continue to next sourceURI or break if you want to stop processing this record
+			}
+
 			copyInput := GetCopyObjectInput(sourceURI, h.DestinationURI)
 			if _, cerr := h.S3Client.CopyObject(ctx, copyInput); cerr != nil {
-				logger.Error(cerr, "error copying file")
+				logger.Error(cerr, "error copying file yo!")
 				m.ErrorMessage = cerr.Error()
 				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
 					ItemIdentifier: record.MessageId,
@@ -132,6 +175,7 @@ func New(cfg *Config) (*Handler, error) {
 		LogPrefix:      cfg.LogPrefix,
 		S3Client:       cfg.S3Client,
 		Logger:         logr.Discard(),
+		SizeLimit:      cfg.SizeLimit,
 	}
 
 	if cfg.Logger != nil {

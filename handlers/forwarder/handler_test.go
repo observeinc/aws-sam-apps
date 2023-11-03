@@ -24,6 +24,14 @@ import (
 type MockS3Client struct {
 	CopyObjectFunc func(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
 	PutObjectFunc  func(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	HeadObjectFunc func(context.Context, *s3.HeadObjectInput, ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
+}
+
+func (c *MockS3Client) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+	if c.HeadObjectFunc == nil {
+		return nil, nil
+	}
+	return c.HeadObjectFunc(ctx, params, optFns...)
 }
 
 func (c *MockS3Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
@@ -124,9 +132,15 @@ func TestHandler(t *testing.T) {
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
 				DestinationURI: "s3://my-bucket",
+				SizeLimit:      4.5 * 1024 * 1024 * 1024,
 				S3Client: &MockS3Client{
 					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, errSentinel
+					},
+					HeadObjectFunc: func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+						return &s3.HeadObjectOutput{
+							ContentLength: 100, // set a mock ContentLength value
+						}, nil
 					},
 				},
 			},
@@ -141,6 +155,7 @@ func TestHandler(t *testing.T) {
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
 				DestinationURI: "s3://my-bucket",
+				SizeLimit:      4.5 * 1024 * 1024 * 1024,
 				S3Client: &MockS3Client{
 					PutObjectFunc: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 						return nil, errSentinel

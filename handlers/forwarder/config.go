@@ -18,6 +18,7 @@ type Config struct {
 	LogPrefix      string // prefix used when writing SQS messages to S3
 	S3Client       S3Client
 	Logger         *logr.Logger
+	SizeLimit      int64
 }
 
 func (c *Config) Validate() error {
@@ -32,6 +33,10 @@ func (c *Config) Validate() error {
 		case u.Scheme != "s3":
 			errs = append(errs, fmt.Errorf("%w: scheme must be \"s3\"", ErrInvalidDestination))
 		}
+	}
+
+	if c.SizeLimit <= 0 {
+		errs = append(errs, fmt.Errorf("SizeLimit must be a positive value, got: %d", c.SizeLimit))
 	}
 
 	if c.S3Client == nil {

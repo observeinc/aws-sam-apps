@@ -24,12 +24,14 @@ func TestConfig(t *testing.T) {
 		{
 			Config: forwarder.Config{
 				DestinationURI: "s3://test",
+				SizeLimit:      4.5 * 1024 * 1024 * 1024, // 4.5 GB limit
 				S3Client:       &MockS3Client{},
 			},
 		},
 		{
 			Config: forwarder.Config{
 				DestinationURI: "https://example.com",
+				SizeLimit:      4.5 * 1024 * 1024 * 1024, // 4.5 GB limit
 				S3Client:       &MockS3Client{},
 			},
 			ExpectError: forwarder.ErrInvalidDestination,

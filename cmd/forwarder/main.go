@@ -57,6 +57,7 @@ func realInit() error {
 		LogPrefix:      env.LogPrefix,
 		S3Client:       s3client,
 		Logger:         &logger,
+		SizeLimit:      4.5 * 1024 * 1024 * 1024, // 4.5 GB limit
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
