@@ -1,33 +1,34 @@
-package router_test
+package handler_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/observeinc/aws-sam-testing/handlers/router"
+	"github.com/observeinc/aws-sam-testing/handler"
 )
 
-func TestRouter(t *testing.T) {
+func TestHandler(t *testing.T) {
 	t.Parallel()
 	testcases := []struct {
-		Handlers []any
-		Checks   map[string]string
+		HandlerFuncs []any
+		Checks       map[string]string
 	}{
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				func(_ context.Context, _ string) (string, error) { return "string", nil },
 				func(_ context.Context, _ int) (string, error) { return "int", nil },
-				func(_ context.Context, _ struct{ V string }) (string, error) { return "custom", nil },
+				func(_ context.Context, _ struct{ V string }) (string, error) { return "v", nil },
+				func(_ context.Context, _ struct{ W string }) (string, error) { return "w", nil },
 			},
 			Checks: map[string]string{
 				`1`:             `"int"`,
 				`"1"`:           `"string"`,
-				`{"v": "test"}`: `"custom"`,
+				`{"v": "test"}`: `"v"`,
+				`{"w": "test"}`: `"w"`,
 			},
 		},
 	}
@@ -36,14 +37,14 @@ func TestRouter(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
-			r := router.New()
 
-			if err := r.Register(tc.Handlers...); err != nil {
+			var h handler.Mux
+			if err := h.Register(tc.HandlerFuncs...); err != nil {
 				t.Fatal(err)
 			}
 
 			for input, output := range tc.Checks {
-				result, err := r.Handle(context.Background(), json.RawMessage(input))
+				result, err := h.Invoke(context.Background(), []byte(input))
 				if err != nil {
 					t.Fatalf("failed to validate %s: %s", input, err)
 				}
@@ -56,55 +57,55 @@ func TestRouter(t *testing.T) {
 	}
 }
 
-func TestRouterErrors(t *testing.T) {
+func TestHandlerErrors(t *testing.T) {
 	t.Parallel()
 
 	testcases := []struct {
-		Handlers  []any
-		ExpectErr error
+		HandlerFuncs []any
+		ExpectErr    error
 	}{
 		{
 			// no handlers, no problem
 		},
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				"1",
 			},
-			ExpectErr: router.ErrHandlerType,
+			ExpectErr: handler.ErrHandlerType,
 		},
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				func() {},
 			},
-			ExpectErr: router.ErrHandlerArgsCount,
+			ExpectErr: handler.ErrHandlerArgsCount,
 		},
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				func(int, int) {},
 			},
-			ExpectErr: router.ErrHandlerRequireContext,
+			ExpectErr: handler.ErrHandlerRequireContext,
 		},
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				func(context.Context, int) {},
 			},
-			ExpectErr: router.ErrHandlerReturnCount,
+			ExpectErr: handler.ErrHandlerReturnCount,
 		},
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				func(context.Context, int) (int, int) { return 1, 1 },
 			},
-			ExpectErr: router.ErrHandlerRequireError,
+			ExpectErr: handler.ErrHandlerRequireError,
 		},
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				func(context.Context, int) (int, error) { return 1, nil },
 				func(context.Context, int) (int, error) { return 1, nil },
 			},
-			ExpectErr: router.ErrHandlerAlreadyRegistered,
+			ExpectErr: handler.ErrHandlerAlreadyRegistered,
 		},
 		{
-			Handlers: []any{
+			HandlerFuncs: []any{
 				func(context.Context, string) (int, error) { return 1, nil },
 				func(context.Context, int) (int, error) { return 1, nil },
 				func(context.Context, float64) (int, error) { return 1, nil },
@@ -116,9 +117,8 @@ func TestRouterErrors(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
-			r := router.New()
-
-			err := r.Register(tc.Handlers...)
+			var h handler.Mux
+			err := h.Register(tc.HandlerFuncs...)
 			if diff := cmp.Diff(err, tc.ExpectErr, cmpopts.EquateErrors()); diff != "" {
 				t.Error("unexpected error", diff)
 			}

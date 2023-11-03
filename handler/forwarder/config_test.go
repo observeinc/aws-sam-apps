@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/observeinc/aws-sam-testing/handlers/forwarder"
+	"github.com/observeinc/aws-sam-testing/handler/forwarder"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"

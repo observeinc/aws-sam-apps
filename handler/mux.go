@@ -1,12 +1,16 @@
-package router
+package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"sync"
+
+	"github.com/aws/aws-lambda-go/lambdacontext"
+	"github.com/go-logr/logr"
 )
 
 var (
@@ -19,16 +23,32 @@ var (
 	ErrHandlerRequireError      = errors.New("last return value must be an error")
 )
 
-type Router struct {
+// Mux for multiple lambda handler entrypoints.
+//
+// This is a common helper to bridge between the convenience of declaring
+// strongly typed lambda handlers, and the flexibility of routing payloads
+// via the baseline Invoke method.
+type Mux struct {
+	Logger logr.Logger
+
 	handlers map[reflect.Type]reflect.Value
 	sync.Mutex
 }
 
-// Register a lambda handler.
-func (r *Router) Register(fs ...any) error {
-	r.Lock()
-	defer r.Unlock()
-	for _, f := range fs {
+var _ interface {
+	Invoke(context.Context, []byte) ([]byte, error)
+} = &Mux{}
+
+// Register a set of lambda handlers.
+func (m *Mux) Register(fns ...any) error {
+	m.Lock()
+	defer m.Unlock()
+
+	if m.handlers == nil {
+		m.handlers = make(map[reflect.Type]reflect.Value)
+	}
+
+	for _, f := range fns {
 		handler := reflect.ValueOf(f)
 		handlerType := reflect.TypeOf(f)
 		if k := handlerType.Kind(); k != reflect.Func {
@@ -52,20 +72,36 @@ func (r *Router) Register(fs ...any) error {
 		}
 
 		eventType := handlerType.In(handlerType.NumIn() - 1)
-		if _, ok := r.handlers[eventType]; ok {
+		if _, ok := m.handlers[eventType]; ok {
 			return fmt.Errorf("event type %s: %w", eventType, ErrHandlerAlreadyRegistered)
 		}
 
-		r.handlers[eventType] = handler
+		m.handlers[eventType] = handler
 	}
 	return nil
 }
 
-func (r *Router) Handle(ctx context.Context, v json.RawMessage) (json.RawMessage, error) {
-	for eventType, handler := range r.handlers {
+func (m *Mux) Invoke(ctx context.Context, payload []byte) (response []byte, err error) {
+	logger := m.Logger
+	if lctx, ok := lambdacontext.FromContext(ctx); ok {
+		logger = m.Logger.WithValues("requestId", lctx.AwsRequestID)
+		ctx = logr.NewContext(ctx, logger)
+	}
+
+	logger.V(3).Info("handling request")
+	defer func() {
+		if err != nil {
+			logger.Error(err, "failed to process request", "payload", string(payload))
+		}
+	}()
+
+	for eventType, handler := range m.handlers {
 		event := reflect.New(eventType)
 
-		if err := json.Unmarshal(v, event.Interface()); err != nil {
+		dec := json.NewDecoder(bytes.NewReader(payload))
+		dec.DisallowUnknownFields()
+
+		if err := dec.Decode(event.Interface()); err != nil {
 			// assume event was destined for a different handler
 			continue
 		}
@@ -80,13 +116,7 @@ func (r *Router) Handle(ctx context.Context, v json.RawMessage) (json.RawMessage
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal response: %w", err)
 		}
-		return json.RawMessage(data), nil
+		return data, nil
 	}
 	return nil, ErrNoHandler
-}
-
-func New() *Router {
-	return &Router{
-		handlers: make(map[reflect.Type]reflect.Value),
-	}
 }

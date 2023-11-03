@@ -15,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
+
+	"github.com/observeinc/aws-sam-testing/handler"
 )
 
 var errNoLambdaContext = fmt.Errorf("no lambda context found")
@@ -25,10 +27,11 @@ type S3Client interface {
 }
 
 type Handler struct {
+	handler.Mux
+
 	DestinationURI *url.URL
 	LogPrefix      string
 	S3Client       S3Client
-	Logger         logr.Logger
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -80,14 +83,7 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 		return response, errNoLambdaContext
 	}
 
-	logger := h.Logger.WithValues("requestId", lctx.AwsRequestID)
-
-	logger.V(3).Info("handling request")
-	defer func() {
-		if err != nil {
-			logger.Error(err, "failed to process request", "payload", request)
-		}
-	}()
+	logger := logr.FromContextOrDiscard(ctx)
 
 	var messages bytes.Buffer
 	defer func() {
@@ -131,11 +127,14 @@ func New(cfg *Config) (*Handler, error) {
 		DestinationURI: u,
 		LogPrefix:      cfg.LogPrefix,
 		S3Client:       cfg.S3Client,
-		Logger:         logr.Discard(),
 	}
 
 	if cfg.Logger != nil {
 		h.Logger = *cfg.Logger
+	}
+
+	if err := h.Register(h.Handle); err != nil {
+		return nil, fmt.Errorf("failed to register handler: %w", err)
 	}
 
 	return h, nil
