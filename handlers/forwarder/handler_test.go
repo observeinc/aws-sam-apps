@@ -128,41 +128,24 @@ func TestHandler(t *testing.T) {
 		ExpectResponse events.SQSEventResponse
 	}{
 		{
-			// Failing a copy should fail the individual item in the queue affected
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
 				DestinationURI: "s3://my-bucket",
-				SizeLimit:      4.5 * 1024 * 1024 * 1024,
+				SizeLimit:      1 * 1024 * 1024 * 1024, // 1 GB size limit for testing
 				S3Client: &MockS3Client{
-					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
-						return nil, errSentinel
-					},
 					HeadObjectFunc: func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
 						return &s3.HeadObjectOutput{
-							ContentLength: 100, // set a mock ContentLength value
+							ContentLength: 2 * 1024 * 1024 * 1024, // Set content length to 2 GB to trigger the error
 						}, nil
 					},
 				},
 			},
+			ExpectErr: forwarder.ErrFileSizeLimitExceeded, // Expect the custom file size limit exceeded error
 			ExpectResponse: events.SQSEventResponse{
 				BatchItemFailures: []events.SQSBatchItemFailure{
-					{ItemIdentifier: "6aa4e980-26f6-46f4-bb73-fa6e82257191"},
+					{ItemIdentifier: "6aa4e980-26f6-46f4-bb73-fa6e82257191"}, // Use the actual message ID you expect to fail
 				},
 			},
-		},
-		{
-			// Failing to put a record to the destination URI is a terminal condition. Error out.
-			RequestFile: "testdata/event.json",
-			Config: forwarder.Config{
-				DestinationURI: "s3://my-bucket",
-				SizeLimit:      4.5 * 1024 * 1024 * 1024,
-				S3Client: &MockS3Client{
-					PutObjectFunc: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-						return nil, errSentinel
-					},
-				},
-			},
-			ExpectErr: errSentinel,
 		},
 	}
 

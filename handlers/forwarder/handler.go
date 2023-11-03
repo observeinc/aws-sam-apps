@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -18,6 +19,7 @@ import (
 )
 
 var errNoLambdaContext = fmt.Errorf("no lambda context found")
+var ErrFileSizeLimitExceeded = errors.New("file size exceeds limit")
 
 type S3Client interface {
 	CopyObject(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
@@ -47,6 +49,7 @@ func (h *Handler) IsObjectSizeWithinLimit(ctx context.Context, source *url.URL) 
 	}
 
 	output, err := h.S3Client.HeadObject(ctx, input)
+
 	if err != nil {
 		return false, fmt.Errorf("failed to get object head: %w", err)
 	}
@@ -129,20 +132,20 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 	for _, record := range request.Records {
 		m := &SQSMessage{SQSMessage: record}
 		for _, sourceURI := range m.GetObjectCreated() {
-			isWithinLimit, err := h.IsObjectSizeWithinLimit(ctx, sourceURI)
-			if err != nil {
-				logger.Error(err, "error checking object size")
-				continue // continue to next sourceURI or break if you want to stop processing this record
+			isWithinLimit, sizeErr := h.IsObjectSizeWithinLimit(ctx, sourceURI)
+			if sizeErr != nil {
+				logger.Error(sizeErr, "error checking object size")
+				break
 			}
 
 			if !isWithinLimit {
-				err := fmt.Errorf("object size exceeds %.1f GB limit", float64(h.SizeLimit)/(1024*1024*1024))
-				logger.Error(err, "error copying file due to size limit")
-				m.ErrorMessage = err.Error()
+				sizeErr = fmt.Errorf("%w: object size exceeds %.2f MB limit", ErrFileSizeLimitExceeded, float64(h.SizeLimit)/(1024*1024))
+				logger.Error(sizeErr, "error copying file due to size limit")
+				m.ErrorMessage = sizeErr.Error()
 				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
 					ItemIdentifier: record.MessageId,
 				})
-				continue // continue to next sourceURI or break if you want to stop processing this record
+				return response, sizeErr
 			}
 
 			copyInput := GetCopyObjectInput(sourceURI, h.DestinationURI)
