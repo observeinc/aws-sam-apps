@@ -1,0 +1,34 @@
+#!/bin/bash
+# Write records to firehose, verify data shows up in S3
+set -euo pipefail
+
+DIE() { echo "$*" 1>&2; exit 1; }
+
+[[ ! -z "${FUNCTION_ARN:-}" ]] || DIE "FUNCTION_ARN not set"
+
+cleanup() {
+    rm -f "$TMPFILE"
+}
+
+trap cleanup EXIT
+
+TMPFILE=$(mktemp)
+
+FUNCTION_NAME=$(echo "$FUNCTION_ARN" | cut -d: -f7)
+AWS_REGION=$(echo "$FUNCTION_ARN" | cut -d: -f4)
+
+check_result() {
+    ERR=$(jq '.StatusCode != 200 or has("FunctionError")' <<<"$1")
+    if [[ "$ERR" == true ]]; then
+        echo "$1"
+        return 1
+    fi
+}
+
+echo '{"sync": {}}' > ${TMPFILE}
+RESULT=$(aws lambda invoke \
+    --function-name ${FUNCTION_NAME} \
+    --payload fileb://${TMPFILE} ${TMPFILE} \
+    --region ${AWS_REGION} \
+    --no-cli-pager)
+check_result "$RESULT" || DIE "Failed to invoke lambda"

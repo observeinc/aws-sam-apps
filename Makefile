@@ -168,5 +168,8 @@ build-App:
 build-Forwarder:
 	APP=forwarder $(MAKE) build-App
 
+build-Subscriber:
+	APP=subscriber $(MAKE) build-App
+
 .PHONY: help go-lint go-lint-all go-test sam-validate sam-validate-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
 
