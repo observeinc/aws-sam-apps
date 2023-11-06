@@ -116,25 +116,25 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 	return response, nil
 }
 
-func New(cfg *Config) (*Handler, error) {
+func New(cfg *Config) (h *Handler, err error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	u, _ := url.ParseRequestURI(cfg.DestinationURI)
 
-	h := &Handler{
+	h = &Handler{
 		DestinationURI: u,
 		LogPrefix:      cfg.LogPrefix,
 		S3Client:       cfg.S3Client,
 	}
 
 	if cfg.Logger != nil {
-		h.Logger = *cfg.Logger
+		h.Mux.Logger = *cfg.Logger
 	}
 
-	if err := h.Register(h.Handle); err != nil {
-		return nil, fmt.Errorf("failed to register handler: %w", err)
+	if err := h.Mux.Register(h.Handle); err != nil {
+		return nil, fmt.Errorf("failed to register functions: %w", err)
 	}
 
 	return h, nil

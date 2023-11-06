@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/observeinc/aws-sam-testing/handler/forwarder"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/observeinc/aws-sam-testing/handler/forwarder"
+	"github.com/observeinc/aws-sam-testing/handler/handlertest"
 )
 
 func TestConfig(t *testing.T) {
@@ -24,13 +25,13 @@ func TestConfig(t *testing.T) {
 		{
 			Config: forwarder.Config{
 				DestinationURI: "s3://test",
-				S3Client:       &MockS3Client{},
+				S3Client:       &handlertest.S3Client{},
 			},
 		},
 		{
 			Config: forwarder.Config{
 				DestinationURI: "https://example.com",
-				S3Client:       &MockS3Client{},
+				S3Client:       &handlertest.S3Client{},
 			},
 			ExpectError: forwarder.ErrInvalidDestination,
 		},
