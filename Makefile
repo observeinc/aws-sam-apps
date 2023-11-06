@@ -90,23 +90,6 @@ sam-publish: sam-package
 		--config-file $(SAM_CONFIG_FILE) \
 		--config-env $(SAM_CONFIG_ENV)
 
-## sam-deploy: deploy the application to AWS
-sam-deploy: sam-package
-	$(call check_var,APP)
-	sam deploy \
-		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
-		--stack-name $(APP)-$(AWS_REGION) \
-		--capabilities CAPABILITY_IAM \
-		--region $(AWS_REGION) \
-		--config-file $(SAM_CONFIG_FILE) \
-		--config-env $(SAM_CONFIG_ENV)
-
-## sam-sync: synchronize your local development changes to the deployed application quickly
-sam-sync:
-	$(call check_var,APP)
-	sam sync --stack-name $(APP)-$(AWS_REGION) --watch --template $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml
-
-
 ## sam-package-all: package all cloudformation templates and push assets to S3
 sam-package-all:
 	@ for dir in $(SUBDIR); do \
