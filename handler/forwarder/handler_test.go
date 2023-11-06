@@ -19,26 +19,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/observeinc/aws-sam-testing/handler/forwarder"
+	"github.com/observeinc/aws-sam-testing/handler/handlertest"
 )
-
-type MockS3Client struct {
-	CopyObjectFunc func(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
-	PutObjectFunc  func(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
-}
-
-func (c *MockS3Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
-	if c.CopyObjectFunc == nil {
-		return nil, nil
-	}
-	return c.CopyObjectFunc(ctx, params, optFns...)
-}
-
-func (c *MockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-	if c.PutObjectFunc == nil {
-		return nil, nil
-	}
-	return c.PutObjectFunc(ctx, params, optFns...)
-}
 
 func TestCopy(t *testing.T) {
 	t.Parallel()
@@ -124,7 +106,7 @@ func TestHandler(t *testing.T) {
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
 				DestinationURI: "s3://my-bucket",
-				S3Client: &MockS3Client{
+				S3Client: &handlertest.S3Client{
 					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, errSentinel
 					},
@@ -141,7 +123,7 @@ func TestHandler(t *testing.T) {
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
 				DestinationURI: "s3://my-bucket",
-				S3Client: &MockS3Client{
+				S3Client: &handlertest.S3Client{
 					PutObjectFunc: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 						return nil, errSentinel
 					},
