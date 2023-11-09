@@ -5,6 +5,10 @@ updates:
     directory: "/"
     schedule:
       interval: daily
+    groups:
+      github.com/aws/aws-sdk-go-v2:
+        patterns:
+          - "github.com/aws/aws-sdk-go-v2*"
   - package-ecosystem: "terraform"
     directory: "/infrastructure/"
     schedule:
