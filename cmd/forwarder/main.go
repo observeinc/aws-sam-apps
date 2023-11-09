@@ -56,9 +56,9 @@ func realInit() error {
 	handler, err = forwarder.New(&forwarder.Config{
 		DestinationURI: env.DestinationURI,
 		LogPrefix:      env.LogPrefix,
+		MaxFileSize:    env.MaxFileSize,
 		S3Client:       s3client,
 		Logger:         &logger,
-		MaxFileSize:    env.MaxFileSize,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)

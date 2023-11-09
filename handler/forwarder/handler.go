@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"strings"
 
@@ -27,6 +28,7 @@ type S3Client interface {
 }
 
 type Handler struct {
+	Config Config
 	handler.Mux
 
 	DestinationURI *url.URL
@@ -84,6 +86,7 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 	}
 
 	logger := logr.FromContextOrDiscard(ctx)
+	log.Printf("Max file size configuration: MaxFileSize=%d\n", h.Config.MaxFileSize)
 
 	var messages bytes.Buffer
 	defer func() {
@@ -97,10 +100,21 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 
 	for _, record := range request.Records {
 		m := &SQSMessage{SQSMessage: record}
-		for _, sourceURI := range m.GetObjectCreated() {
-			copyInput := GetCopyObjectInput(sourceURI, h.DestinationURI)
+		objectRecords := m.GetObjectCreated()
+		for _, objectRecord := range objectRecords {
+			// Log the size of the object if it is present
+			if objectRecord.Size != nil {
+				log.Printf("Object size: Size=%d\n", *objectRecord.Size)
+			} else {
+				log.Printf("Object size not provided\n")
+			}
+
+			// TODO: Here is where you would check the object size against MaxFileSize
+			// For now, we are just logging and processing all files.
+
+			copyInput := GetCopyObjectInput(objectRecord.URI, h.DestinationURI)
 			if _, cerr := h.S3Client.CopyObject(ctx, copyInput); cerr != nil {
-				logger.Error(cerr, "error copying file")
+				logger.Error(cerr, "error copying file", "SourceURI", objectRecord.URI.String())
 				m.ErrorMessage = cerr.Error()
 				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
 					ItemIdentifier: record.MessageId,
@@ -108,6 +122,7 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 				break
 			}
 		}
+
 		if err := encoder.Encode(m); err != nil {
 			return response, fmt.Errorf("failed to encode message: %w", err)
 		}
