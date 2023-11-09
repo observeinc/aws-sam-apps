@@ -1,0 +1,152 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Subscribe logs to Observe.'
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-subscriber
+    Description: Subscribe logs to Observe.
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-testing
+    SemanticVersion: '0.0.1'
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
+
+Globals:
+  Function:
+    Timeout: 20
+    MemorySize: 128
+
+Parameters:
+  NameOverride:
+    Type: String
+    Description: >-
+      Name of Lambda function.
+    Default: ''
+Conditions:
+  UseStackName: !Equals
+    - !Ref NameOverride
+    - ''
+
+Resources:
+  DeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub
+        - '${Name}-deadletter'
+        - Name: !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+  Queue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      DelaySeconds: 0
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetter.Arn
+        maxReceiveCount: 4
+      VisibilityTimeout: 20
+  QueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sqs:SendMessage
+            Resource: !GetAtt Queue.Arn
+            Principal:
+              Service: events.amazonaws.com
+      Queues:
+        - !Ref Queue
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logging
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LogGroup.Arn
+        - PolicyName: queue
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt Queue.Arn
+        - PolicyName: subscription
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                Resource: "*"
+  LogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+      RetentionInDays: 365
+  Subscriber:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    DependsOn: LogGroup
+    Properties:
+      FunctionName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      Role: !GetAtt Role.Arn
+      CodeUri: ../..
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      Events:
+        Items:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt Queue.Arn
+            BatchSize: 1
+            Enabled: true
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref Queue
+          VERBOSITY: 9
+Outputs:
+  Function:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt Subscriber.Arn
