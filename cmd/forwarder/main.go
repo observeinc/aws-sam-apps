@@ -18,6 +18,7 @@ var env struct {
 	DestinationURI string `env:"DESTINATION_URI,required"`
 	LogPrefix      string `env:"LOG_PREFIX,default=forwarder/"`
 	Verbosity      int    `env:"VERBOSITY,default=1"`
+	MaxFileSize    int64  `env:"MAX_FILE_SIZE,default=0"`
 }
 
 var (
@@ -57,6 +58,7 @@ func realInit() error {
 		LogPrefix:      env.LogPrefix,
 		S3Client:       s3client,
 		Logger:         &logger,
+		MaxFileSize:    env.MaxFileSize,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)

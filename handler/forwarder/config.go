@@ -14,10 +14,11 @@ var (
 )
 
 type Config struct {
-	DestinationURI string // S3 URI to write messages and copy files to
-	LogPrefix      string // prefix used when writing SQS messages to S3
-	S3Client       S3Client
+	DestinationURI string   // S3 URI to write messages and copy files to
+	LogPrefix      string   // prefix used when writing SQS messages to S3
+	S3Client       S3Client // Interface to the S3 client
 	Logger         *logr.Logger
+	MaxFileSize    int64 // Maximum file size for processing
 }
 
 func (c *Config) Validate() error {
