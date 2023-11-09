@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"strings"
 
@@ -28,9 +27,8 @@ type S3Client interface {
 }
 
 type Handler struct {
-	Config Config
 	handler.Mux
-
+	MaxFileSize    int64
 	DestinationURI *url.URL
 	LogPrefix      string
 	S3Client       S3Client
@@ -86,7 +84,6 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 	}
 
 	logger := logr.FromContextOrDiscard(ctx)
-	log.Printf("Max file size configuration: MaxFileSize=%d\n", h.Config.MaxFileSize)
 
 	var messages bytes.Buffer
 	defer func() {
@@ -100,21 +97,25 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 
 	for _, record := range request.Records {
 		m := &SQSMessage{SQSMessage: record}
-		objectRecords := m.GetObjectCreated()
-		for _, objectRecord := range objectRecords {
-			// Log the size of the object if it is present
-			if objectRecord.Size != nil {
-				log.Printf("Object size: Size=%d\n", *objectRecord.Size)
-			} else {
-				log.Printf("Object size not provided\n")
+		copyRecords := m.GetObjectCreated()
+		for _, copyRecord := range copyRecords {
+			// Perform the file size check if size is available and MaxFileSize is not zero
+			if copyRecord.Size != nil && h.MaxFileSize > 0 && *copyRecord.Size > h.MaxFileSize {
+				logger.V(1).Info("object size exceeds the maximum file size limit; skipping copy",
+					"MaxFileSize", h.MaxFileSize, "ObjectSize", *copyRecord.Size, "SourceURI", copyRecord.URI)
+				// Log a warning and skip this object by continuing to the next iteration
+				continue
 			}
 
-			// TODO: Here is where you would check the object size against MaxFileSize
-			// For now, we are just logging and processing all files.
+			sourceURL, err := url.Parse(copyRecord.URI)
+			if err != nil {
+				logger.Error(err, "error parsing source URI", "SourceURI", copyRecord.URI)
+				continue
+			}
 
-			copyInput := GetCopyObjectInput(objectRecord.URI, h.DestinationURI)
+			copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
 			if _, cerr := h.S3Client.CopyObject(ctx, copyInput); cerr != nil {
-				logger.Error(cerr, "error copying file", "SourceURI", objectRecord.URI.String())
+				logger.Error(cerr, "error copying file", "SourceURI", copyRecord.URI)
 				m.ErrorMessage = cerr.Error()
 				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
 					ItemIdentifier: record.MessageId,
@@ -142,6 +143,7 @@ func New(cfg *Config) (h *Handler, err error) {
 		DestinationURI: u,
 		LogPrefix:      cfg.LogPrefix,
 		S3Client:       cfg.S3Client,
+		MaxFileSize:    cfg.MaxFileSize,
 	}
 
 	if cfg.Logger != nil {

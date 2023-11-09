@@ -61,6 +61,10 @@ Parameters:
     Description: >-
       A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ''
+  MaxFileSize:
+    Type: Number
+    Description: Max file size for objects to process (in bytes), default is 1GB
+    Default: '1073741824'
 Conditions:
   DisableSourceS3: !Equals
     - !Join
@@ -272,6 +276,7 @@ Resources:
         Variables:
           DESTINATION_URI: !Ref DestinationUri
           VERBOSITY: 9
+          MAX_FILE_SIZE: !Ref MaxFileSize
 
 Outputs:
   Function:

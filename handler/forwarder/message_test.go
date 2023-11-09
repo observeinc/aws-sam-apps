@@ -94,8 +94,8 @@ func TestObjectCreated(t *testing.T) {
 			}
 
 			var uris []string
-			for _, uri := range message.GetObjectCreated() {
-				uris = append(uris, uri.String())
+			for _, copyRecord := range message.GetObjectCreated() {
+				uris = append(uris, copyRecord.URI)
 			}
 
 			if diff := cmp.Diff(uris, tc.Expected); diff != "" {
