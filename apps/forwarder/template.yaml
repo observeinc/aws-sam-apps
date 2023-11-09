@@ -152,8 +152,9 @@ Resources:
             InputPathsMap:
               bucketName: "$.detail.bucket.name"
               objectKey: "$.detail.object.key"
+              objectSize: "$.detail.object.size"  # Added object size
             InputTemplate: >-
-              {"copy": [{"uri": "s3://<bucketName>/<objectKey>"}]}
+              {"copy": [{"uri": "s3://<bucketName>/<objectKey>", "size": <objectSize>}]}
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
