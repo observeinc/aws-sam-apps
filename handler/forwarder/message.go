@@ -14,6 +14,15 @@ type SQSMessage struct {
 	ErrorMessage string `json:"error,omitempty"`
 }
 
+type CopyRecord struct {
+	URI  string `json:"uri"`
+	Size *int64 `json:"size,omitempty"`
+}
+
+type CopyEvent struct {
+	Copy []CopyRecord `json:"copy"`
+}
+
 func (m *SQSMessage) GetObjectCreated() (uris []*url.URL) {
 	message := []byte(m.Body)
 
@@ -57,14 +66,6 @@ func processS3Event(message []byte) (uris []*url.URL) {
 		}
 	}
 	return
-}
-
-type CopyEvent struct {
-	Copy []CopyRecord `json:"copy"`
-}
-
-type CopyRecord struct {
-	URI string `json:"uri"`
 }
 
 func processCopyEvent(message []byte) (uris []*url.URL) {
