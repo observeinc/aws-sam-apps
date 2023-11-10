@@ -29,6 +29,40 @@ func TestConfig(t *testing.T) {
 			Config: subscriber.Config{
 				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
 				Queue:                &MockQueue{},
+				DestinationARN:       "hello",
+			},
+			ExpectError: subscriber.ErrMissingFilterName,
+		},
+		{
+			Config: subscriber.Config{
+				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				Queue:                &MockQueue{},
+				FilterName:           "observe-logs-subscription",
+				DestinationARN:       "hello",
+			},
+			ExpectError: subscriber.ErrInvalidARN,
+		},
+		{
+			Config: subscriber.Config{
+				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				Queue:                &MockQueue{},
+				FilterName:           "observe-logs-subscription",
+				DestinationARN:       "arn:aws:lambda:us-east-2:123456789012:function:my-function",
+			},
+		},
+		{
+			Config: subscriber.Config{
+				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				Queue:                &MockQueue{},
+				FilterName:           "observe-logs-subscription",
+				RoleARN:              "arn:aws:lambda:us-east-2:123456789012:function:my-function",
+			},
+			ExpectError: subscriber.ErrMissingDestinationARN,
+		},
+		{
+			Config: subscriber.Config{
+				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				Queue:                &MockQueue{},
 			},
 		},
 	}

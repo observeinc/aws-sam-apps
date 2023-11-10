@@ -19,6 +19,27 @@ Globals:
     MemorySize: 128
 
 Parameters:
+  FilterName:
+    Type: String
+    Description: >-
+      Subscription filter name.
+    Default: 'observe-logs-subscription'
+  FilterPattern:
+    Type: String
+    Description: >-
+      Subscription filter pattern.
+    Default: ''
+  DestinationArn:
+    Type: String
+    Description: >-
+      Destination ARN for subscription filter. If not set, all subscription
+      filters matching configured filter name will be removed.
+    Default: ''
+  RoleArn:
+    Type: String
+    Description: >-
+      Role ARN for subscription filter.
+    Default: ''
   NameOverride:
     Type: String
     Description: >-
@@ -144,6 +165,10 @@ Resources:
             Enabled: true
       Environment:
         Variables:
+          FILTER_NAME: !Ref FilterName
+          FILTER_PATTERN: !Ref FilterPattern
+          DESTINATION_ARN: !Ref DestinationArn
+          ROLE_ARN: !Ref RoleArn
           QUEUE_URL: !Ref Queue
           VERBOSITY: 9
 Outputs:

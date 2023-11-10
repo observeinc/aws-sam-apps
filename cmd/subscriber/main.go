@@ -16,9 +16,12 @@ import (
 )
 
 var env struct {
-	QueueURL        string `env:"QUEUE_URL,required"`
-	Verbosity       int    `env:"VERBOSITY,default=1"`
-	OtelServiceName string `env:"OTEL_SERVICE_NAME"`
+	FilterName     string `env:"FILTER_NAME"`
+	FilterPattern  string `env:"FILTER_PATTERN"`
+	DestinationARN string `env:"DESTINATION_ARN"`
+	RoleARN        string `env:"ROLE_ARN"`
+	QueueURL       string `env:"QUEUE_URL,required"`
+	Verbosity      int    `env:"VERBOSITY,default=1"`
 }
 
 var (
@@ -57,6 +60,10 @@ func realInit() error {
 	}
 
 	handler, err = subscriber.New(&subscriber.Config{
+		FilterName:           env.FilterName,
+		FilterPattern:        env.FilterPattern,
+		DestinationARN:       env.DestinationARN,
+		RoleARN:              env.RoleARN,
 		Logger:               &logger,
 		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(awsCfg),
 		Queue:                queue,
