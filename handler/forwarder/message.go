@@ -3,7 +3,6 @@ package forwarder
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -44,14 +43,6 @@ func (m *SQSMessage) GetObjectCreated() (copyRecords []CopyRecord) {
 	return
 }
 
-func getS3URI(bucketName string, objectKey string) *url.URL {
-	s := fmt.Sprintf("s3://%s/%s", bucketName, objectKey)
-	if u, err := url.ParseRequestURI(s); err == nil {
-		return u
-	}
-	return nil
-}
-
 func processS3Event(message []byte) (copyRecords []CopyRecord) {
 	var s3records events.S3Event
 	err := json.Unmarshal(message, &s3records)
@@ -59,9 +50,8 @@ func processS3Event(message []byte) (copyRecords []CopyRecord) {
 	if err == nil {
 		for _, record := range s3records.Records {
 			if strings.HasPrefix(record.EventName, "ObjectCreated") {
-				if u := getS3URI(record.S3.Bucket.Name, record.S3.Object.Key); u != nil {
-					copyRecords = append(copyRecords, CopyRecord{URI: u.String()})
-				}
+				uri := fmt.Sprintf("s3://%s/%s", record.S3.Bucket.Name, record.S3.Object.Key)
+				copyRecords = append(copyRecords, CopyRecord{URI: uri})
 			}
 		}
 	}
@@ -75,10 +65,8 @@ func processCopyEvent(message []byte) (copyRecords []CopyRecord) {
 	if err == nil {
 		for _, record := range copyEvent.Copy {
 			if record.Size != nil {
-				sizeValue := *record.Size // Dereference the pointer to get the value
-				copyRecords = append(copyRecords, CopyRecord{URI: record.URI, Size: &sizeValue})
+				copyRecords = append(copyRecords, CopyRecord{URI: record.URI, Size: record.Size})
 			} else {
-				// If size is nil, append the record without a size
 				copyRecords = append(copyRecords, CopyRecord{URI: record.URI})
 			}
 		}

@@ -102,7 +102,7 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 			// Perform the file size check if size is available and MaxFileSize is not zero
 			if copyRecord.Size != nil && h.MaxFileSize > 0 && *copyRecord.Size > h.MaxFileSize {
 				logger.V(1).Info("object size exceeds the maximum file size limit; skipping copy",
-					"MaxFileSize", h.MaxFileSize, "ObjectSize", *copyRecord.Size, "SourceURI", copyRecord.URI)
+					"max", h.MaxFileSize, "size", *copyRecord.Size, "uri", copyRecord.URI)
 				// Log a warning and skip this object by continuing to the next iteration
 				continue
 			}

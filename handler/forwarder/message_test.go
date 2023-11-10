@@ -15,7 +15,7 @@ func TestObjectCreated(t *testing.T) {
 
 	testcases := []struct {
 		Message  string
-		Expected []string
+		Expected []forwarder.CopyRecord
 	}{
 		{
 			Message: `{
@@ -34,8 +34,10 @@ func TestObjectCreated(t *testing.T) {
 				"eventSourceARN": "arn:aws:sqs:us-west-2:123456789012:my-queue",
 				"awsRegion": "us-west-2"
 			}`,
-			Expected: []string{
-				"s3://my-bucket/test.json",
+			Expected: []forwarder.CopyRecord{
+				{
+					URI: "s3://my-bucket/test.json",
+				},
 			},
 		},
 		{
@@ -57,8 +59,10 @@ func TestObjectCreated(t *testing.T) {
 				"eventSource": "aws:sqs",
 				"awsRegion": "us-east-1"
 			}`,
-			Expected: []string{
-				"s3://my-bucket/test.json",
+			Expected: []forwarder.CopyRecord{
+				{
+					URI: "s3://my-bucket/test.json",
+				},
 			},
 		},
 		{
@@ -80,7 +84,11 @@ func TestObjectCreated(t *testing.T) {
 			  "messageId": "420659fa-599c-4a2d-97fa-da7ade83edc7",
 			  "receiptHandle": "AQEB2kq3hOZLP6rlatTMVY4VOL37Zj7IFEhQeeIJAkZhM5vqCcBwZYgPzTc3QOtLTEg0DIL7okUsbFxz5ba3soihn5wqPM7x8fXuzJ0sBOE1XyYUBSzL5Ot6xjY7SnijCsnMEUc8wYTvx1LfkGkwXqKS4maXA8+R530YEUr1RLZ8EqHYtCG4tI6RU1jd0a0Mzv0DUFOg/NU7TdcMYlL7LjPClFfUoy9Hw/9R9L2aLfpUODQVD6+r86wlKrzzMLUDHw7BYuBXaXGXD/w9KGrCoL1q9IIkzXh0gbiAseC968vIh2xSfFv0l9tokahqPBpL/w6V8awnU9tNUQLafG3WjFzFjB00SuFedbxAhARUjNDGmaFIqoLdUrlYEfkPpVxrfqmwbunCQ0URzOtMMJu2uIp0XA=="
 			}`,
-			Expected: []string{"s3://my-bucket/test.json"},
+			Expected: []forwarder.CopyRecord{
+				{
+					URI: "s3://my-bucket/test.json",
+				},
+			},
 		},
 	}
 
@@ -93,13 +101,10 @@ func TestObjectCreated(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			var uris []string
-			for _, copyRecord := range message.GetObjectCreated() {
-				uris = append(uris, copyRecord.URI)
-			}
-
-			if diff := cmp.Diff(uris, tc.Expected); diff != "" {
-				t.Error("unexpected result", diff)
+			// Directly compare the CopyRecords obtained from GetObjectCreated
+			copyRecords := message.GetObjectCreated()
+			if diff := cmp.Diff(copyRecords, tc.Expected); diff != "" {
+				t.Errorf("unexpected result: %s", diff)
 			}
 		})
 	}
