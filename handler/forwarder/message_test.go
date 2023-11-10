@@ -10,6 +10,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+// helper function for creating int64 pointers from integers (if needed).
+func pointerToInt64(val int64) *int64 {
+	return &val
+}
+
 func TestObjectCreated(t *testing.T) {
 	t.Parallel()
 
@@ -36,7 +41,8 @@ func TestObjectCreated(t *testing.T) {
 			}`,
 			Expected: []forwarder.CopyRecord{
 				{
-					URI: "s3://my-bucket/test.json",
+					URI:  "s3://my-bucket/test.json",
+					Size: pointerToInt64(16),
 				},
 			},
 		},
@@ -61,7 +67,8 @@ func TestObjectCreated(t *testing.T) {
 			}`,
 			Expected: []forwarder.CopyRecord{
 				{
-					URI: "s3://my-bucket/test.json",
+					URI:  "s3://my-bucket/test.json",
+					Size: pointerToInt64(25),
 				},
 			},
 		},
