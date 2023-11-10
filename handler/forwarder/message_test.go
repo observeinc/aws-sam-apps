@@ -90,6 +90,32 @@ func TestObjectCreated(t *testing.T) {
 				},
 			},
 		},
+		{
+			Message: `
+			{
+			  "attributes": {
+				"ApproximateFirstReceiveTimestamp": "1696456364266",
+				"ApproximateReceiveCount": "1",
+				"SenderId": "AIDAJXNJGGKNS7OSV23OI",
+				"SentTimestamp": "1696456364253"
+			  },
+			  "awsRegion": "us-east-1",
+			  "body": "{\"copy\": [{\"uri\": \"s3://my-bucket/test.json\",\"size\":12345}]}",
+			  "eventSource": "aws:sqs",
+			  "eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:joao-filedrop-us-east-1",
+			  "md5OfBody": "a231c62bd2ab84f63c85549c8eead615",
+			  "md5OfMessageAttributes": "",
+			  "messageAttributes": {},
+			  "messageId": "420659fa-599c-4a2d-97fa-da7ade83edc7",
+			  "receiptHandle": "AQEB2kq3hOZLP6rlatTMVY4VOL37Zj7IFEhQeeIJAkZhM5vqCcBwZYgPzTc3QOtLTEg0DIL7okUsbFxz5ba3soihn5wqPM7x8fXuzJ0sBOE1XyYUBSzL5Ot6xjY7SnijCsnMEUc8wYTvx1LfkGkwXqKS4maXA8+R530YEUr1RLZ8EqHYtCG4tI6RU1jd0a0Mzv0DUFOg/NU7TdcMYlL7LjPClFfUoy9Hw/9R9L2aLfpUODQVD6+r86wlKrzzMLUDHw7BYuBXaXGXD/w9KGrCoL1q9IIkzXh0gbiAseC968vIh2xSfFv0l9tokahqPBpL/w6V8awnU9tNUQLafG3WjFzFjB00SuFedbxAhARUjNDGmaFIqoLdUrlYEfkPpVxrfqmwbunCQ0URzOtMMJu2uIp0XA=="
+			}`,
+			Expected: []forwarder.CopyRecord{
+				{
+					URI:  "s3://my-bucket/test.json",
+					Size: func() *int64 { var s int64 = 12345; return &s }(),
+				},
+			},
+		},
 	}
 
 	for i, tc := range testcases {

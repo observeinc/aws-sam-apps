@@ -51,7 +51,18 @@ func processS3Event(message []byte) (copyRecords []CopyRecord) {
 		for _, record := range s3records.Records {
 			if strings.HasPrefix(record.EventName, "ObjectCreated") {
 				uri := fmt.Sprintf("s3://%s/%s", record.S3.Bucket.Name, record.S3.Object.Key)
-				copyRecords = append(copyRecords, CopyRecord{URI: uri})
+
+				// Initialize a CopyRecord with URI
+				copyRecord := CopyRecord{URI: uri}
+
+				// Only set Size if it's present in the S3 event
+				if record.S3.Object.Size != 0 {
+					size := record.S3.Object.Size
+					copyRecord.Size = &size
+				}
+
+				// Append the copyRecord to the slice
+				copyRecords = append(copyRecords, copyRecord)
 			}
 		}
 	}
