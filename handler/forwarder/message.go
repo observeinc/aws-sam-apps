@@ -75,11 +75,7 @@ func processCopyEvent(message []byte) (copyRecords []CopyRecord) {
 
 	if err == nil {
 		for _, record := range copyEvent.Copy {
-			if record.Size != nil {
-				copyRecords = append(copyRecords, CopyRecord{URI: record.URI, Size: record.Size})
-			} else {
-				copyRecords = append(copyRecords, CopyRecord{URI: record.URI})
-			}
+			copyRecords = append(copyRecords, CopyRecord{URI: record.URI, Size: record.Size})
 		}
 	}
 

@@ -64,7 +64,6 @@ Parameters:
   MaxFileSize:
     Type: Number
     Description: Max file size for objects to process (in bytes), default is 1GB
-    Default: ''
 Conditions:
   DisableSourceS3: !Equals
     - !Join
