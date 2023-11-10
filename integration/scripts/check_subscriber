@@ -25,7 +25,7 @@ check_result() {
     fi
 }
 
-echo '{"subscribe": {}}' > ${TMPFILE}
+echo '{"subscribe": {"logGroups": [{"logGroupName": "does_not_exist"}]}}' > ${TMPFILE}
 RESULT=$(aws lambda invoke \
     --function-name ${FUNCTION_NAME} \
     --payload fileb://${TMPFILE} ${TMPFILE} \
