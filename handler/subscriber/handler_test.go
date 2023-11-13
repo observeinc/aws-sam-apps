@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,18 +16,6 @@ import (
 	"github.com/observeinc/aws-sam-testing/handler/handlertest"
 	"github.com/observeinc/aws-sam-testing/handler/subscriber"
 )
-
-type MockQueue struct {
-	values []any
-	sync.Mutex
-}
-
-func (m *MockQueue) Put(_ context.Context, vs ...any) error {
-	m.Lock()
-	defer m.Unlock()
-	m.values = append(m.values, vs...)
-	return nil
-}
 
 func TestHandleDiscovery(t *testing.T) {
 	t.Parallel()
@@ -129,7 +116,6 @@ func TestHandleDiscovery(t *testing.T) {
 
 			s, err := subscriber.New(&subscriber.Config{
 				CloudWatchLogsClient: client,
-				Queue:                &MockQueue{},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -209,7 +195,6 @@ func TestHandleSubscribe(t *testing.T) {
 
 			s, err := subscriber.New(&subscriber.Config{
 				CloudWatchLogsClient: client,
-				Queue:                &MockQueue{},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -331,7 +316,6 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 			s, err := subscriber.New(
 				&subscriber.Config{
 					CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
-					Queue:                &MockQueue{},
 					FilterName:           aws.ToString(tt.Configure.FilterName),
 					DestinationARN:       aws.ToString(tt.Configure.DestinationArn),
 					RoleARN:              aws.ToString(tt.Configure.RoleArn),
