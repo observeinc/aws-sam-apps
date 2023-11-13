@@ -40,8 +40,7 @@ type Handler struct {
 }
 
 func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *DiscoveryRequest) (*Response, error) {
-	var discoveryResp DiscoveryResponse
-
+	var stats DiscoveryStats
 	for _, input := range discoveryReq.ToDescribeLogInputs() {
 		paginator := cloudwatchlogs.NewDescribeLogGroupsPaginator(h.Client, input)
 
@@ -50,28 +49,31 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 			if err != nil {
 				return nil, fmt.Errorf("failed to describe log groups: %w", err)
 			}
-			discoveryResp.RequestCount++
-			discoveryResp.LogGroupCount += len(page.LogGroups)
+			stats.RequestCount.Add(1)
+			stats.LogGroupCount.Add(int64(len(page.LogGroups)))
 		}
 	}
 
-	return &Response{DiscoveryResponse: &discoveryResp}, nil
+	return &Response{Discovery: &stats}, nil
 }
 
 func (h *Handler) HandleSubscriptionRequest(ctx context.Context, subReq *SubscriptionRequest) (*Response, error) {
+	var stats SubscriptionStats
+
 	for _, logGroup := range subReq.LogGroups {
-		if err := h.SubscribeLogGroup(ctx, logGroup); err != nil {
+		if err := h.SubscribeLogGroup(ctx, logGroup, &stats); err != nil {
 			return nil, fmt.Errorf("failed to subscribe log group: %w", err)
 		}
 	}
-
-	return nil, nil
+	return &Response{Subscription: &stats}, nil
 }
 
-func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup) error {
+func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, stats *SubscriptionStats) error {
 	logger := logr.FromContextOrDiscard(ctx).WithValues("logGroup", logGroup.LogGroupName)
 
 	logger.V(6).Info("describing subscription filters")
+	stats.Processed.Add(1)
+
 	output, err := h.Client.DescribeSubscriptionFilters(ctx, &cloudwatchlogs.DescribeSubscriptionFiltersInput{
 		LogGroupName: &logGroup.LogGroupName,
 	})
@@ -79,6 +81,7 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup) err
 		var exc *types.ResourceNotFoundException
 		if errors.As(err, &exc) {
 			logger.Info("skipping log group")
+			stats.Skipped.Add(1)
 			return nil
 		}
 		return fmt.Errorf("failed to retrieve subscription filters: %w", err)
@@ -88,16 +91,18 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup) err
 		switch v := action.(type) {
 		case *cloudwatchlogs.DeleteSubscriptionFilterInput:
 			v.LogGroupName = &logGroup.LogGroupName
-			logger.V(3).Info("deleting subscription filter", "filterName", *v.FilterName)
+			logger.V(3).Info("deleting subscription filter", "filterName", aws.ToString(v.FilterName))
 			if _, err := h.Client.DeleteSubscriptionFilter(ctx, v); err != nil {
 				return fmt.Errorf("failed to delete subscription filter: %w", err)
 			}
+			stats.Deleted.Add(1)
 		case *cloudwatchlogs.PutSubscriptionFilterInput:
 			v.LogGroupName = &logGroup.LogGroupName
 			logger.V(3).Info("updating subscription filter")
 			if _, err := h.Client.PutSubscriptionFilter(ctx, v); err != nil {
 				return fmt.Errorf("failed to put subscription filter: %w", err)
 			}
+			stats.Updated.Add(1)
 		}
 	}
 
