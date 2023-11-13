@@ -1,7 +1,9 @@
 package subscriber_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
@@ -43,8 +45,8 @@ func TestHandleDiscovery(t *testing.T) {
 	}
 
 	testcases := []struct {
-		DiscoveryRequest *subscriber.DiscoveryRequest
-		ExpectResponse   *subscriber.Response
+		DiscoveryRequest   *subscriber.DiscoveryRequest
+		ExpectJSONResponse string
 	}{
 		{
 			DiscoveryRequest: &subscriber.DiscoveryRequest{},
@@ -53,12 +55,12 @@ func TestHandleDiscovery(t *testing.T) {
 			- /aws/ello
 			- /aws/hola
 			*/
-			ExpectResponse: &subscriber.Response{
-				DiscoveryResponse: &subscriber.DiscoveryResponse{
-					RequestCount:  1,
-					LogGroupCount: 3,
-				},
-			},
+			ExpectJSONResponse: `{
+				"discovery": {
+					"logGroupCount": 3,
+					"requestCount": 1
+				}
+			}`,
 		},
 		{
 			DiscoveryRequest: &subscriber.DiscoveryRequest{
@@ -71,12 +73,12 @@ func TestHandleDiscovery(t *testing.T) {
 			- /aws/hello
 			- /aws/hola
 			*/
-			ExpectResponse: &subscriber.Response{
-				DiscoveryResponse: &subscriber.DiscoveryResponse{
-					RequestCount:  2,
-					LogGroupCount: 2,
-				},
-			},
+			ExpectJSONResponse: `{
+				"discovery": {
+					"logGroupCount": 2,
+					"requestCount": 2
+				}
+			}`,
 		},
 		{
 			DiscoveryRequest: &subscriber.DiscoveryRequest{
@@ -90,12 +92,12 @@ func TestHandleDiscovery(t *testing.T) {
 			- /aws/hello
 			- /aws/ello
 			*/
-			ExpectResponse: &subscriber.Response{
-				DiscoveryResponse: &subscriber.DiscoveryResponse{
-					RequestCount:  3,
-					LogGroupCount: 2,
-				},
-			},
+			ExpectJSONResponse: `{
+				"discovery": {
+					"logGroupCount": 2,
+					"requestCount": 3
+				}
+			}`,
 		},
 		{
 			DiscoveryRequest: &subscriber.DiscoveryRequest{
@@ -111,12 +113,12 @@ func TestHandleDiscovery(t *testing.T) {
 			- /aws/ello
 			- /aws/hello
 			*/
-			ExpectResponse: &subscriber.Response{
-				DiscoveryResponse: &subscriber.DiscoveryResponse{
-					RequestCount:  2,
-					LogGroupCount: 3,
-				},
-			},
+			ExpectJSONResponse: `{
+				"discovery": {
+					"logGroupCount": 3,
+					"requestCount": 2
+				}
+			}`,
 		},
 	}
 
@@ -138,7 +140,87 @@ func TestHandleDiscovery(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(tt.ExpectResponse, resp); diff != "" {
+			var expect bytes.Buffer
+			if err := json.Compact(&expect, []byte(tt.ExpectJSONResponse)); err != nil {
+				t.Fatal(err)
+			}
+			got, err := json.Marshal(resp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(expect.Bytes(), got); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestHandleSubscribe(t *testing.T) {
+	t.Parallel()
+
+	client := &handlertest.CloudWatchLogsClient{
+		LogGroups: []types.LogGroup{
+			{LogGroupName: aws.String("/aws/hello")},
+			{LogGroupName: aws.String("/aws/ello")},
+			{LogGroupName: aws.String("/aws/hola")},
+		},
+		SubscriptionFilters: []types.SubscriptionFilter{
+			{LogGroupName: aws.String("/aws/hello")},
+		},
+	}
+
+	testcases := []struct {
+		SubscriptionRequest *subscriber.SubscriptionRequest
+		ExpectJSONResponse  string
+	}{
+		{
+			SubscriptionRequest: &subscriber.SubscriptionRequest{},
+			ExpectJSONResponse:  `{}`,
+		},
+		{
+			SubscriptionRequest: &subscriber.SubscriptionRequest{
+				LogGroups: []*subscriber.LogGroup{
+					{LogGroupName: "/aws/hello"},
+				},
+			},
+			ExpectJSONResponse: `{
+				"subscription":	{
+					"deleted":1,
+					"processed":1
+				}
+			}`,
+		},
+	}
+
+	for i, tt := range testcases {
+		tt := tt
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+
+			s, err := subscriber.New(&subscriber.Config{
+				CloudWatchLogsClient: client,
+				Queue:                &MockQueue{},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			resp, err := s.HandleSubscriptionRequest(context.Background(), tt.SubscriptionRequest)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var expect bytes.Buffer
+			if err := json.Compact(&expect, []byte(tt.ExpectJSONResponse)); err != nil {
+				t.Fatal(err)
+			}
+			got, err := json.Marshal(resp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(expect.Bytes(), got); diff != "" {
 				t.Error(diff)
 			}
 		})

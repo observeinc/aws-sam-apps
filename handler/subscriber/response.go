@@ -1,16 +1,43 @@
 package subscriber
 
+import (
+	"encoding/json"
+	"expvar"
+	"fmt"
+)
+
 // Response from our handler.
 type Response struct {
-	*SubscriptionResponse `json:"subscription"`
-	*DiscoveryResponse    `json:"discovery"`
+	Discovery    *expvar.Map `json:"discovery,omitempty"`
+	Subscription *expvar.Map `json:"subscription,omitempty"`
 }
 
-type DiscoveryResponse struct {
-	// RequestCount tracks number of API requests
-	RequestCount int
-	// LogGroupCount tracks count of log groups retrieved from API
-	LogGroupCount int
+// MarshalJSON ensures we omit empty expvar Maps from result.
+func (r *Response) MarshalJSON() ([]byte, error) {
+	var response struct {
+		Discovery    json.RawMessage `json:"discovery,omitempty"`
+		Subscription json.RawMessage `json:"subscription,omitempty"`
+	}
+
+	if s := r.Discovery.String(); s != "{}" {
+		response.Discovery = []byte(s)
+	}
+
+	if s := r.Subscription.String(); s != "{}" {
+		response.Subscription = []byte(s)
+	}
+
+	data, err := json.Marshal(response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+	return data, nil
 }
 
-type SubscriptionResponse struct{}
+// NewResponse returns an initialized response.
+func NewResponse() *Response {
+	return &Response{
+		Discovery:    &expvar.Map{},
+		Subscription: &expvar.Map{},
+	}
+}
