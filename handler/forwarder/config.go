@@ -16,6 +16,7 @@ var (
 type Config struct {
 	DestinationURI string // S3 URI to write messages and copy files to
 	LogPrefix      string // prefix used when writing SQS messages to S3
+	MaxFileSize    int64  // maximum file size in bytes for the files to be processed
 	S3Client       S3Client
 	Logger         *logr.Logger
 }

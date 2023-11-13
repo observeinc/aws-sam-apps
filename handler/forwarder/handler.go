@@ -28,7 +28,7 @@ type S3Client interface {
 
 type Handler struct {
 	handler.Mux
-
+	MaxFileSize    int64
 	DestinationURI *url.URL
 	LogPrefix      string
 	S3Client       S3Client
@@ -97,10 +97,24 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 
 	for _, record := range request.Records {
 		m := &SQSMessage{SQSMessage: record}
-		for _, sourceURI := range m.GetObjectCreated() {
-			copyInput := GetCopyObjectInput(sourceURI, h.DestinationURI)
+		copyRecords := m.GetObjectCreated()
+		for _, copyRecord := range copyRecords {
+			if copyRecord.Size != nil && h.MaxFileSize > 0 && *copyRecord.Size > h.MaxFileSize {
+				logger.V(1).Info("object size exceeds the maximum file size limit; skipping copy",
+					"max", h.MaxFileSize, "size", *copyRecord.Size, "uri", copyRecord.URI)
+				// Log a warning and skip this object by continuing to the next iteration
+				continue
+			}
+
+			sourceURL, err := url.Parse(copyRecord.URI)
+			if err != nil {
+				logger.Error(err, "error parsing source URI", "SourceURI", copyRecord.URI)
+				continue
+			}
+
+			copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
 			if _, cerr := h.S3Client.CopyObject(ctx, copyInput); cerr != nil {
-				logger.Error(cerr, "error copying file")
+				logger.Error(cerr, "error copying file", "SourceURI", copyRecord.URI)
 				m.ErrorMessage = cerr.Error()
 				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
 					ItemIdentifier: record.MessageId,
@@ -108,6 +122,7 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 				break
 			}
 		}
+
 		if err := encoder.Encode(m); err != nil {
 			return response, fmt.Errorf("failed to encode message: %w", err)
 		}
@@ -127,6 +142,7 @@ func New(cfg *Config) (h *Handler, err error) {
 		DestinationURI: u,
 		LogPrefix:      cfg.LogPrefix,
 		S3Client:       cfg.S3Client,
+		MaxFileSize:    cfg.MaxFileSize,
 	}
 
 	if cfg.Logger != nil {

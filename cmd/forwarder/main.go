@@ -18,6 +18,7 @@ var env struct {
 	DestinationURI string `env:"DESTINATION_URI,required"`
 	LogPrefix      string `env:"LOG_PREFIX,default=forwarder/"`
 	Verbosity      int    `env:"VERBOSITY,default=1"`
+	MaxFileSize    int64  `env:"MAX_FILE_SIZE"`
 }
 
 var (
@@ -55,6 +56,7 @@ func realInit() error {
 	handler, err = forwarder.New(&forwarder.Config{
 		DestinationURI: env.DestinationURI,
 		LogPrefix:      env.LogPrefix,
+		MaxFileSize:    env.MaxFileSize,
 		S3Client:       s3client,
 		Logger:         &logger,
 	})

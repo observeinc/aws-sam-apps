@@ -61,7 +61,13 @@ Parameters:
     Description: >-
       A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ''
+  MaxFileSize:
+    Type: String
+    Description: Max file size for objects to process (in bytes), default is 1GB
+    Default: ''
+    AllowedPattern: '^[0-9]*$'
 Conditions:
+  IsMaxFileSizeEmpty: !Equals [ !Ref MaxFileSize, '' ]
   DisableSourceS3: !Equals
     - !Join
       - ''
@@ -152,8 +158,9 @@ Resources:
             InputPathsMap:
               bucketName: "$.detail.bucket.name"
               objectKey: "$.detail.object.key"
+              objectSize: "$.detail.object.size"  # Added object size
             InputTemplate: >-
-              {"copy": [{"uri": "s3://<bucketName>/<objectKey>"}]}
+              {"copy": [{"uri": "s3://<bucketName>/<objectKey>", "size": <objectSize>}]}
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -271,6 +278,7 @@ Resources:
         Variables:
           DESTINATION_URI: !Ref DestinationUri
           VERBOSITY: 9
+          MAX_FILE_SIZE: !If [ IsMaxFileSizeEmpty, '1073741824', !Ref MaxFileSize ]
 
 Outputs:
   Function:
