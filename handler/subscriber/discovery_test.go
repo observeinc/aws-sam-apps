@@ -114,6 +114,7 @@ func TestHandleDiscovery(t *testing.T) {
 
 			s, err := subscriber.New(&subscriber.Config{
 				CloudWatchLogsClient: client,
+				FilterName:           "test",
 			})
 			if err != nil {
 				t.Fatal(err)

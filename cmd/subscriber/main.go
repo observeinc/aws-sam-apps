@@ -16,12 +16,14 @@ import (
 )
 
 var env struct {
-	FilterName     string `env:"FILTER_NAME"`
-	FilterPattern  string `env:"FILTER_PATTERN"`
-	DestinationARN string `env:"DESTINATION_ARN"`
-	RoleARN        string `env:"ROLE_ARN"`
-	QueueURL       string `env:"QUEUE_URL,required"`
-	Verbosity      int    `env:"VERBOSITY,default=1"`
+	FilterName           string   `env:"FILTER_NAME"`
+	FilterPattern        string   `env:"FILTER_PATTERN"`
+	DestinationARN       string   `env:"DESTINATION_ARN"`
+	RoleARN              string   `env:"ROLE_ARN"`
+	LogGroupNamePatterns []string `env:"LOG_GROUP_NAME_PATTERNS"`
+	LogGroupNamePrefixes []string `env:"LOG_GROUP_NAME_PREFIXES"`
+	QueueURL             string   `env:"QUEUE_URL,required"`
+	Verbosity            int      `env:"VERBOSITY,default=1"`
 }
 
 var (
@@ -64,6 +66,8 @@ func realInit() error {
 		FilterPattern:        env.FilterPattern,
 		DestinationARN:       env.DestinationARN,
 		RoleARN:              env.RoleARN,
+		LogGroupNamePrefixes: env.LogGroupNamePrefixes,
+		LogGroupNamePatterns: env.LogGroupNamePatterns,
 		Logger:               &logger,
 		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(awsCfg),
 		Queue:                queue,
