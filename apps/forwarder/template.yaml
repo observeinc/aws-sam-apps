@@ -65,12 +65,7 @@ Parameters:
     Type: Number
     Description: Max file size for objects to process (in bytes), default is 1GB
     Default: '1073741824'
-  MaxFileSizeProvided:
-    Type: String
-    AllowedValues: [ "true", "false" ]
-    Default: "false"
 Conditions:
-  IsMaxFileSizeProvided: !Equals [ !Ref MaxFileSizeProvided, "true" ]
   DisableSourceS3: !Equals
     - !Join
       - ''
@@ -281,7 +276,7 @@ Resources:
         Variables:
           DESTINATION_URI: !Ref DestinationUri
           VERBOSITY: 9
-          MAX_FILE_SIZE: !If [IsMaxFileSizeProvided, !Ref MaxFileSize, null]
+          MAX_FILE_SIZE: !Ref MaxFileSize
 
 Outputs:
   Function:
