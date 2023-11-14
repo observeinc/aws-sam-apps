@@ -11,7 +11,7 @@ SAM_BUILD_DIR ?= .aws-sam/build
 SAM_CONFIG_FILE ?= $(shell pwd)/samconfig.yaml
 SAM_CONFIG_ENV ?= default
 
-DEBUG_TESTS ?= 0
+DEBUG ?= 0
 
 define check_var
 	@[[ -n "$($1)" ]] || (echo >&2 "The environment variable '$1' is not set." && exit 2)

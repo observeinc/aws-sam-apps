@@ -7,6 +7,10 @@ DIE() { echo "$*" 1>&2; exit 1; }
 [[ ! -z "${SOURCE}" ]] || DIE "source not set"
 [[ ! -z "${DESTINATION}" ]] || DIE "destination not set"
 
+if [ -n "${DEBUG:-}" ]; then
+    set -x
+fi
+
 cleanup() {
     rm -f "$TMPFILE"
 }
@@ -24,8 +28,8 @@ KEY=${SOURCE}/${TMPFILE}
 aws s3 cp ${TMPFILE} s3://${SOURCE}/${KEY} --content-type application/json 1>&2 || DIE "failed to copy file to source"
 
 sleep ${INIT_DELAY:-0}
-ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${KEY} | jq 'del(.LastModified)' || DIE "failed to read file from source")
+ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${KEY} | jq 'del(.LastModified, .Expiration)' || DIE "failed to read file from source")
 sleep ${COPY_DELAY:-0}
-COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${KEY} | jq 'del(.LastModified)' || DIE "failed to read file from destination")
+COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${KEY} | jq 'del(.LastModified, .Expiration)' || DIE "failed to read file from destination")
 
 [ "$ORIGINAL" = "$COPY" ] || DIE "object differs"
