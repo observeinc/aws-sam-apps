@@ -1,0 +1,9 @@
+{
+    "subscribe": {
+        "logGroups": [
+            {
+                "logGroupName": "does_not_exist"
+            }
+        ]
+    }
+}
