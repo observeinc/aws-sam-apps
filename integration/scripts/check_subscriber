@@ -25,7 +25,7 @@ check_result() {
     fi
 }
 
-echo '{"sync": {}}' > ${TMPFILE}
+echo '{"subscribe": {}}' > ${TMPFILE}
 RESULT=$(aws lambda invoke \
     --function-name ${FUNCTION_NAME} \
     --payload fileb://${TMPFILE} ${TMPFILE} \
