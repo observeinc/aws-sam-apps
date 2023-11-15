@@ -27,6 +27,14 @@ jobs:
     needs: [permission_check]
     if: needs.permission_check.outputs.can-write == 'true'
     steps:
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      env:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      with:
+        limit-access-to-actor: true
+
     - name: Install DCE CLI
       run: |
         # Download dce-cli
