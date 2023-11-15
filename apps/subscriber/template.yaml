@@ -22,8 +22,8 @@ Parameters:
   FilterName:
     Type: String
     Description: >-
-      Subscription filter name. Existing filters that have this name as a prefix will be removed.                                     |
-    Default: 'observe-logs-subscription'
+      Subscription filter name. Existing filters that have this name as a prefix will be removed.
+    Default: ''
   FilterPattern:
     Type: String
     Description: >-
@@ -53,6 +53,11 @@ Parameters:
       Comma separated list of prefixes. If not empty, the lambda function will
       only apply to log groups that start with a provided string.
     Default: ''
+  NumWorkers:
+    Type: String
+    Description: Maximum number of concurrent workers when processing log groups.
+    Default: ''
+    AllowedPattern: '^[0-9]*$'
   NameOverride:
     Type: String
     Description: >-
@@ -60,6 +65,9 @@ Parameters:
     Default: ''
 
 Conditions:
+  SetDefaultFilterName: !Equals
+    - !Ref FilterName
+    - ''
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
@@ -182,7 +190,10 @@ Resources:
             Enabled: true
       Environment:
         Variables:
-          FILTER_NAME: !Ref FilterName
+          FILTER_NAME: !If
+           - SetDefaultFilterName
+           - 'observe-logs-subscription'
+           - !Ref FilterName
           FILTER_PATTERN: !Ref FilterPattern
           DESTINATION_ARN: !Ref DestinationArn
           LOG_GROUP_NAME_PREFIXES: !Join
@@ -194,6 +205,7 @@ Resources:
           ROLE_ARN: !Ref RoleArn
           QUEUE_URL: !Ref Queue
           VERBOSITY: 9
+          NUM_WORKERS: !Ref NumWorkers
 Outputs:
   Function:
     Description: "Lambda Function ARN"

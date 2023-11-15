@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
@@ -31,8 +32,9 @@ type Queue interface {
 type Handler struct {
 	handler.Mux
 
-	Queue  Queue
-	Client CloudWatchLogsClient
+	Queue      Queue
+	Client     CloudWatchLogsClient
+	NumWorkers int
 
 	subscriptionFilter types.SubscriptionFilter
 	logGroupNameFilter FilterFunc
@@ -61,8 +63,9 @@ func New(cfg *Config) (*Handler, error) {
 	}
 
 	h := &Handler{
-		Client: cfg.CloudWatchLogsClient,
-		Queue:  cfg.Queue,
+		Client:     cfg.CloudWatchLogsClient,
+		Queue:      cfg.Queue,
+		NumWorkers: cfg.NumWorkers,
 		subscriptionFilter: types.SubscriptionFilter{
 			FilterName:     aws.String(cfg.FilterName),
 			FilterPattern:  aws.String(cfg.FilterPattern),
@@ -70,6 +73,10 @@ func New(cfg *Config) (*Handler, error) {
 			RoleArn:        aws.String(cfg.RoleARN),
 		},
 		logGroupNameFilter: cfg.LogGroupFilter(),
+	}
+
+	if h.NumWorkers <= 0 {
+		h.NumWorkers = runtime.NumCPU()
 	}
 
 	if cfg.Logger != nil {

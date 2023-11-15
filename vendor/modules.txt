@@ -157,3 +157,6 @@ github.com/jmespath/go-jmespath
 github.com/sethvargo/go-envconfig
 # github.com/stretchr/testify v1.8.4
 ## explicit; go 1.20
+# golang.org/x/sync v0.5.0
+## explicit; go 1.18
+golang.org/x/sync/errgroup
