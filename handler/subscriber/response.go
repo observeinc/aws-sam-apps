@@ -1,7 +1,6 @@
 package subscriber
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync/atomic"
 )
@@ -19,11 +18,8 @@ type Int64 struct {
 
 // MarshalJSON marshals as int.
 func (i *Int64) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(i.Load())
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal atomic int64: %w", err)
-	}
-	return data, nil
+	v := i.Load()
+	return []byte(fmt.Sprintf("%d", v)), nil
 }
 
 type DiscoveryStats struct {

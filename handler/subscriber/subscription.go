@@ -29,13 +29,19 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 	logger.V(6).Info("describing subscription filters")
 	stats.Processed.Add(1)
 
+	if h.logGroupNameFilter != nil && !h.logGroupNameFilter(logGroup.LogGroupName) {
+		logger.V(6).Info("log group does not match filter")
+		stats.Skipped.Add(1)
+		return nil
+	}
+
 	output, err := h.Client.DescribeSubscriptionFilters(ctx, &cloudwatchlogs.DescribeSubscriptionFiltersInput{
 		LogGroupName: &logGroup.LogGroupName,
 	})
 	if err != nil {
 		var exc *types.ResourceNotFoundException
 		if errors.As(err, &exc) {
-			logger.Info("skipping log group")
+			logger.Info("log group does not exist")
 			stats.Skipped.Add(1)
 			return nil
 		}

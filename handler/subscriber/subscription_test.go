@@ -27,7 +27,10 @@ func TestHandleSubscribe(t *testing.T) {
 			{LogGroupName: aws.String("/aws/hola")},
 		},
 		SubscriptionFilters: []types.SubscriptionFilter{
-			{LogGroupName: aws.String("/aws/hello")},
+			{
+				FilterName:   aws.String("test"),
+				LogGroupName: aws.String("/aws/hello"),
+			},
 		},
 	}
 
@@ -50,14 +53,15 @@ func TestHandleSubscribe(t *testing.T) {
 			SubscriptionRequest: &subscriber.SubscriptionRequest{
 				LogGroups: []*subscriber.LogGroup{
 					{LogGroupName: "/aws/hello"},
+					{LogGroupName: "/aws/ello"},
 				},
 			},
 			ExpectJSONResponse: `{
 				"subscription":	{
 					"deleted": 1,
 					"updated": 0,
-					"skipped": 0,
-					"processed": 1
+					"skipped": 1,
+					"processed": 2
 				}
 			}`,
 		},
@@ -70,6 +74,8 @@ func TestHandleSubscribe(t *testing.T) {
 
 			s, err := subscriber.New(&subscriber.Config{
 				CloudWatchLogsClient: client,
+				FilterName:           "test",
+				LogGroupNamePrefixes: []string{"/aws/h"},
 			})
 			if err != nil {
 				t.Fatal(err)

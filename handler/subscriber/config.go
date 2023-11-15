@@ -3,6 +3,7 @@ package subscriber
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
@@ -11,9 +12,12 @@ import (
 
 var (
 	ErrMissingCloudWatchLogsClient = errors.New("missing CloudWatch Logs client")
-	ErrMissingFilterName           = errors.New("filter name must be provided if destination ARN is set")
+	ErrMissingFilterName           = errors.New("filter name must be provided")
 	ErrMissingDestinationARN       = errors.New("destination ARN must be provided if role ARN is set")
 	ErrInvalidARN                  = errors.New("invalid ARN")
+	ErrInvalidLogGroupName         = errors.New("invalid log group name substring")
+
+	logGroupNameRe = regexp.MustCompile(`^[a-zA-Z0-9_\.\-\/]+$`)
 )
 
 type Config struct {
@@ -34,6 +38,13 @@ type Config struct {
 	// RoleARN for subscription filter
 	RoleARN string
 
+	// LogGroupNamePrefixes contains a list of prefixes which restricts the log
+	// groups we operate on.
+	LogGroupNamePrefixes []string
+	// LogGroupNamePatterns contains a list of substrings which restricts the log
+	// groups we operate on.
+	LogGroupNamePatterns []string
+
 	Logger *logr.Logger
 }
 
@@ -44,7 +55,7 @@ func (c *Config) Validate() error {
 		errs = append(errs, ErrMissingCloudWatchLogsClient)
 	}
 
-	if c.FilterName == "" && c.DestinationARN != "" {
+	if c.FilterName == "" {
 		errs = append(errs, ErrMissingFilterName)
 	}
 
@@ -65,5 +76,33 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	for _, s := range append(c.LogGroupNamePatterns, c.LogGroupNamePrefixes...) {
+		if !logGroupNameRe.MatchString(s) {
+			errs = append(errs, fmt.Errorf("%w: %q", ErrInvalidLogGroupName, s))
+		}
+	}
+
 	return errors.Join(errs...)
+}
+
+func (c *Config) LogGroupFilter() FilterFunc {
+	var exprs []string
+
+	exprs = append(exprs, c.LogGroupNamePatterns...)
+
+	for _, prefix := range c.LogGroupNamePrefixes {
+		exprs = append(exprs, fmt.Sprintf("^%s.*", prefix))
+	}
+
+	var re *regexp.Regexp
+	if len(exprs) != 0 {
+		re = regexp.MustCompile(strings.Join(exprs, "|"))
+	}
+
+	return func(logGroupName string) bool {
+		if re != nil {
+			return re.MatchString(logGroupName)
+		}
+		return true
+	}
 }

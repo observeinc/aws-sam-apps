@@ -35,7 +35,10 @@ type Handler struct {
 	Client CloudWatchLogsClient
 
 	subscriptionFilter types.SubscriptionFilter
+	logGroupNameFilter FilterFunc
 }
+
+type FilterFunc func(string) bool
 
 func (h *Handler) HandleRequest(ctx context.Context, req *Request) (*Response, error) {
 	if err := req.Validate(); err != nil {
@@ -66,6 +69,7 @@ func New(cfg *Config) (*Handler, error) {
 			DestinationArn: aws.String(cfg.DestinationARN),
 			RoleArn:        aws.String(cfg.RoleARN),
 		},
+		logGroupNameFilter: cfg.LogGroupFilter(),
 	}
 
 	if cfg.Logger != nil {
