@@ -1,16 +1,39 @@
 package subscriber
 
+import (
+	"encoding/json"
+	"fmt"
+	"sync/atomic"
+)
+
 // Response from our handler.
 type Response struct {
-	*SubscriptionResponse `json:"subscription"`
-	*DiscoveryResponse    `json:"discovery"`
+	Discovery    *DiscoveryStats    `json:"discovery,omitempty"`
+	Subscription *SubscriptionStats `json:"subscription,omitempty"`
 }
 
-type DiscoveryResponse struct {
-	// RequestCount tracks number of API requests
-	RequestCount int
-	// LogGroupCount tracks count of log groups retrieved from API
-	LogGroupCount int
+// Int64 wraps around atomic.Int64 and provides marshalling method.
+type Int64 struct {
+	atomic.Int64
 }
 
-type SubscriptionResponse struct{}
+// MarshalJSON marshals as int.
+func (i *Int64) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(i.Load())
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal atomic int64: %w", err)
+	}
+	return data, nil
+}
+
+type DiscoveryStats struct {
+	LogGroupCount Int64 `json:"logGroupCount,omitempty"`
+	RequestCount  Int64 `json:"requestCount,omitempty"`
+}
+
+type SubscriptionStats struct {
+	Deleted   Int64 `json:"deleted,omitempty"`
+	Updated   Int64 `json:"updated,omitempty"`
+	Skipped   Int64 `json:"skipped,omitempty"`
+	Processed Int64 `json:"processed,omitempty"`
+}
