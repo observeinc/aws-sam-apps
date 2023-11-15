@@ -188,6 +188,9 @@ Resources:
 
 Outputs:
   Bucket:
+    Description: "S3 Bucket Name"
+    Value: !Ref Bucket
+  BucketARN:
     Description: "S3 Bucket ARN"
     Value: !GetAtt Bucket.Arn
   Topic:
