@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,144 +16,6 @@ import (
 	"github.com/observeinc/aws-sam-testing/handler/handlertest"
 	"github.com/observeinc/aws-sam-testing/handler/subscriber"
 )
-
-type MockQueue struct {
-	values []any
-	sync.Mutex
-}
-
-func (m *MockQueue) Put(_ context.Context, vs ...any) error {
-	m.Lock()
-	defer m.Unlock()
-	m.values = append(m.values, vs...)
-	return nil
-}
-
-func TestHandleDiscovery(t *testing.T) {
-	t.Parallel()
-
-	client := &handlertest.CloudWatchLogsClient{
-		LogGroups: []types.LogGroup{
-			{LogGroupName: aws.String("/aws/hello")},
-			{LogGroupName: aws.String("/aws/ello")},
-			{LogGroupName: aws.String("/aws/hola")},
-		},
-		SubscriptionFilters: []types.SubscriptionFilter{
-			{LogGroupName: aws.String("/aws/hello")},
-		},
-	}
-
-	testcases := []struct {
-		DiscoveryRequest   *subscriber.DiscoveryRequest
-		ExpectJSONResponse string
-	}{
-		{
-			DiscoveryRequest: &subscriber.DiscoveryRequest{},
-			/* matches:
-			- /aws/hello
-			- /aws/ello
-			- /aws/hola
-			*/
-			ExpectJSONResponse: `{
-				"discovery": {
-					"logGroupCount": 3,
-					"requestCount": 1
-				}
-			}`,
-		},
-		{
-			DiscoveryRequest: &subscriber.DiscoveryRequest{
-				LogGroupNamePrefixes: []*string{
-					aws.String("/aws/he"),
-					aws.String("/aws/ho"),
-				},
-			},
-			/* matches:
-			- /aws/hello
-			- /aws/hola
-			*/
-			ExpectJSONResponse: `{
-				"discovery": {
-					"logGroupCount": 2,
-					"requestCount": 2
-				}
-			}`,
-		},
-		{
-			DiscoveryRequest: &subscriber.DiscoveryRequest{
-				LogGroupNamePatterns: []*string{
-					aws.String("ello"),
-					aws.String("foo"),
-					aws.String("bar"),
-				},
-			},
-			/* matches:
-			- /aws/hello
-			- /aws/ello
-			*/
-			ExpectJSONResponse: `{
-				"discovery": {
-					"logGroupCount": 2,
-					"requestCount": 3
-				}
-			}`,
-		},
-		{
-			DiscoveryRequest: &subscriber.DiscoveryRequest{
-				LogGroupNamePatterns: []*string{
-					aws.String("ello"),
-				},
-				LogGroupNamePrefixes: []*string{
-					aws.String("/aws/he"),
-				},
-			},
-			/* matches:
-			- /aws/hello
-			- /aws/ello
-			- /aws/hello
-			*/
-			ExpectJSONResponse: `{
-				"discovery": {
-					"logGroupCount": 3,
-					"requestCount": 2
-				}
-			}`,
-		},
-	}
-
-	for i, tt := range testcases {
-		tt := tt
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			t.Parallel()
-
-			s, err := subscriber.New(&subscriber.Config{
-				CloudWatchLogsClient: client,
-				Queue:                &MockQueue{},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			resp, err := s.HandleDiscoveryRequest(context.Background(), tt.DiscoveryRequest)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			var expect bytes.Buffer
-			if err := json.Compact(&expect, []byte(tt.ExpectJSONResponse)); err != nil {
-				t.Fatal(err)
-			}
-			got, err := json.Marshal(resp)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := cmp.Diff(expect.Bytes(), got); diff != "" {
-				t.Error(diff)
-			}
-		})
-	}
-}
 
 func TestHandleSubscribe(t *testing.T) {
 	t.Parallel()
@@ -209,7 +70,6 @@ func TestHandleSubscribe(t *testing.T) {
 
 			s, err := subscriber.New(&subscriber.Config{
 				CloudWatchLogsClient: client,
-				Queue:                &MockQueue{},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -331,7 +191,6 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 			s, err := subscriber.New(
 				&subscriber.Config{
 					CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
-					Queue:                &MockQueue{},
 					FilterName:           aws.ToString(tt.Configure.FilterName),
 					DestinationARN:       aws.ToString(tt.Configure.DestinationArn),
 					RoleARN:              aws.ToString(tt.Configure.RoleArn),

@@ -11,7 +11,6 @@ import (
 
 var (
 	ErrMissingCloudWatchLogsClient = errors.New("missing CloudWatch Logs client")
-	ErrMissingQueue                = errors.New("missing queue")
 	ErrMissingFilterName           = errors.New("filter name must be provided if destination ARN is set")
 	ErrMissingDestinationARN       = errors.New("destination ARN must be provided if role ARN is set")
 	ErrInvalidARN                  = errors.New("invalid ARN")
@@ -43,10 +42,6 @@ func (c *Config) Validate() error {
 
 	if c.CloudWatchLogsClient == nil {
 		errs = append(errs, ErrMissingCloudWatchLogsClient)
-	}
-
-	if c.Queue == nil {
-		errs = append(errs, ErrMissingQueue)
 	}
 
 	if c.FilterName == "" && c.DestinationARN != "" {
