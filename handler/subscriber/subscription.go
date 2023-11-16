@@ -10,16 +10,31 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 )
 
 func (h *Handler) HandleSubscriptionRequest(ctx context.Context, subReq *SubscriptionRequest) (*Response, error) {
 	var stats SubscriptionStats
 
-	for _, logGroup := range subReq.LogGroups {
-		if err := h.SubscribeLogGroup(ctx, logGroup, &stats); err != nil {
-			return nil, fmt.Errorf("failed to subscribe log group: %w", err)
-		}
+	g, ctx := errgroup.WithContext(ctx)
+	if h.NumWorkers > 0 {
+		g.SetLimit(h.NumWorkers)
 	}
+
+	for _, logGroup := range subReq.LogGroups {
+		logGroup := logGroup
+		g.Go(func() error {
+			if err := h.SubscribeLogGroup(ctx, logGroup, &stats); err != nil {
+				return fmt.Errorf("failed to subscribe log group %q: %w", logGroup.LogGroupName, err)
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, fmt.Errorf("failed to subscribe log groups: %w", err)
+	}
+
 	return &Response{Subscription: &stats}, nil
 }
 

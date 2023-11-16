@@ -45,6 +45,9 @@ type Config struct {
 	// groups we operate on.
 	LogGroupNamePatterns []string
 
+	// Number of concurrent workers. Defaults to number of CPUs.
+	NumWorkers int
+
 	Logger *logr.Logger
 }
 

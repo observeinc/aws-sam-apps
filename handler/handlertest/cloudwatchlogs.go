@@ -16,9 +16,18 @@ type CloudWatchLogsClient struct {
 	// list of log groups and subscription filters to use
 	LogGroups           []types.LogGroup
 	SubscriptionFilters []types.SubscriptionFilter
+
+	// optionally override functions
+	DescribeLogGroupsFunc           func(context.Context, *cloudwatchlogs.DescribeLogGroupsInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error)
+	DescribeSubscriptionFiltersFunc func(context.Context, *cloudwatchlogs.DescribeSubscriptionFiltersInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeSubscriptionFiltersOutput, error)
+	PutSubscriptionFilterFunc       func(context.Context, *cloudwatchlogs.PutSubscriptionFilterInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.PutSubscriptionFilterOutput, error)
+	DeleteSubscriptionFilterFunc    func(context.Context, *cloudwatchlogs.DeleteSubscriptionFilterInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DeleteSubscriptionFilterOutput, error)
 }
 
-func (c *CloudWatchLogsClient) DescribeLogGroups(_ context.Context, input *cloudwatchlogs.DescribeLogGroupsInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
+func (c *CloudWatchLogsClient) DescribeLogGroups(ctx context.Context, input *cloudwatchlogs.DescribeLogGroupsInput, opts ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
+	if c.DescribeLogGroupsFunc != nil {
+		return c.DescribeLogGroupsFunc(ctx, input, opts...)
+	}
 	var output cloudwatchlogs.DescribeLogGroupsOutput
 	nextToken := input.NextToken
 
@@ -44,7 +53,11 @@ logGroups:
 	return &output, nil
 }
 
-func (c *CloudWatchLogsClient) DescribeSubscriptionFilters(_ context.Context, input *cloudwatchlogs.DescribeSubscriptionFiltersInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeSubscriptionFiltersOutput, error) {
+func (c *CloudWatchLogsClient) DescribeSubscriptionFilters(ctx context.Context, input *cloudwatchlogs.DescribeSubscriptionFiltersInput, opts ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeSubscriptionFiltersOutput, error) {
+	if c.DescribeSubscriptionFiltersFunc != nil {
+		return c.DescribeSubscriptionFiltersFunc(ctx, input, opts...)
+	}
+
 	if input == nil || input.LogGroupName == nil {
 		return nil, errNoLogGroup
 	}
@@ -72,10 +85,16 @@ func (c *CloudWatchLogsClient) DescribeSubscriptionFilters(_ context.Context, in
 	return nil, &types.ResourceNotFoundException{Message: aws.String("log group not found")}
 }
 
-func (c *CloudWatchLogsClient) PutSubscriptionFilter(_ context.Context, _ *cloudwatchlogs.PutSubscriptionFilterInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.PutSubscriptionFilterOutput, error) {
+func (c *CloudWatchLogsClient) PutSubscriptionFilter(ctx context.Context, input *cloudwatchlogs.PutSubscriptionFilterInput, opts ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.PutSubscriptionFilterOutput, error) {
+	if c.PutSubscriptionFilterFunc != nil {
+		return c.PutSubscriptionFilterFunc(ctx, input, opts...)
+	}
 	return nil, nil
 }
 
-func (c *CloudWatchLogsClient) DeleteSubscriptionFilter(_ context.Context, _ *cloudwatchlogs.DeleteSubscriptionFilterInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DeleteSubscriptionFilterOutput, error) {
+func (c *CloudWatchLogsClient) DeleteSubscriptionFilter(ctx context.Context, input *cloudwatchlogs.DeleteSubscriptionFilterInput, opts ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DeleteSubscriptionFilterOutput, error) {
+	if c.DeleteSubscriptionFilterFunc != nil {
+		return c.DeleteSubscriptionFilterFunc(ctx, input, opts...)
+	}
 	return nil, nil
 }
