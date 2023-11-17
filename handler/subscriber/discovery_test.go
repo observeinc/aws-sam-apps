@@ -43,7 +43,13 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 3,
-					"requestCount": 1
+					"requestCount": 1,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 3
+					}
 				}
 			}`,
 		},
@@ -61,7 +67,13 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 2,
-					"requestCount": 2
+					"requestCount": 2,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 2
+					}
 				}
 			}`,
 		},
@@ -80,7 +92,13 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 2,
-					"requestCount": 3
+					"requestCount": 3,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 2
+					}
 				}
 			}`,
 		},
@@ -101,7 +119,13 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 3,
-					"requestCount": 2
+					"requestCount": 2,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 3
+					}
 				}
 			}`,
 		},
