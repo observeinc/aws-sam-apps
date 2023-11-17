@@ -90,7 +90,22 @@ aws logs describe-log-groups --log-group-name-pattern prod
 aws logs describe-log-groups --log-group-name-prefix /aws/lambda
 ```
 
-If no patterns or prefixes are provided, the lambda function will list all log groups.
+To subscribe to all log groups, a wildcard can be provided to either `logGroupNamePatterns` or `logGroupNamePrefixes`. The following input: 
+
+```json
+{
+    "discover": {
+        "logGroupNamePatterns": [ "*" ]
+    }
+}
+```
+
+Will trigger a paginated request equivalent to the `awscli` command:
+
+```shell
+aws logs describe-log-groups
+```
+
 
 ### Response format
 

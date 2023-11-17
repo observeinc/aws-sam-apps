@@ -57,6 +57,7 @@ func TestConfig(t *testing.T) {
 			},
 			ExpectError: subscriber.ErrInvalidLogGroupName,
 		},
+
 		{
 			Config: subscriber.Config{
 				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
@@ -69,6 +70,7 @@ func TestConfig(t *testing.T) {
 			Config: subscriber.Config{
 				FilterName:           "ok",
 				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				LogGroupNamePrefixes: []string{"*"},
 			},
 		},
 	}
@@ -113,6 +115,17 @@ func TestLogFilter(t *testing.T) {
 				"staging-1":  true,
 				"staging-2":  true,
 				"dev-local":  false,
+			},
+		},
+		{
+			Config: subscriber.Config{
+				LogGroupNamePatterns: []string{"prod", "*"},
+				DestinationARN:       "hello",
+			},
+			Matches: map[string]bool{
+				"prod-1":  true,
+				"eu-prod": true,
+				"staging": true,
 			},
 		},
 	}

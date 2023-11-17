@@ -20,6 +20,7 @@ AWS_REGION=$(echo "$FUNCTION_ARN" | cut -d: -f4)
 check_result() {
     ERR=$(jq '.StatusCode != 200 or has("FunctionError")' <<<"$1")
     if [[ "$ERR" == true ]]; then
+        cat ${TMPFILE}
         echo "$1"
         return 1
     fi
