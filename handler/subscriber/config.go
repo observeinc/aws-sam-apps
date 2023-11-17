@@ -80,7 +80,7 @@ func (c *Config) Validate() error {
 	}
 
 	for _, s := range append(c.LogGroupNamePatterns, c.LogGroupNamePrefixes...) {
-		if !logGroupNameRe.MatchString(s) {
+		if !logGroupNameRe.MatchString(s) && s != "*" {
 			errs = append(errs, fmt.Errorf("%w: %q", ErrInvalidLogGroupName, s))
 		}
 	}
@@ -89,23 +89,33 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) LogGroupFilter() FilterFunc {
-	var exprs []string
-
-	exprs = append(exprs, c.LogGroupNamePatterns...)
-
-	for _, prefix := range c.LogGroupNamePrefixes {
-		exprs = append(exprs, fmt.Sprintf("^%s.*", prefix))
-	}
-
 	var re *regexp.Regexp
-	if len(exprs) != 0 {
-		re = regexp.MustCompile(strings.Join(exprs, "|"))
-	}
-
-	return func(logGroupName string) bool {
+	filterFunc := func(logGroupName string) bool {
 		if re != nil {
 			return re.MatchString(logGroupName)
 		}
 		return true
 	}
+
+	var exprs []string
+
+	for _, pattern := range c.LogGroupNamePatterns {
+		if pattern == "*" {
+			return filterFunc
+		}
+		exprs = append(exprs, pattern)
+	}
+
+	for _, prefix := range c.LogGroupNamePrefixes {
+		if prefix == "*" {
+			return filterFunc
+		}
+		exprs = append(exprs, fmt.Sprintf("^%s.*", prefix))
+	}
+
+	if len(exprs) != 0 {
+		re = regexp.MustCompile(strings.Join(exprs, "|"))
+	}
+
+	return filterFunc
 }
