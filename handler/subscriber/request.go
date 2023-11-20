@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 )
 
@@ -90,6 +91,13 @@ func (d *DiscoveryRequest) ToDescribeLogInputs() (inputs []*cloudwatchlogs.Descr
 	}
 
 	for _, pattern := range d.LogGroupNamePatterns {
+		if aws.ToString(pattern) == "*" {
+			return []*cloudwatchlogs.DescribeLogGroupsInput{
+				{
+					Limit: d.Limit,
+				},
+			}
+		}
 		inputs = append(inputs, &cloudwatchlogs.DescribeLogGroupsInput{
 			LogGroupNamePattern: pattern,
 			Limit:               d.Limit,
@@ -97,18 +105,18 @@ func (d *DiscoveryRequest) ToDescribeLogInputs() (inputs []*cloudwatchlogs.Descr
 	}
 
 	for _, prefix := range d.LogGroupNamePrefixes {
+		if aws.ToString(prefix) == "*" {
+			return []*cloudwatchlogs.DescribeLogGroupsInput{
+				{
+					Limit: d.Limit,
+				},
+			}
+		}
 		inputs = append(inputs, &cloudwatchlogs.DescribeLogGroupsInput{
 			LogGroupNamePrefix: prefix,
 			Limit:              d.Limit,
 		})
 	}
 
-	if len(inputs) == 0 {
-		// We should list all since we were provided with no log groups
-		// or filters.
-		inputs = append(inputs, &cloudwatchlogs.DescribeLogGroupsInput{
-			Limit: d.Limit,
-		})
-	}
 	return inputs
 }

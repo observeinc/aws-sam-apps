@@ -43,15 +43,17 @@ Parameters:
   LogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
-      Comma separated list of patterns. If not empty, the lambda function will
-      only apply to log groups that have names that match one of the provided
-      strings based on a case-sensitive substring search.
-    Default: ''
+      Comma separated list of patterns. 
+      We will only subscribe to log groups that have names matching one of the
+      provided strings based on strings based on a case-sensitive substring
+      search. To subscribe to all log groups, use the wildcard operator *. 
+    Default: '*'
   LogGroupNamePrefixes:
     Type: CommaDelimitedList
     Description: >-
-      Comma separated list of prefixes. If not empty, the lambda function will
-      only apply to log groups that start with a provided string.
+      Comma separated list of prefixes. The lambda function will only apply to
+      log groups that start with a provided string. To subscribe to all log
+      groups, use the wildcard operator *.
     Default: ''
   NumWorkers:
     Type: String
