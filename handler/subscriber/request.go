@@ -46,6 +46,20 @@ type SubscriptionRequest struct {
 	LogGroups []*LogGroup `json:"logGroups,omitempty"`
 }
 
+func NewSubscriptionRequestFromLogGroupsOutput(output *cloudwatchlogs.DescribeLogGroupsOutput) *SubscriptionRequest {
+	var s SubscriptionRequest
+	if output != nil {
+		for _, logGroup := range output.LogGroups {
+			if logGroup.LogGroupName != nil {
+				s.LogGroups = append(s.LogGroups, &LogGroup{
+					LogGroupName: *logGroup.LogGroupName,
+				})
+			}
+		}
+	}
+	return &s
+}
+
 // DiscoveryRequest generates a list of log groups to subscribe.
 type DiscoveryRequest struct {
 	// optional filters
@@ -54,6 +68,10 @@ type DiscoveryRequest struct {
 
 	// Limit when pagination list endpoint
 	Limit *int32 `json:"limit,omitempty"`
+
+	// Inline executes subscriptions inline with request
+	// If not set, we default to however lambda is configured.
+	Inline *bool `json:"inline,omitempty"`
 }
 
 // LogGroup represents the minimal viable info we need to be able to subscribe
