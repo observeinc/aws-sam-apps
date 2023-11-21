@@ -29,7 +29,7 @@ If neither `LOG_GROUP_NAME_PATTERNS` or `LOG_GROUP_NAME_PREFIXES` is provided, t
 
 ## Subscription request
 
-You can subscribe a set of log groups by invoking the lambda function via a subscription request, e.g:
+You can subscribe an explicit set of log groups by invoking the lambda function via a subscription request, e.g:
 
 ```
 {
@@ -69,3 +69,88 @@ The counters reflect how the log groups were processed:
 | `skipped`   | The number of log groups that were ignored. Either the log group no longer exists, or the log group name does not match the provided filters in `LOG_GROUP_NAME_PATTERNS` or `LOG_GROUP_NAME_PREFIXES`. |
 | `updated`   | The number of subscription filters which were updated. This maps to the total number of calls to the `logs:PutSubscriptionFilter` endpoint.                                                             |
 | `deleted`   | The number of subscription filters which were deleted. This maps to the total number of calls to the `logs:DeleteSubscriptionFilter` endpoint.                                                          |
+
+## Discovery request
+
+You can subscribe to log groups matching a set of patterns or prefixes by sending a discovery request. The following request will ask the lambda function to list all log groups containing the term `prod` or prefixed by the term `/aws/lambda`:
+
+```json
+{
+    "discover": {
+        "logGroupNamePatterns": [ "prod" ],
+        "logGroupNamePrefixes": [ "/aws/lambda" ]
+    }
+}
+```
+
+The lambda function will issue a `logs:DescribeLogGroups` request for each provided pattern or prefix. The equivalent `awscli` commands for the above example request would be:
+
+```
+aws logs describe-log-groups --log-group-name-pattern prod
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda
+```
+
+To subscribe to all log groups, a wildcard can be provided to either `logGroupNamePatterns` or `logGroupNamePrefixes`. The following input: 
+
+```json
+{
+    "discover": {
+        "logGroupNamePatterns": [ "*" ]
+    }
+}
+```
+
+Will trigger a paginated request equivalent to the `awscli` command:
+
+```shell
+aws logs describe-log-groups
+```
+
+
+### Response format
+
+The function will respond with stats associated to the listing of log groups:
+
+```
+{
+    "discovery": {
+        "logGroupCount": 3,
+        "requestCount": 2,
+    }
+}
+```
+
+| Counter         | Description                                         |
+|-----------------|-----------------------------------------------------|
+| `logGroupCount` | The total number of log groups retrieved.       |
+| `requestCount`  | The number of requests to the AWS API.          |
+
+
+### Inlining subscriptions
+
+By omission, if you provide an SQS queue the lambda function will use it to fan out subscription requests across multiple lambda invocations. If you instead wish to inline subscription to be performed in the same invocation as a discovery request, you can provide the `inline` option in your request: 
+
+```json
+{
+    "discover": {
+        "inline": true
+    }
+}
+```
+
+The response for a successful invocation will embed the corresponding subscription stats:
+
+```json
+{
+    "discovery": {
+        "logGroupCount": 3,
+        "requestCount": 2,
+        "subscription": {
+            "deleted": 0,
+            "updated": 0,
+            "skipped": 0,
+            "processed": 3
+        }
+    }
+}
+```

@@ -42,13 +42,19 @@ go-test:
 	go test -v -race ./...
 
 .PHONY: integration-test
-integration-test: sam-package-all
+integration-test:
 	cd integration && terraform init && \
 	if [ "$(DEBUG)" = "1" ]; then \
 		CHECK_DEBUG_FILE=debug.sh terraform test $(TEST_ARGS); \
 	else \
 		terraform test $(TEST_ARGS); \
 	fi
+
+## debug: Echo the sam-package command instead of running it
+debug:
+	cd integration && terraform init && \
+	@echo terraform test $(TEST_ARGS)
+
 
 ## sam-validate: validate cloudformation templates
 sam-validate:

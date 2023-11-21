@@ -1,0 +1,6 @@
+{
+    "discover": {
+        "limit": 5,
+        "inline": true
+    }
+}

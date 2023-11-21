@@ -34,7 +34,9 @@ func TestHandleDiscovery(t *testing.T) {
 		ExpectJSONResponse string
 	}{
 		{
-			DiscoveryRequest: &subscriber.DiscoveryRequest{},
+			DiscoveryRequest: &subscriber.DiscoveryRequest{
+				LogGroupNamePatterns: []*string{aws.String("*")},
+			},
 			/* matches:
 			- /aws/hello
 			- /aws/ello
@@ -43,7 +45,30 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 3,
-					"requestCount": 1
+					"requestCount": 1,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 3
+					}
+				}
+			}`,
+		},
+		{
+			DiscoveryRequest: &subscriber.DiscoveryRequest{},
+			/* matches nothing
+			 */
+			ExpectJSONResponse: `{
+				"discovery": {
+					"logGroupCount": 0,
+					"requestCount": 0,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 0
+					}
 				}
 			}`,
 		},
@@ -61,7 +86,13 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 2,
-					"requestCount": 2
+					"requestCount": 2,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 2
+					}
 				}
 			}`,
 		},
@@ -80,7 +111,13 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 2,
-					"requestCount": 3
+					"requestCount": 3,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 2
+					}
 				}
 			}`,
 		},
@@ -101,7 +138,13 @@ func TestHandleDiscovery(t *testing.T) {
 			ExpectJSONResponse: `{
 				"discovery": {
 					"logGroupCount": 3,
-					"requestCount": 2
+					"requestCount": 2,
+					"subscription": {
+						"deleted": 0,
+						"updated": 0,
+						"skipped": 0,
+						"processed": 3
+					}
 				}
 			}`,
 		},
