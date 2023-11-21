@@ -5,6 +5,8 @@ The subscriber stack subscribes CloudWatch Log Groups to a supported destination
 - subscription requests contain a list of log groups which we wish to subscribe to our destination.
 - discovery requests contain a list of filters which are used to generate subscription requests.
 
+Additionally, the stack provides a method for automatically triggering subscription through Eventbridge rules.
+
 ## Configuration
 
 The subscriber lambda is responsible for managing subscription filters for a set of log groups.
@@ -15,7 +17,7 @@ The subscription filter will be configured according the following environment v
 | `FILTER_NAME`        | **Required**. Subscription filter name. Existing filters that have this name as a prefix will be removed.                                     |
 | `FILTER_PATTERN`     | Subscription filter pattern. Refer to [AWS documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html). |
 | `DESTINATION_ARN`    | Destination ARN. If empty, any matching subscription filter named `FILTER_NAME` will be removed.                                              |
-| `ROLE_ARN`           | Role ARN. Can only be set if `DESTINATION_ARN` is also set                                                                                    |
+| `ROLE_ARN`           | Role ARN. Can only be set if `DESTINATION_ARN` is also set.                                                                                   |
 
 Additionally, the set of log groups the lambda is applicable to is controlled through the following variables:
 
@@ -154,3 +156,14 @@ The response for a successful invocation will embed the corresponding subscripti
     }
 }
 ```
+
+## Automatic subscription through Eventbridge rules
+
+The stack optionally installs eventbridge rules which automatically subscribe log groups the the configured destination. To enable this feature, you must set the `DiscoveryRate` parameter to a valid [AWS EventBridge rate expression](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rate-expressions.html) (e.g. `1 hour`).
+
+If this parameter is set, two EventBridge rules are installed:
+
+- a discovery request that will be fire at the desired rate,
+- a subscription request will be fired on log group creation. This rule will only fire if CloudTrail is configured within the account and region our subscriber is running in.
+
+Both rules will send requests to the SQS queue, which in turn are consumed by the subscriber lambda.
