@@ -10,9 +10,32 @@ env:
   S3_BUCKET_PREFIX: observeinc
 
 jobs:
+  permission_check:
+    runs-on: ubuntu-latest
+    outputs:
+      can-write: ${{ steps.check.outputs.can-write }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    steps:
+    - id: check
+      run: |
+        # If the AWS_ACCESS_KEY_ID secret is MIA we can't run tests
+        if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
+            echo "can-write=false" >> $GITHUB_OUTPUT
+        else
+            echo "can-write=true" >> $GITHUB_OUTPUT
+        fi
+
+  tests:
+    needs: permission_check
+    uses: ./.github/workflows/tests-integration.yaml
+    if: needs.permission_check.outputs.can-write == 'true'
+    secrets: inherit
+
   fetch-regions:
     runs-on: ubuntu-latest
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    needs: permission_check
+    if: needs.permission_check.outputs.can-write == 'true'
     permissions:
       id-token: write
     outputs:
@@ -39,8 +62,11 @@ jobs:
       run: echo "matrix=${regions_json}" >> "$GITHUB_OUTPUT"
 
   github-release:
+    needs: [tests, permission_check]
     runs-on: ubuntu-latest
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: >
+      (needs.permission_check.outputs.can-write == 'true' && github.event_name == 'push') || 
+      (github.event_name == 'workflow_dispatch' && needs.tests.result == 'success')
     outputs:
       version: ${{ steps.release-version.outputs.VERSION }}
     steps:
@@ -73,7 +99,7 @@ jobs:
         VERSION: ${{ (steps.prerelease.outputs.release-version != '') && steps.prerelease.outputs.release-version || steps.fullrelease.outputs.release-version }}
       
   aws-release:
-    needs: [fetch-regions, github-release]
+    needs: [fetch-regions, github-release, tests]
     runs-on: ubuntu-latest
     if: |
       github.actor != 'dependabot[bot]' &&

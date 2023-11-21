@@ -1,10 +1,14 @@
 name: Run IAC Integration Tests
 
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
+  # release.yaml runs the tests on commits to main
   pull_request:
+  workflow_dispatch:
+  workflow_call:
+
 jobs:
   permission_check:
     runs-on: ubuntu-latest
