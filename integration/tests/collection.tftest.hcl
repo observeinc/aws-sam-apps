@@ -9,8 +9,9 @@ run "install_collection" {
     name        = "collection-stack-${run.setup.id}"
     app         = "collection"
     parameters  = {
-      DataAccessPointArn = run.setup.access_point.arn
-      DestinationUri     = "s3://${run.setup.access_point.alias}"
+      DataAccessPointArn   = run.setup.access_point.arn
+      DestinationUri       = "s3://${run.setup.access_point.alias}"
+      LogGroupNamePatterns = "*"
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",

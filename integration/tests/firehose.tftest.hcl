@@ -41,8 +41,9 @@ run "set_prefix" {
     name = run.setup.id
     app  = "firehose"
     parameters = {
-      BucketARN = "arn:aws:s3:::${run.setup.access_point.bucket}"
-      Prefix    = "${run.setup.id}/"
+      BucketARN         = "arn:aws:s3:::${run.setup.access_point.bucket}"
+      Prefix            = "${run.setup.id}/"
+      WriterRoleService = "logs.amazonaws.com"
     }
     capabilities = [
       "CAPABILITY_IAM",
