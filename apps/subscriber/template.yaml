@@ -284,3 +284,6 @@ Outputs:
   Function:
     Description: "Lambda Function ARN"
     Value: !GetAtt Subscriber.Arn
+  LogGroupName:
+    Description: "Log Group Name"
+    Value: !Ref LogGroup
