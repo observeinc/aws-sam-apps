@@ -20,73 +20,18 @@ aws configure
 
 ## Makefile Targets for SAM
 
-Our `Makefile` includes various targets to streamline the development process:
+The project's Makefile streamlines the development process with various targets:
 
-### Build
+- Build: Compile your application for deployment (make sam-build APP=<app_name>)
+- Package: Package your application for AWS (make sam-package APP=<app_name>)
+- Deploy: Deploy your application to AWS (make sam-deploy APP=<app_name>)
+- Sync: Sync your code changes to AWS rapidly (make sam-sync APP=<app_name>)
+- Validate: Check your SAM template for errors (make sam-validate APP=<app_name>)
+- Publish: Share your application via AWS Serverless Application Repository (make sam-publish APP=<app_name>)
+- Multi-application Commands: Build, package, or publish all applications (make sam-build-all, make sam-package-all, make sam-publish-all)
+- Multi-region Commands: Manage multi-region deployments (make sam-package-all-regions)
 
-To compile your application and prepare it for deployment:
-
-```sh
-APP=forwarder make sam-build
-```
-
-### Package
-
-To package your application and upload it to S3:
-
-```sh
-APP=forwarder make sam-package
-```
-
-### Deploy
-
-To deploy your application to AWS:
-
-```sh
-APP=forwarder make sam-deploy
-```
-
-### Sync
-
-For rapid development, to sync your code changes to AWS without a full deployment:
-
-```sh
-APP=forwarder make sam-sync
-```
-
-### Validate
-
-To check your SAM template for errors:
-
-```sh
-APP=forwarder make sam-validate
-```
-
-### Publish
-
-To share your application via AWS Serverless Application Repository:
-
-```sh
-APP=forwarder make sam-publish
-```
-
-### Multi-application Commands
-
-To build, package, or publish all applications:
-
-```sh
-make sam-build-all
-make sam-package-all
-make sam-publish-all
-```
-
-### Multi-region Commands
-
-To handle multi-region deployments:
-
-```sh
-make sam-package-all-regions
-```
+For descriptions and usage of these targets, see the Makefile in the repository.
 
 ## Development Workflow
 
@@ -213,13 +158,9 @@ observeinc-us-west-1/apps/collection/latest/packaged.yaml
 For the beta version of the same app in the same region:
 observeinc-us-west-1/apps/collection/beta/packaged.yaml
 
-## Versioning
+## Versioning and Contribution
 
-We follow semantic versioning. Please ensure your branch and commit names adhere to this convention.
-
-## Contribution
-
-We welcome contributions! Please refer to our contribution guidelines for more information on how to submit pull requests, report issues, and suggest improvements.
+We adhere to semantic versioning for our branch and commit names. For more information on the contribution process, commit message standards, and branch naming conventions, please see our [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Additional Resources
 

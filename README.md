@@ -70,4 +70,4 @@ For development practices, build and release processes, and testing workflows, s
 
 ## Contributing
 
-We welcome contributions from the community. Before contributing, please read through the `DEVELOPER.md` file and the documentation for the specific application you are interested in.
+We welcome contributions from the community. For more information on the contribution process, commit message standards, and branch naming conventions, please see our [CONTRIBUTING.md](CONTRIBUTING.md). For information on how to develop, please read through the [DEVELOPER.md](DEVELOPER.md) file and the documentation for the specific application you are interested in.
