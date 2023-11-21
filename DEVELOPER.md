@@ -174,7 +174,7 @@ export INTEGRATION_TEST=collection
 TEST_ARGS='-filter=tests/$INTEGRATION_TEST.tftest.hcl -verbose' make integration-test
 ```
 
-### Debugging
+#### Debugging
 
 Enable debugging mode for detailed output:
 
@@ -182,7 +182,38 @@ Enable debugging mode for detailed output:
 DEBUG=1 make integration-test
 ```
 
-### Versioning
+## Release
+
+1. **Pre-release (Beta Releases on `main` branch):**
+   Whenever changes are pushed to the `main` branch, our automated workflow triggers a beta release. This provides early access versions for testing and validation purposes.
+
+2. **Full Release (Manual Trigger):**
+   For creating an official release, manually trigger the release workflow from the GitHub Actions interface. This performs a full release.
+
+3. **AWS SAM Build & Deployment:**
+   - The AWS SAM application is built once at the beginning of the release phase to ensure consistency across regions.
+   - AWS SAM resources are packaged and deployed across multiple AWS regions, specified in the `REGIONS` variable of our Makefile.
+
+Upon each release, the SAM applications and their associated artifacts are packaged and uploaded to our S3 buckets. The naming convention and directory structure for these buckets are as follows:
+
+```
+observeinc-$REGION/apps/$APP/$VERSION/packaged.yaml
+observeinc-$REGION/apps/$APP/latest/packaged.yaml
+observeinc-$REGION/apps/$APP/beta/packaged.yaml
+```
+
+For instance:
+
+For the collection app, version 1.0.1 being deployed to the us-west-1 region, the artifact would be located at:
+observeinc-us-west-1/apps/collection/1.0.1/packaged.yaml
+
+For the latest version of the same app in the same region:
+observeinc-us-west-1/apps/collection/latest/packaged.yaml
+
+For the beta version of the same app in the same region:
+observeinc-us-west-1/apps/collection/beta/packaged.yaml
+
+## Versioning
 
 We follow semantic versioning. Please ensure your branch and commit names adhere to this convention.
 
