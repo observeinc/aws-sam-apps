@@ -22,9 +22,14 @@ Metadata:
           - DataAccessPointArn
           - DestinationUri
       - Label:
-          default: Components
+          default: Resources
         Parameters:
           - InstallConfig
+      - Label:
+          default: Logs
+        Parameters:
+          - LogGroupNamePatterns
+          - LogGroupNamePrefixes
       - Label:
           default: Forwarder Options
         Parameters:
@@ -68,11 +73,32 @@ Parameters:
       once per region. If you already have an existing AWS Config Recorder
       installed, set this value to `false` and subscribe the S3 bucket
       containing the configuration snapshots.
+  LogGroupNamePatterns:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma separated list of patterns. If not empty, the lambda function will
+      only apply to log groups that have names that match one of the provided
+      strings based on a case-sensitive substring search.
+    Default: ''
+  LogGroupNamePrefixes:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma separated list of prefixes. If not empty, the lambda function will
+      only apply to log groups that start with a provided string.
+    Default: ''
 
 Conditions:
   EnableConfig: !Equals
     - !Ref InstallConfig
     - "true"
+  EnableSubscriber: !Not
+    - !And
+      - !Equals
+        - !Join [",", !Ref LogGroupNamePatterns]
+        - ""
+      - !Equals
+        - !Join [",", !Ref LogGroupNamePrefixes]
+        - ""
   UseStackName: !Equals
     - !Ref NameOverride
     - ""
@@ -185,7 +211,36 @@ Resources:
       Parameters:
         BucketName: !Ref Bucket
         TopicARN: !Ref Topic
-
+  Firehose:
+    Type: AWS::Serverless::Application
+    Condition: EnableSubscriber
+    Properties:
+      Location: ../firehose/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        BucketARN: !GetAtt Bucket.Arn
+        Prefix: "cloudwatchlogs/"
+        WriterRoleService: "logs.amazonaws.com"
+        NameOverride: !Ref NameOverride
+  Subscriber:
+    Type: AWS::Serverless::Application
+    Condition: EnableSubscriber
+    Properties:
+      Location: ../subscriber/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        FilterName: 'observe-logs-subscription'
+        DestinationArn: !GetAtt
+          - Firehose
+          - Outputs.Firehose
+        RoleArn: !GetAtt
+          - Firehose
+          - Outputs.WriterRole
+        LogGroupNamePrefixes: !Join [",", !Ref LogGroupNamePrefixes]
+        LogGroupNamePatterns: !Join [",", !Ref LogGroupNamePatterns]
+        NameOverride: !Ref NameOverride
 Outputs:
   Bucket:
     Description: "S3 Bucket Name"
