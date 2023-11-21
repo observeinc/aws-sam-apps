@@ -290,3 +290,6 @@ Outputs:
   Role:
     Description: "IAM Role ARN"
     Value: !GetAtt Role.Arn
+  LogGroupName:
+    Description: "Log Group Name"
+    Value: !Ref LogGroup

@@ -213,7 +213,6 @@ Resources:
         TopicARN: !Ref Topic
   Firehose:
     Type: AWS::Serverless::Application
-    Condition: EnableSubscriber
     Properties:
       Location: ../firehose/template.yaml
       NotificationARNs:
@@ -223,6 +222,34 @@ Resources:
         Prefix: "cloudwatchlogs/"
         WriterRoleService: "logs.amazonaws.com"
         NameOverride: !Ref NameOverride
+  ForwarderLogGroupSubscription:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !GetAtt
+        - Firehose
+        - Outputs.Firehose
+      FilterName: 'observe-logs-subscription'
+      FilterPattern: ''
+      LogGroupName: !GetAtt
+        - Forwarder
+        - Outputs.LogGroupName
+      RoleArn: !GetAtt
+        - Firehose
+        - Outputs.WriterRole
+  FirehoseLogGroupSubscription:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !GetAtt
+        - Firehose
+        - Outputs.Firehose
+      FilterName: 'observe-logs-subscription'
+      FilterPattern: ''
+      LogGroupName: !GetAtt
+        - Firehose
+        - Outputs.LogGroupName
+      RoleArn: !GetAtt
+        - Firehose
+        - Outputs.WriterRole
   Subscriber:
     Type: AWS::Serverless::Application
     Condition: EnableSubscriber
@@ -241,6 +268,22 @@ Resources:
         LogGroupNamePrefixes: !Join [",", !Ref LogGroupNamePrefixes]
         LogGroupNamePatterns: !Join [",", !Ref LogGroupNamePatterns]
         NameOverride: !Ref NameOverride
+  SubscriberLogGroupSubscription:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: EnableSubscriber
+    Properties:
+      DestinationArn: !GetAtt
+        - Firehose
+        - Outputs.Firehose
+      FilterName: 'observe-logs-subscription'
+      FilterPattern: ''
+      LogGroupName: !GetAtt
+        - Subscriber
+        - Outputs.LogGroupName
+      RoleArn: !GetAtt
+        - Firehose
+        - Outputs.WriterRole
+
 Outputs:
   Bucket:
     Description: "S3 Bucket Name"
