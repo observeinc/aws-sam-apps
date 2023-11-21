@@ -2,13 +2,16 @@ package subscriber
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+	"github.com/go-logr/logr"
 
 	"github.com/observeinc/aws-sam-testing/handler"
 )
@@ -57,6 +60,27 @@ func (h *Handler) HandleRequest(ctx context.Context, req *Request) (*Response, e
 	}
 }
 
+func (h *Handler) HandleSQS(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
+	logger := logr.FromContextOrDiscard(ctx)
+	for _, record := range request.Records {
+		var req Request
+		var err error
+
+		if err = json.Unmarshal([]byte(record.Body), &req); err == nil {
+			_, err = h.HandleRequest(ctx, &req)
+		}
+
+		if err != nil {
+			// SQS record will be under 256KB, should be ok to log
+			logger.Error(err, "failed to process request", "body", record.Body)
+			response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
+				ItemIdentifier: record.MessageId,
+			})
+		}
+	}
+	return response, nil
+}
+
 func New(cfg *Config) (*Handler, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -83,7 +107,7 @@ func New(cfg *Config) (*Handler, error) {
 		h.Logger = *cfg.Logger
 	}
 
-	if err := h.Mux.Register(h.HandleRequest); err != nil {
+	if err := h.Mux.Register(h.HandleRequest, h.HandleSQS); err != nil {
 		return nil, fmt.Errorf("failed to register handler: %w", err)
 	}
 
