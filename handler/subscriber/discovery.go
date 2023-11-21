@@ -47,7 +47,7 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 					return resp, fmt.Errorf("failed to handle subscription request: %w", err)
 				}
 				resp.Discovery.Subscription.Add(s.Subscription)
-			} else if err := h.Queue.Put(ctx, subscriptionRequest); err != nil {
+			} else if err := h.Queue.Put(ctx, &Request{SubscriptionRequest: subscriptionRequest}); err != nil {
 				return resp, fmt.Errorf("failed to write to queue: %w", err)
 			}
 		}
