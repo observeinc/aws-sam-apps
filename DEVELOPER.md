@@ -92,18 +92,18 @@ make sam-package-all-regions
 
 ### Rapid Development
 
-To streamline your development workflow and test changes quickly, follow this comprehensive script which sets up the environment and synchronizes code changes to AWS efficiently:
+To mimic the production setup locally, developers can simulate the creation and use of AWS resources like S3 access points and destination URIs. This is akin to how our Terraform tests configure the environment, ensuring a seamless transition from development to production.
 
-### Environment Setup and Initial Deployment
+#### Environment Setup and Initial Deployment
 
-Set your AWS region and verify your identity:
+First, set your AWS region and verify your identity to ensure you're operating in the correct environment:
 
 ```sh
 export AWS_REGION=us-east-1
 aws sts get-caller-identity
 ```
 
-Initialize and apply Terraform configuration:
+Next, initialize and apply the Terraform configuration. This step provisions an S3 access point and a destination URI, which are typically provided by Observe in a production setup but will be "faked" for local development:
 
 ```sh
 pushd integration/modules/setup/run
@@ -115,20 +115,20 @@ export S3_DESTINATION=s3://$(terraform output -json | jq -r '.access_point.value
 popd
 ```
 
-Create a unique S3 bucket for source files and configure event notifications:
+Afterward, create a unique S3 bucket that will act as the source for incoming data. This bucket will be configured with event notifications to trigger the necessary AWS services:
 
 ```sh
 export SOURCE_BUCKET="${USER}-$(date +%s | sha256sum | head -c 8 | awk '{print tolower($0)}')"
 aws s3 mb s3://$SOURCE_BUCKET --region $AWS_REGION
-aws s3api put-bucket-notification-configuration --bucket $SOURCE_BUCKET \
-    --notification-configuration '{"EventBridgeConfiguration": {}}'
 ```
 
-Use `sam sync` for rapid deployment of changes:
+#### Simulating Forwarder Application Deployment
+
+The `sam sync` command below simulates the `run "install_forwarder"` directive from our Terraform tests, effectively deploying the application with the necessary parameters:
 
 ```sh
 pushd apps/forwarder
-sam sync --stack-name app-v4-$AWS_REGION \
+sam sync --stack-name app-$AWS_REGION \
     --region $AWS_REGION \
     --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM \
     --parameter-overrides \
@@ -139,25 +139,25 @@ sam sync --stack-name app-v4-$AWS_REGION \
 popd
 ```
 
-### Testing Changes
+#### Simulating Subscriptions Setup
 
-Monitor logs in real-time and test file uploads:
-
-```sh
-aws logs tail --follow /aws/lambda/app-v4-$AWS_REGION
-aws s3 cp 000.json s3://$SOURCE_BUCKET/000.json
-```
-
-### Teardown
-
-Once testing is complete, remove the CloudFormation stack and resources:
+After the forwarder application is in place, use the AWS CLI to simulate the `run "setup_subscriptions"` step, setting up the event-driven connections that will drive the data flow in the application:
 
 ```sh
-aws cloudformation delete-stack --stack-name app-v4-$AWS_REGION --region $AWS_REGION
-watch "aws cloudformation describe-stacks --stack-name app-v4-$AWS_REGION --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text"
+aws s3api put-bucket-notification-configuration --bucket $SOURCE_BUCKET \
+    --notification-configuration '{"EventBridgeConfiguration": {}}'
 ```
 
-Ensure to clean up after testing to avoid incurring unnecessary costs.
+This manual setup mirrors the automated testing environment defined in `forwarder.tftest.hcl`, allowing developers to validate the entire event flow end-to-end.
+
+#### Cleanup
+
+Finally, it's important to clean up the resources after testing to avoid incurring unnecessary charges:
+
+```sh
+aws cloudformation delete-stack --stack-name app-$AWS_REGION --region $AWS_REGION
+watch "aws cloudformation describe-stacks --stack-name app-$AWS_REGION --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text"
+```
 
 ### Testing
 
@@ -185,15 +185,6 @@ DEBUG=1 make integration-test
 ### Versioning
 
 We follow semantic versioning. Please ensure your branch and commit names adhere to this convention.
-
-## Cleanup
-
-When you're done testing, clean up the resources:
-
-```sh
-aws cloudformation delete-stack --stack-name app-v4-$AWS_REGION --region $AWS_REGION
-watch "aws cloudformation describe-stacks --stack-name app-v4-$AWS_REGION --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text"
-```
 
 ## Contribution
 
