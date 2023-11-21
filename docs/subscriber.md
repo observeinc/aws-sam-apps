@@ -2,6 +2,8 @@
 
 The Observe Subscriber application is an AWS SAM application that subscribes CloudWatch Log Groups to a supported destination ARN, such as Kinesis Firehose or Lambda. It operates with two types of requests: subscription requests and discovery requests.
 
+Additionally, the stack provides a method for automatically triggering subscription through Eventbridge rules.
+
 ## Configuration
 
 The subscriber Lambda function manages subscription filters for log groups and uses the following environment variables for configuration:
@@ -11,7 +13,7 @@ The subscriber Lambda function manages subscription filters for log groups and u
 | `FILTER_NAME`             | (Required) Name for the subscription filter. Any existing filters with this prefix will be removed. |
 | `FILTER_PATTERN`          | Pattern for the subscription filter. See [AWS documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html) for details. |
 | `DESTINATION_ARN`         | Destination ARN for the subscription filter. If empty, any filters with `FILTER_NAME` will be removed. |
-| `ROLE_ARN`                | Role ARN, required if `DESTINATION_ARN` is set. |
+| `ROLE_ARN`                | Role ARN. Can only be set if `DESTINATION_ARN` is also set.                                                                                   |
 
 The scope of log groups the Lambda function applies to is determined by:
 
@@ -104,13 +106,28 @@ To perform subscriptions in the same invocation as a discovery request, include 
 
 The successful invocation response will include subscription stats embedded within the discovery stats.
 
----
+```json
+{
+    "discovery": {
+        "logGroupCount": 3,
+        "requestCount": 2,
+        "subscription": {
+            "deleted": 0,
+            "updated": 0,
+            "skipped": 0,
+            "processed": 3
+        }
+    }
+}
+```
 
-## Additional Notes
+## Automatic subscription through Eventbridge rules
 
-- **Inline Subscriptions**: The `inline` option can be useful for immediate subscription after discovery but may increase the invocation duration.
-- **SQS Queue Usage**: By default, if an SQS queue is provided, the Lambda function will fan out subscription requests for better scalability and management.
-- **IAM Role**: The role specified in `ROLE_ARN` should have the necessary permissions to manage CloudWatch Logs and the destination resource.
-- **Deployment and Updates**: For deployment instructions, refer to the main `README.md` and `DEVELOPER.md` documents. When updating the application, remember to adjust the `SemanticVersion` in `template.yaml` to reflect the changes.
+The stack optionally installs eventbridge rules which automatically subscribe log groups the the configured destination. To enable this feature, you must set the `DiscoveryRate` parameter to a valid [AWS EventBridge rate expression](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rate-expressions.html) (e.g. `1 hour`).
 
-Please refer to the provided `template.yaml` for the complete definition of the SAM application and to customize the deployment to fit your requirements.
+If this parameter is set, two EventBridge rules are installed:
+
+- a discovery request that will be fire at the desired rate,
+- a subscription request will be fired on log group creation. This rule will only fire if CloudTrail is configured within the account and region our subscriber is running in.
+
+Both rules will send requests to the SQS queue, which in turn are consumed by the subscriber lambda.
