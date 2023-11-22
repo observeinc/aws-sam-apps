@@ -45,9 +45,18 @@ func TestConfig(t *testing.T) {
 			Config: subscriber.Config{
 				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
-				RoleARN:              "arn:aws:lambda:us-east-2:123456789012:function:my-function",
+				RoleARN:              "arn:aws:iam::123456789012:role/test",
 			},
 			ExpectError: subscriber.ErrMissingDestinationARN,
+		},
+
+		{
+			Config: subscriber.Config{
+				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				FilterName:           "observe-logs-subscription",
+				DestinationARN:       "arn:aws:firehose:us-west-2:123456789012:deliverystream/test",
+				RoleARN:              "arn:aws:iam::123456789012:role/test",
+			},
 		},
 		{
 			Config: subscriber.Config{
