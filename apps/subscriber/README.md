@@ -1,3 +1,3 @@
-# Observe Subscriber
+# AWS Subscriber
 
-TODO
+[docs/subscriber.md](../docs/subscriber.md)
