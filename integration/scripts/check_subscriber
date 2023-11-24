@@ -17,17 +17,6 @@ TMPFILE=$(mktemp)
 FUNCTION_NAME=$(echo "$FUNCTION_ARN" | cut -d: -f7)
 AWS_REGION=$(echo "$FUNCTION_ARN" | cut -d: -f4)
 
-LOG_EVENTS=$(aws logs filter-log-events \
-    --region ${AWS_REGION} \
-    --log-group-name /aws/lambda/${FUNCTION_NAME} | jq -r '.events[] | .message | fromjson?' )
-
-[[ ! -z "${LOG_EVENTS}" ]] || DIE "subscriber lambda not invoked by eventbridge rule"
-
-[[ -z $(jq -r 'select(.level == "ERROR")' <<< ${LOG_EVENTS}) ]] || DIE "errors detected in lambda logs"
-
-# this requires verbosity to be set to at least 3
-[[ ! -z $(jq -r 'select(.msg == "handling discovery request")' <<< ${LOG_EVENTS}) ]] || DIE "no discovery request detected"
-
 check_result() {
     ERR=$(jq '.StatusCode != 200 or has("FunctionError")' <<<"$1")
     if [[ "$ERR" == true ]]; then
@@ -38,7 +27,6 @@ check_result() {
 }
 
 echo '{"subscribe": {"logGroups": [{"logGroupName": "does_not_exist"}]}}' > ${TMPFILE}
-
 RESULT=$(aws lambda invoke \
     --function-name ${FUNCTION_NAME} \
     --payload fileb://${TMPFILE} ${TMPFILE} \

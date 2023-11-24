@@ -9,8 +9,6 @@ run "install" {
     name = run.setup.id
     app  = "subscriber"
     parameters = {
-      LogGroupNamePatterns = "*"
-      DiscoveryRate        = "1 hour"
     }
     capabilities = [
       "CAPABILITY_IAM",
@@ -19,7 +17,7 @@ run "install" {
   }
 }
 
-run "check_eventbridge_invoked" {
+run "check_invoke" {
   module {
     source = "./modules/exec"
   }
@@ -33,6 +31,6 @@ run "check_eventbridge_invoked" {
 
   assert {
     condition     = output.error == ""
-    error_message = "Failed to verify subscriber invocation"
+    error_message = "Failed to invoke lambda function"
   }
 }

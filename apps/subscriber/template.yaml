@@ -1,8 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Transform:
-  - AWS::Serverless-2016-10-31
-  - AWS::LanguageExtensions
+Transform: AWS::Serverless-2016-10-31
 Description: 'Subscribe logs to Observe.'
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -62,12 +60,6 @@ Parameters:
     Description: Maximum number of concurrent workers when processing log groups.
     Default: ''
     AllowedPattern: '^[0-9]*$'
-  DiscoveryRate:
-    Type: String
-    Description: EventBridge rate expression for periodically triggering
-      discovery. If not set, no eventbridge rules are configured.
-    Default: ''
-    AllowedPattern: '^([1-9]\d* (minute|hour|day)s?)?$'
   NameOverride:
     Type: String
     Description: >-
@@ -81,22 +73,6 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
-  HasDiscoveryRate: !Not
-    - !Equals
-      - !Ref DiscoveryRate
-      - ''
-  HasLogGroupNamePatterns: !Not
-    - !Equals
-      - !Join
-        - ','
-        - !Ref LogGroupNamePatterns
-      - ''
-  HasLogGroupNamePrefixes: !Not
-    - !Equals
-      - !Join
-        - ','
-        - !Ref LogGroupNamePrefixes
-      - ''
 
 Resources:
   DeadLetter:
@@ -232,54 +208,6 @@ Resources:
           QUEUE_URL: !Ref Queue
           VERBOSITY: 9
           NUM_WORKERS: !Ref NumWorkers
-  SubscriptionEvents:
-    Type: AWS::Events::Rule
-    Condition: HasDiscoveryRate
-    DependsOn: QueuePolicy
-    Properties:
-      Description: "Subscribe new log groups"
-      EventPattern:
-        source:
-          - "aws.logs"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "logs.amazonaws.com"
-          eventName:
-            - "CreateLogGroup"
-      Targets:
-        - Arn: !GetAtt Queue.Arn
-          Id: SubscriptionEvent
-          InputTransformer:
-            InputPathsMap:
-              logGroupName: "$.detail.requestParameters.logGroupName"
-            InputTemplate: >-
-              {"subscribe": {"logGroups": [{ "logGroupName": "<logGroupName>"}]}}
-  DiscoveryEvents:
-    Type: 'AWS::Events::Rule'
-    Condition: HasDiscoveryRate
-    # We must have the appropriate permissions before attempting to write to
-    # queue. Removing this dependency will cause first trigger to be silently
-    # dropped.
-    DependsOn: QueuePolicy
-    Properties:
-      Description: Trigger log group discovery
-      ScheduleExpression: !Sub 'rate(${DiscoveryRate})'
-      Targets:
-        - Arn: !GetAtt Queue.Arn
-          Id: DiscoveryEvent
-          Input: !ToJsonString
-            discover:
-              logGroupNamePatterns: !If
-                - HasLogGroupNamePatterns
-                - !Ref LogGroupNamePatterns
-                - []
-              logGroupNamePrefixes: !If
-                - HasLogGroupNamePrefixes
-                - !Ref LogGroupNamePrefixes
-                - []
-
 Outputs:
   Function:
     Description: "Lambda Function ARN"
