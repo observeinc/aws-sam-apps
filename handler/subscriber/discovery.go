@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
-	"github.com/go-logr/logr"
 )
 
 var ErrNoQueue = errors.New("no queue defined")
@@ -15,9 +14,6 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 	resp := &Response{
 		Discovery: new(DiscoveryStats),
 	}
-
-	logger := logr.FromContextOrDiscard(ctx)
-	logger.V(3).Info("handling discovery request", "request", discoveryReq)
 
 	var inline bool
 	if discoveryReq.Inline == nil {
