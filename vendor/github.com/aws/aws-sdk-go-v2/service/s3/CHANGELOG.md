@@ -1,3 +1,12 @@
+# v1.45.0 (2023-11-27)
+
+* **Feature**: Adding new params - Key and Prefix, to S3 API operations for supporting S3 Access Grants. Note - These updates will not change any of the existing S3 API functionality.
+
+# v1.44.0 (2023-11-21)
+
+* **Feature**: Add support for automatic date based partitioning in S3 Server Access Logs.
+* **Bug Fix**: Don't send MaxKeys/MaxUploads=0 when unspecified in ListObjectVersions and ListMultipartUploads paginators.
+
 # v1.43.1 (2023-11-20)
 
 * **Dependency Update**: Updated to the latest SDK module versions
