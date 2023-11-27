@@ -1,58 +1,49 @@
-# Observe Subscriber
+# Observe Subscriber Application
 
-The subscriber stack subscribes CloudWatch Log Groups to a supported destination ARN (either Kinesis Firehose or Lambda). It supports two request types:
-
-- subscription requests contain a list of log groups which we wish to subscribe to our destination.
-- discovery requests contain a list of filters which are used to generate subscription requests.
+The Observe Subscriber application is an AWS SAM application that subscribes CloudWatch Log Groups to a supported destination ARN, such as Kinesis Firehose or Lambda. It operates with two types of requests: subscription requests and discovery requests.
 
 ## Configuration
 
-The subscriber lambda is responsible for managing subscription filters for a set of log groups.
-The subscription filter will be configured according the following environment variables:
+The subscriber Lambda function manages subscription filters for log groups and uses the following environment variables for configuration:
 
-| Environment Variable | Description                                                                                                                                   |
-|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `FILTER_NAME`        | **Required**. Subscription filter name. Existing filters that have this name as a prefix will be removed.                                     |
-| `FILTER_PATTERN`     | Subscription filter pattern. Refer to [AWS documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html). |
-| `DESTINATION_ARN`    | Destination ARN. If empty, any matching subscription filter named `FILTER_NAME` will be removed.                                              |
-| `ROLE_ARN`           | Role ARN. Can only be set if `DESTINATION_ARN` is also set                                                                                    |
+| Environment Variable      | Description |
+|---------------------------|-------------|
+| `FILTER_NAME`             | (Required) Name for the subscription filter. Any existing filters with this prefix will be removed. |
+| `FILTER_PATTERN`          | Pattern for the subscription filter. See [AWS documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html) for details. |
+| `DESTINATION_ARN`         | Destination ARN for the subscription filter. If empty, any filters with `FILTER_NAME` will be removed. |
+| `ROLE_ARN`                | Role ARN, required if `DESTINATION_ARN` is set. |
 
-Additionally, the set of log groups the lambda is applicable to is controlled through the following variables:
+The scope of log groups the Lambda function applies to is determined by:
 
-| Environment Variable      | Description                                                                                                                                                                                          |
-|---------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `LOG_GROUP_NAME_PATTERNS` | Comma separated list of patterns. If not empty, the lambda function will only apply to log groups that have names that match one of the provided strings based on a case-sensitive substring search. |
-| `LOG_GROUP_NAME_PREFIXES` | Comma separated list of prefixes. If not empty, the lambda function will only apply to log groups that start with a provided string.                                                                 |
+| Environment Variable      | Description |
+|---------------------------|-------------|
+| `LOG_GROUP_NAME_PATTERNS` | Comma-separated list of patterns to match log group names for subscription. Case-sensitive substring search is used. |
+| `LOG_GROUP_NAME_PREFIXES` | Comma-separated list of prefixes to match log group names for subscription. |
 
-If neither `LOG_GROUP_NAME_PATTERNS` or `LOG_GROUP_NAME_PREFIXES` is provided, the subscriber will operate across all log groups.
+If neither `LOG_GROUP_NAME_PATTERNS` nor `LOG_GROUP_NAME_PREFIXES` are provided, the subscriber operates on all log groups.
 
+## Subscription Request
 
-## Subscription request
+To explicitly subscribe a set of log groups, invoke the Lambda function with a subscription request like the following:
 
-You can subscribe an explicit set of log groups by invoking the lambda function via a subscription request, e.g:
-
-```
+```json
 {
     "subscribe": {
         "logGroups": [
-            {
-                "logGroupName": "/aws/foo/example"
-            },
-            {
-                "logGroupName": "/aws/bar/example"
-            }
+            {"logGroupName": "/aws/foo/example"},
+            {"logGroupName": "/aws/bar/example"}
         ]
     }
 }
 ```
 
-### Response format
+### Response Format
 
-The function will respond with stats associated to the processing of the log groups:
+The Lambda function returns statistics related to the processing of the log groups:
 
-```
+```json
 {
-    "subscription":	{
+    "subscription": {
         "deleted": 0,
         "updated": 0,
         "skipped": 0,
@@ -61,74 +52,47 @@ The function will respond with stats associated to the processing of the log gro
 }
 ```
 
-The counters reflect how the log groups were processed:  
+Counters reflect the processing outcome for the log groups.
 
-| Counter     | Description                                                                                                                                                                                             |
-|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `processed` | The total number of log groups processed.                                                                                                                                                               |
-| `skipped`   | The number of log groups that were ignored. Either the log group no longer exists, or the log group name does not match the provided filters in `LOG_GROUP_NAME_PATTERNS` or `LOG_GROUP_NAME_PREFIXES`. |
-| `updated`   | The number of subscription filters which were updated. This maps to the total number of calls to the `logs:PutSubscriptionFilter` endpoint.                                                             |
-| `deleted`   | The number of subscription filters which were deleted. This maps to the total number of calls to the `logs:DeleteSubscriptionFilter` endpoint.                                                          |
+## Discovery Request
 
-## Discovery request
-
-You can subscribe to log groups matching a set of patterns or prefixes by sending a discovery request. The following request will ask the lambda function to list all log groups containing the term `prod` or prefixed by the term `/aws/lambda`:
+To subscribe log groups matching specific patterns or prefixes, send a discovery request. For example:
 
 ```json
 {
     "discover": {
-        "logGroupNamePatterns": [ "prod" ],
-        "logGroupNamePrefixes": [ "/aws/lambda" ]
+        "logGroupNamePatterns": ["prod"],
+        "logGroupNamePrefixes": ["/aws/lambda"]
     }
 }
 ```
 
-The lambda function will issue a `logs:DescribeLogGroups` request for each provided pattern or prefix. The equivalent `awscli` commands for the above example request would be:
-
-```
-aws logs describe-log-groups --log-group-name-pattern prod
-aws logs describe-log-groups --log-group-name-prefix /aws/lambda
-```
-
-To subscribe to all log groups, a wildcard can be provided to either `logGroupNamePatterns` or `logGroupNamePrefixes`. The following input: 
+This will list all log groups containing "prod" or prefixed with "/aws/lambda". To subscribe to all log groups, use the wildcard "*":
 
 ```json
 {
     "discover": {
-        "logGroupNamePatterns": [ "*" ]
+        "logGroupNamePatterns": ["*"]
     }
 }
 ```
 
-Will trigger a paginated request equivalent to the `awscli` command:
+### Response Format
 
-```shell
-aws logs describe-log-groups
-```
+The function responds with statistics related to the listed log groups:
 
-
-### Response format
-
-The function will respond with stats associated to the listing of log groups:
-
-```
+```json
 {
     "discovery": {
         "logGroupCount": 3,
-        "requestCount": 2,
+        "requestCount": 2
     }
 }
 ```
 
-| Counter         | Description                                         |
-|-----------------|-----------------------------------------------------|
-| `logGroupCount` | The total number of log groups retrieved.       |
-| `requestCount`  | The number of requests to the AWS API.          |
+### Inlining Subscriptions
 
-
-### Inlining subscriptions
-
-By omission, if you provide an SQS queue the lambda function will use it to fan out subscription requests across multiple lambda invocations. If you instead wish to inline subscription to be performed in the same invocation as a discovery request, you can provide the `inline` option in your request: 
+To perform subscriptions in the same invocation as a discovery request, include the `inline` option:
 
 ```json
 {
@@ -138,19 +102,15 @@ By omission, if you provide an SQS queue the lambda function will use it to fan 
 }
 ```
 
-The response for a successful invocation will embed the corresponding subscription stats:
+The successful invocation response will include subscription stats embedded within the discovery stats.
 
-```json
-{
-    "discovery": {
-        "logGroupCount": 3,
-        "requestCount": 2,
-        "subscription": {
-            "deleted": 0,
-            "updated": 0,
-            "skipped": 0,
-            "processed": 3
-        }
-    }
-}
-```
+---
+
+## Additional Notes
+
+- **Inline Subscriptions**: The `inline` option can be useful for immediate subscription after discovery but may increase the invocation duration.
+- **SQS Queue Usage**: By default, if an SQS queue is provided, the Lambda function will fan out subscription requests for better scalability and management.
+- **IAM Role**: The role specified in `ROLE_ARN` should have the necessary permissions to manage CloudWatch Logs and the destination resource.
+- **Deployment and Updates**: For deployment instructions, refer to the main `README.md` and `DEVELOPER.md` documents. When updating the application, remember to adjust the `SemanticVersion` in `template.yaml` to reflect the changes.
+
+Please refer to the provided `template.yaml` for the complete definition of the SAM application and to customize the deployment to fit your requirements.
