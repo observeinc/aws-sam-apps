@@ -22,24 +22,26 @@ aws configure
 
 The project's Makefile streamlines the development process with various targets:
 
-- Build: Compile your application for deployment (make sam-build APP=<app_name>)
-- Package: Package your application for AWS (make sam-package APP=<app_name>)
-- Deploy: Deploy your application to AWS (make sam-deploy APP=<app_name>)
-- Sync: Sync your code changes to AWS rapidly (make sam-sync APP=<app_name>)
-- Validate: Check your SAM template for errors (make sam-validate APP=<app_name>)
-- Publish: Share your application via AWS Serverless Application Repository (make sam-publish APP=<app_name>)
-- Multi-application Commands: Build, package, or publish all applications (make sam-build-all, make sam-package-all, make sam-publish-all)
-- Multi-region Commands: Manage multi-region deployments (make sam-package-all-regions)
+```
+export APP=forwarder #As an example
+```
+
+- Build: Compile your application for deployment (`make sam-build APP=$APP`)
+- Package: Package your application for AWS (`make sam-package APP=$APP`)
+- Deploy: Deploy your application to AWS (`make sam-deploy APP=$APP`)
+- Sync: Sync your code changes to AWS rapidly (`make sam-sync APP=$APP`)
+- Validate: Check your SAM template for errors (`make sam-validate APP=$APP`)
+- Publish: Share your application via AWS Serverless Application Repository (`make sam-publish APP=$APP`)
+- Multi-application Commands: Build, package, or publish all applications (`make sam-build-all, make sam-package-all, make sam-publish-all`)
+- Multi-region Commands: Manage multi-region deployments (`make sam-package-all-regions`)
 
 For descriptions and usage of these targets, see the Makefile in the repository.
 
 ## Development Workflow
 
-### Rapid Development
+To mimic the production setup locally, developers can simulate the creation and use of AWS resources like S3 access points and destination URIs. This is akin to how our [Terraform tests](integration/tests/forwarder.tftest.hcl) configure the environment, ensuring a seamless transition from development to production.
 
-To mimic the production setup locally, developers can simulate the creation and use of AWS resources like S3 access points and destination URIs. This is akin to how our Terraform tests configure the environment, ensuring a seamless transition from development to production.
-
-#### Environment Setup and Initial Deployment
+### Environment Setup and Initial Deployment
 
 First, set your AWS region and verify your identity to ensure you're operating in the correct environment:
 
@@ -67,7 +69,7 @@ export SOURCE_BUCKET="${USER}-$(date +%s | sha256sum | head -c 8 | awk '{print t
 aws s3 mb s3://$SOURCE_BUCKET --region $AWS_REGION
 ```
 
-#### Simulating Forwarder Application Deployment
+### Simulating Forwarder Application Deployment
 
 The `sam sync` command below simulates the `run "install_forwarder"` directive from our Terraform tests, effectively deploying the application with the necessary parameters:
 
@@ -84,7 +86,7 @@ sam sync --stack-name app-$AWS_REGION \
 popd
 ```
 
-#### Simulating Subscriptions Setup
+### Simulating Subscriptions Setup
 
 After the forwarder application is in place, use the AWS CLI to simulate the `run "setup_subscriptions"` step, setting up the event-driven connections that will drive the data flow in the application:
 
@@ -95,7 +97,7 @@ aws s3api put-bucket-notification-configuration --bucket $SOURCE_BUCKET \
 
 This manual setup mirrors the automated testing environment defined in `forwarder.tftest.hcl`, allowing developers to validate the entire event flow end-to-end.
 
-#### Cleanup
+### Cleanup
 
 Finally, it's important to clean up the resources after testing to avoid incurring unnecessary charges:
 
@@ -104,7 +106,7 @@ aws cloudformation delete-stack --stack-name app-$AWS_REGION --region $AWS_REGIO
 watch "aws cloudformation describe-stacks --stack-name app-$AWS_REGION --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text"
 ```
 
-### Testing
+## Testing
 
 To run all integration tests:
 
@@ -119,7 +121,7 @@ export INTEGRATION_TEST=collection
 TEST_ARGS='-filter=tests/$INTEGRATION_TEST.tftest.hcl -verbose' make integration-test
 ```
 
-#### Debugging
+### Debugging
 
 Enable debugging mode for detailed output:
 
@@ -132,7 +134,7 @@ DEBUG=1 make integration-test
 1. **Pre-release (Beta Releases on `main` branch):**
    Whenever changes are pushed to the `main` branch, our automated workflow triggers a beta release. This provides early access versions for testing and validation purposes.
 
-2. **Full Release (Manual Trigger):**
+2. **Full Release (`manual Trigger):**
    For creating an official release, manually trigger the release workflow from the GitHub Actions interface. This performs a full release.
 
 3. **AWS SAM Build & Deployment:**

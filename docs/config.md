@@ -6,8 +6,6 @@ The Observe AWS Config stack automates the setup of AWS Config to capture detail
 
 This stack sets up AWS Config to record configuration changes and resource relationships within your AWS environment. It ensures that all supported resources are recorded and includes global resource types.
 
-![AWS Config Setup](images/aws-config-setup.png)
-
 ## Configuration
 
 The following parameters are required for stack configuration:

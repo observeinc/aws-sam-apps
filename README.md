@@ -64,7 +64,11 @@ For more comprehensive testing instructions, please refer to `DEVELOPER.md`.
 
 Each SAM application has its own documentation, providing specific details and usage instructions:
 
-- [Forwarder Application](docs/forwarder.md)
+- [Collect](docs/collection.md)
+- [Config](docs/config.md)
+- [Firehose](docs/firehose.md)
+- [Forwarder](docs/forwarder.md)
+- [Subscriber](docs/subscriber.md)
 
 For development practices, build and release processes, and testing workflows, see the `DEVELOPER.md` file.
 

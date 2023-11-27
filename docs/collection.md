@@ -15,7 +15,7 @@ The collection stack orchestrates the following components:
 - **Forwarder Application**: Routes data from S3 to Observe. Refer to [Forwarder Setup](forwarder.md) for detailed configuration.
 - **Config Application**: Sets up AWS Config for resource tracking. See [Config Setup](config.md) for more information.
 - **Subscriber Application**: Subscribes to log groups and forwards logs to Observe. Configuration details are available in [Subscriber Setup](subscriber.md).
-- **Firehose Application**: Manages data streaming to the destination. Refer to the specific `firehose.md` for setup guidance.
+- **Firehose Application**: Manages data streaming to the destination. Refer to the specific [Firehose Setup](firehose.md) for guidance.
 
 ## Configuration
 
