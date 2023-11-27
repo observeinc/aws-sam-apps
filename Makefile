@@ -141,10 +141,12 @@ ifeq ($(S3_BUCKET_PREFIX),)
 	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release.)
 endif
 	$(MAKE) sam-package
-	echo "Copying packaged.yaml to S3"
+	@echo "Copying packaged.yaml to S3"
 	aws s3 cp apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
-	echo "Fetching objects with prefix: apps/$(APP)/$(VERSION)/"
-	objects=`aws s3api list-objects --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --prefix apps/$(APP)/$(VERSION)/ --query "Contents[].Key" --output text`; \
+	@echo "Fetching objects with prefix: apps/$(APP)/$(VERSION)/ and filtering by last modified date"
+	@current_date=`date -u +"%Y-%m-%dT%H:%M:%SZ"`; \
+	week_ago=`date -u -v-7d +"%Y-%m-%dT%H:%M:%SZ"`; \
+	objects=`aws s3api list-objects --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --prefix apps/$(APP)/$(VERSION)/ --query "Contents[?LastModified>='$$week_ago'].[Key]" --output text`; \
 	for object in $$objects; do \
 		echo "Setting ACL for object: $$object"; \
 		aws s3api put-object-acl --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --key $$object --acl public-read; \
