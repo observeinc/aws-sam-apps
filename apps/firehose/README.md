@@ -1,3 +1,3 @@
-# Observe Firehose
+# Firehose
 
-This serverless application forwards data from a Firehose stream to S3.
+[docs/firehose.md](../docs/firehose.md)
