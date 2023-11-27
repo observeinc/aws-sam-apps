@@ -8,6 +8,8 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron:  '0 0 * * 1' # Monday at 00:00 UTC
 
 jobs:
   permission_check:
