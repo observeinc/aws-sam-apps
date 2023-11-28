@@ -47,6 +47,7 @@ Additionally, you may configure the following optional parameters:
 
 - **SourceBucketNames**: Comma-delimited list of S3 Bucket names for read permissions. The wildcard pattern `*` is supported. This parameter only grants the forwarder read permissions from the provided buckets. In order to copy objects, you must trigger the lambda on object creation through a [supported subscription method](#s3-bucket-subscription).
 - **SourceTopicArns**: Comma-delimited list of SNS Topic ARNs to receive messages from. The wildcard pattern `*` is supported. This parameter grants the topics the ability to publish to the Forwarder stack's SQS Queue.
+- **ContentTypeOverrides**: Comma-delimited list of [content type overrides](#content-type-overrides).
 
 ## S3 Bucket Subscription
 
@@ -97,3 +98,17 @@ In this case you would:
 ## Message Logs
 
 The Forwarder logs all messages it processes to Filedrop. Logs are stored in the format: `forwarder/{lambda_arn}/{request_id}`. These logs help with introspection and can forward events from AWS sources that can send messages via SQS.
+
+## Content Type Overrides
+
+Filedrop relies on the object content type in order to determine how to parse a file. You may encounter situations where the object content type does not accurately reflect the object contents. In such cases, you can provide a `ContentTypeOverrides` parameter which adjusts content types based on the object URI being processed.
+
+The format for `ContentTypeOverrides` is a comma-delimited list of key value pairs. Each pair is composed of a regular expression and a content type, separated by `=`. Upon processing an object, the forwarder will match each regular expression against the object URI. Once a match is found, we will use the associated content type.
+
+The following table lists some example uses of the `ContentTypeOverrides` parameter:
+
+| Parameter Value                       | Description                                                                                                |
+|---------------------------------------|------------------------------------------------------------------------------------------------------------|
+| `.*=application/json`                 | Set `application/json` for all copied files                                                                |
+| `\.csv$=text/csv,txt=text/plain`      | Set `text/csv` for all files ending in `.csv`. Otherwise, set `text/plain` for all files containing `txt`. |
+| `^s3://example/=application/x-ndjson` | Set `application/x-ndjson` for all objects sourced from the `example` bucket.                              |

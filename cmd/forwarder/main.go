@@ -15,10 +15,11 @@ import (
 )
 
 var env struct {
-	DestinationURI string `env:"DESTINATION_URI,required"`
-	LogPrefix      string `env:"LOG_PREFIX,default=forwarder/"`
-	Verbosity      int    `env:"VERBOSITY,default=1"`
-	MaxFileSize    int64  `env:"MAX_FILE_SIZE"`
+	DestinationURI       string   `env:"DESTINATION_URI,required"`
+	LogPrefix            string   `env:"LOG_PREFIX,default=forwarder/"`
+	Verbosity            int      `env:"VERBOSITY,default=1"`
+	MaxFileSize          int64    `env:"MAX_FILE_SIZE"`
+	ContentTypeOverrides []string `env:"CONTENT_TYPE_OVERRIDES"`
 }
 
 var (
@@ -54,11 +55,12 @@ func realInit() error {
 	s3client := s3.NewFromConfig(awsCfg)
 
 	handler, err = forwarder.New(&forwarder.Config{
-		DestinationURI: env.DestinationURI,
-		LogPrefix:      env.LogPrefix,
-		MaxFileSize:    env.MaxFileSize,
-		S3Client:       s3client,
-		Logger:         &logger,
+		DestinationURI:       env.DestinationURI,
+		LogPrefix:            env.LogPrefix,
+		MaxFileSize:          env.MaxFileSize,
+		S3Client:             s3client,
+		Logger:               &logger,
+		ContentTypeOverrides: env.ContentTypeOverrides,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)

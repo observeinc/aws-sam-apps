@@ -35,6 +35,7 @@ Metadata:
         Parameters:
           - SourceBucketNames
           - SourceTopicArns
+          - ContentTypeOverrides
           - NameOverride
 
 Parameters:
@@ -56,6 +57,15 @@ Parameters:
     Description: >-
       A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ""
+  ContentTypeOverrides:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of key value pairs. The key is a regular expression which is
+      applied to the S3 URI of forwarded files. The value is the content type
+      to set for matching files. For example, `\.json$=application/x-ndjson`
+      would forward all files aending in `.json` as newline delimited JSON
+      files.
+    Default: ''
   NameOverride:
     Type: String
     Description: >-
@@ -188,6 +198,9 @@ Resources:
                 - ","
                 - - !Ref Topic
                   - !Join [",", !Ref SourceTopicArns]
+        ContentTypeOverrides: !Join
+            - ","
+            - !Ref ContentTypeOverrides
         NameOverride: !If
           - UseStackName
           - !Ref 'AWS::StackName'

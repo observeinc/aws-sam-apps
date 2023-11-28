@@ -1,3 +1,8 @@
+variables {
+  override_match        = "example"
+  override_content_type = "application/x-csv;delimiter=space"
+}
+
 run "setup" {
   module {
     source = "./modules/setup/run"
@@ -9,11 +14,12 @@ run "install_forwarder" {
     name = run.setup.id
     app  = "forwarder"
     parameters = {
-      DataAccessPointArn = run.setup.access_point.arn
-      DestinationUri     = "s3://${run.setup.access_point.alias}"
-      SourceBucketNames  = "*"
+      DataAccessPointArn   = run.setup.access_point.arn
+      DestinationUri       = "s3://${run.setup.access_point.alias}"
+      SourceBucketNames    = "*"
       # TODO: wildcard does not appear to work for SNS topics
-      SourceTopicArns    = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:${run.setup.id}"
+      SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:${run.setup.id}"
+      ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",
@@ -90,5 +96,30 @@ run "check_sns" {
   assert {
     condition     = output.exitcode == 0
     error_message = "Failed to copy object using SNS"
+  }
+}
+
+run "check_content_type_override" {
+  module {
+    source = "./modules/exec"
+  }
+
+  variables {
+    command = "./scripts/check_object_diff"
+    env_vars = {
+      SOURCE           = run.setup_subscriptions.buckets["sqs"].bucket
+      DESTINATION      = run.setup.access_point.bucket
+      # this prefix will match the content type override, so we expect the destination object
+      # to have our test content type
+      OBJECT_PREFIX    = var.override_match
+      # modify the content type of the source to our expected value, after
+      # which we should se no diff.
+      JQ_PROCESS_SOURCE = ".ContentType = \"${var.override_content_type}\""
+    }
+  }
+
+  assert {
+    condition     = output.exitcode == 0
+    error_message = "Failed to override content type"
   }
 }

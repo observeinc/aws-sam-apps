@@ -66,6 +66,15 @@ Parameters:
     Description: Max file size for objects to process (in bytes), default is 1GB
     Default: ''
     AllowedPattern: '^[0-9]*$'
+  ContentTypeOverrides:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of key value pairs. The key is a regular expression which is
+      applied to the S3 URI of forwarded files. The value is the content type
+      to set for matching files. For example, `\.json$=application/x-ndjson`
+      would forward all files aending in `.json` as newline delimited JSON
+      files.
+    Default: ''
 Conditions:
   IsMaxFileSizeEmpty: !Equals [ !Ref MaxFileSize, '' ]
   DisableSourceS3: !Equals
@@ -279,7 +288,9 @@ Resources:
           DESTINATION_URI: !Ref DestinationUri
           VERBOSITY: 9
           MAX_FILE_SIZE: !If [ IsMaxFileSizeEmpty, '1073741824', !Ref MaxFileSize ]
-
+          CONTENT_TYPE_OVERRIDES: !Join
+            - ","
+            - !Ref ContentTypeOverrides
 Outputs:
   Function:
     Description: "Lambda Function ARN"
