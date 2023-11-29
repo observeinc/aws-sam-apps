@@ -4,8 +4,14 @@ set -euo pipefail
 
 DIE() { echo "$*" 1>&2; exit 1; }
 
-[[ ! -z "${SOURCE}" ]] || DIE "source not set"
-[[ ! -z "${DESTINATION}" ]] || DIE "destination not set"
+[[ ! -z "${SOURCE:-}" ]] || DIE "source not set"
+[[ ! -z "${DESTINATION:-}" ]] || DIE "destination not set"
+
+OBJECT_PREFIX=${OBJECT_PREFIX:-}
+# jq expressions to apply to object metadata prior to diffing
+# this allows us to filter out expected changes
+JQ_PROCESS_SOURCE=${JQ_PROCESS_SOURCE:-.}
+JQ_PROCESS_DESTINATION=${JQ_PROCESS_DESTINATION:-.}
 
 if [ -n "${DEBUG:-}" ]; then
     set -x
@@ -23,13 +29,13 @@ TMPNAME=$(basename ${TMPFILE})
 echo "{\"hello\": \"world\"}" > "$TMPFILE"
 
 # we include source bucket name in key to help debug where file in destination bucket came from
-KEY=${SOURCE}/${TMPFILE}
+KEY=${SOURCE}/${OBJECT_PREFIX}${TMPFILE}
 
 aws s3 cp ${TMPFILE} s3://${SOURCE}/${KEY} --content-type application/json 1>&2 || DIE "failed to copy file to source"
 
 sleep ${INIT_DELAY:-0}
-ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${KEY} | jq 'del(.LastModified, .Expiration)' || DIE "failed to read file from source")
+ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${KEY} | jq "del(.LastModified, .Expiration) | ${JQ_PROCESS_SOURCE}" || DIE "failed to read file from source")
 sleep ${COPY_DELAY:-0}
-COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${KEY} | jq 'del(.LastModified, .Expiration)' || DIE "failed to read file from destination")
+COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${KEY} | jq "del(.LastModified, .Expiration) | ${JQ_PROCESS_DESTINATION}" || DIE "failed to read file from destination")
 
 [ "$ORIGINAL" = "$COPY" ] || DIE "object differs"
