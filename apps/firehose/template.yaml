@@ -172,3 +172,6 @@ Outputs:
       - CreateWriterRole
       - !GetAtt 'WriterRole.Arn'
       - ''
+  LogGroupName:
+    Description: "Log Group Name"
+    Value: !Ref LogGroup
