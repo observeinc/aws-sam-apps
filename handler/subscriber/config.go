@@ -74,7 +74,7 @@ func (c *Config) Validate() error {
 		}
 
 		roleARN, err := arn.Parse(c.RoleARN)
-		if err != nil || roleARN.Service != "iam" || strings.HasPrefix(roleARN.Resource, "role/") {
+		if err != nil || roleARN.Service != "iam" || !strings.HasPrefix(roleARN.Resource, "role/") {
 			errs = append(errs, fmt.Errorf("failed to parse role: %w", ErrInvalidARN))
 		}
 	}
