@@ -26,6 +26,8 @@ The project's Makefile streamlines the development process with various targets:
 export APP=forwarder #As an example
 ```
 
+Refer to `make help` for an authoritative list of Make targets
+
 - Build: Compile your application for deployment (`make sam-build APP=$APP`)
 - Package: Package your application for AWS (`make sam-package APP=$APP`)
 - Deploy: Deploy your application to AWS (`make sam-deploy APP=$APP`)
@@ -34,8 +36,6 @@ export APP=forwarder #As an example
 - Publish: Share your application via AWS Serverless Application Repository (`make sam-publish APP=$APP`)
 - Multi-application Commands: Build, package, or publish all applications (`make sam-build-all, make sam-package-all, make sam-publish-all`)
 - Multi-region Commands: Manage multi-region deployments (`make sam-package-all-regions`)
-
-For descriptions and usage of these targets, see the Makefile in the repository.
 
 ## Development Workflow
 
@@ -128,6 +128,9 @@ Enable debugging mode for detailed output:
 ```sh
 DEBUG=1 make integration-test
 ```
+
+Every "check" step will dump a `debug.sh` file and pause execution. Be aware this happens
+during setup and teardown as well
 
 ## Release
 

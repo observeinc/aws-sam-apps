@@ -20,7 +20,7 @@ The scope of log groups the Lambda function applies to is determined by:
 | `LOG_GROUP_NAME_PATTERNS` | Comma-separated list of patterns to match log group names for subscription. Case-sensitive substring search is used. |
 | `LOG_GROUP_NAME_PREFIXES` | Comma-separated list of prefixes to match log group names for subscription. |
 
-If neither `LOG_GROUP_NAME_PATTERNS` nor `LOG_GROUP_NAME_PREFIXES` are provided, the subscriber operates on all log groups.
+**Note**: If neither `LOG_GROUP_NAME_PATTERNS` nor `LOG_GROUP_NAME_PREFIXES` are provided, the Lambda function will not operate on any log groups. It requires explicit patterns or prefixes to define its scope of operation.
 
 ## Subscription Request
 

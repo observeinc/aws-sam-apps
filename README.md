@@ -43,7 +43,7 @@ To begin using these applications, you'll need to have the AWS CLI and SAM CLI i
 Navigate to an application's directory under `apps/` and use the SAM CLI to build and deploy:
 
 ```sh
-cd apps/hello-world
+cd apps/forwarder
 sam build
 sam deploy --guided
 ```
@@ -64,7 +64,7 @@ For more comprehensive testing instructions, please refer to `DEVELOPER.md`.
 
 Each SAM application has its own documentation, providing specific details and usage instructions:
 
-- [Collect](docs/collection.md)
+- [Collection](docs/collection.md)
 - [Config](docs/config.md)
 - [Firehose](docs/firehose.md)
 - [Forwarder](docs/forwarder.md)
