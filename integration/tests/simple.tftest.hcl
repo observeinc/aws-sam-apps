@@ -13,11 +13,12 @@ run "check" {
     command = "./scripts/check_bucket_not_empty"
     env_vars = {
       SOURCE = run.setup.access_point.bucket
+      OPTS   = "--output json"
     }
   }
 
   assert {
-    condition     = output.exitcode != 0
+    condition     = output.error == "bucket is empty"
     error_message = "Bucket isn't empty"
   }
 }

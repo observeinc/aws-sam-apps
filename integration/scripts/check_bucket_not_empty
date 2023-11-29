@@ -6,4 +6,5 @@ DIE() { echo "$*" 1>&2; exit 1; }
 [[ ! -z "${SOURCE:-}" ]] || DIE "source not set"
 
 echo "listing ${SOURCE}"
-[[ ! -z $(aws s3 ls ${SOURCE}) ]] || DIE "bucket is empty"
+RESULT=$(aws s3 ls ${SOURCE} ${OPTS:-})
+[[ ! -z ${RESULT} ]] || DIE "bucket is empty"
