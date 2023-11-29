@@ -41,18 +41,21 @@ func (c *contentTypeOverride) Match(s string) string {
 
 func NewContentTypeOverrides(kvs []string, delimiter string) (Matcher, error) {
 	var m matches
-	for _, value := range kvs {
-		index := strings.Index(value, delimiter)
-		if index == -1 {
-			return nil, fmt.Errorf("error parsing %q: %w", value, errMissingDelimiter)
+	for _, pair := range kvs {
+		split := strings.SplitN(pair, delimiter, 2)
+		if len(split) != 2 {
+			return nil, fmt.Errorf("error parsing %q: %w", pair, errMissingDelimiter)
 		}
-		re, err := regexp.Compile(value[:index])
+
+		pattern, contentType := split[0], split[1]
+		re, err := regexp.Compile(pattern)
 		if err != nil {
-			return nil, fmt.Errorf("invalid pattern %q: %w", value[:index], err)
+			return nil, fmt.Errorf("invalid pattern %q: %w", pattern, err)
 		}
+
 		m = append(m, &contentTypeOverride{
 			Pattern:     re,
-			ContentType: value[index+1:],
+			ContentType: contentType,
 		})
 	}
 	return &m, nil
