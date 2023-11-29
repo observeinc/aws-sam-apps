@@ -1,4 +1,10 @@
-# SAM test
+# AWS SAM Applications for Observe Inc
+
+Welcome to the repository for AWS Serverless Application Model (SAM) applications used by Observe Inc. This suite of applications is designed to ingest metrics, monitoring logs, spans, traces, and events from AWS accounts into Observe for comprehensive observability.
+
+## Overview
+
+This repository contains multiple SAM applications, each fulfilling a specific role in the observability pipeline. For detailed documentation on each application, please refer to the `docs` folder.
 
 ## Cloudformation Quick-Create Links
 
@@ -22,126 +28,50 @@
 | [![Static Badge](https://img.shields.io/badge/us_west_1-latest-blue?logo=amazonaws)](https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-1#/stacks/create/review?templateURL=https://observeinc-us-west-1.s3.amazonaws.com/apps/collection/latest/packaged.yaml) | [![Static Badge](https://img.shields.io/badge/us_west_1-latest-blue?logo=amazonaws)](https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-1#/stacks/create/review?templateURL=https://observeinc-us-west-1.s3.amazonaws.com/apps/config/latest/packaged.yaml) | [![Static Badge](https://img.shields.io/badge/us_west_1-latest-blue?logo=amazonaws)](https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-1#/stacks/create/review?templateURL=https://observeinc-us-west-1.s3.amazonaws.com/apps/forwarder/latest/packaged.yaml) |
 | [![Static Badge](https://img.shields.io/badge/us_west_2-latest-blue?logo=amazonaws)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://observeinc-us-west-2.s3.amazonaws.com/apps/collection/latest/packaged.yaml) | [![Static Badge](https://img.shields.io/badge/us_west_2-latest-blue?logo=amazonaws)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://observeinc-us-west-2.s3.amazonaws.com/apps/config/latest/packaged.yaml) | [![Static Badge](https://img.shields.io/badge/us_west_2-latest-blue?logo=amazonaws)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://observeinc-us-west-2.s3.amazonaws.com/apps/forwarder/latest/packaged.yaml) |
 
+## Getting Started
+
+To begin using these applications, you'll need to have the AWS CLI and SAM CLI installed and configured. See below for quick instructions on building and deploying an application. For a full development guide, check out the `DEVELOPER.md` file.
+
+### Prerequisites
+
+- AWS CLI
+- SAM CLI
+- Docker (optional, for linting and local testing)
+
+### Building and Deploying an Application
+
+Navigate to an application's directory under `apps/` and use the SAM CLI to build and deploy:
+
+```sh
+cd apps/forwarder
+sam build
+sam deploy --guided
+```
+
+For more detailed instructions on building, deploying, and publishing applications, please see the corresponding documentation in the `docs` folder.
+
 ## Testing
 
-The codebase looks like a standard golang project, so all the standard Go tooling should just work, e.g:
+To run tests, use the Go tooling:
 
-```
-→ go test ./...
-ok      github.com/observeinc/aws-sam-testing/cmd/ec2   (cached)
-?       github.com/observeinc/aws-sam-testing/model/aws/ec2     [no test files]
-?       github.com/observeinc/aws-sam-testing/model/aws/ec2/marshaller  [no test files]
-ok      github.com/observeinc/aws-sam-testing/cmd/hello-world   (cached)
+```sh
+go test ./...
 ```
 
-## Building and deploying
+For more comprehensive testing instructions, please refer to `DEVELOPER.md`.
 
-Each AWS SAM template lives under `apps/`. You can use the `sam` cli to build, invoke and deploy the cloudformation stack for testing.
+## Documentation
 
-```
-→ cd apps/hello-world
-→ sam build
-Starting Build use cache
-Valid cache found, copying previously built resources for following functions (HelloWorldFunction)
+Each SAM application has its own documentation, providing specific details and usage instructions:
 
-Build Succeeded
+- [Collection](docs/collection.md)
+- [Config](docs/config.md)
+- [Firehose](docs/firehose.md)
+- [Forwarder](docs/forwarder.md)
+- [Subscriber](docs/subscriber.md)
 
-Built Artifacts  : .aws-sam/build
-Built Template   : .aws-sam/build/template.yaml
-```
+For development practices, build and release processes, and testing workflows, see the `DEVELOPER.md` file.
 
-## Publishing apps
+## Contributing
 
-Each SAM app can be packaged and published to the AWS Serverless Application Repository.
-
-1. Bump the `SemanticVersion` in `template.yaml`:
-
-```
-Metadata:
-  AWS::ServerlessRepo::Application:
-    Name: hello-world-thing
-    Description: A hello world
-    Author: Observe Inc
-    SpdxLicenseId: Apache-2.0
-    ReadmeUrl: README.md
-    HomePageUrl: https://github.com/observeinc/aws-sam-testing
-    SemanticVersion: 0.0.2
-    SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
-```
-
-2. Package the template:
-
-```
-→ sam package --template-file template.yaml --output-template-file output.yaml
-
-                Managed S3 bucket: aws-sam-cli-managed-default-samclisourcebucket-1d9p458evhgwf
-                A different default S3 bucket can be set in samconfig.toml
-                Or by specifying --s3-bucket explicitly.
-File with same data already exists at 410049026555143131a24cfafb8eb862, skipping upload
-        Uploading to bae5b6e5768f0a6e85e1b9c52dddcead  1021 / 1021  (100.00%)
-
-Successfully packaged artifacts and wrote output template to file output.yaml.
-Execute the following command to deploy the packaged template
-sam deploy --template-file /Users/joao/Code/aws-sam-testing/apps/hello-world/output.yaml --stack-name <YOUR STACK NAME>
-```
-
-3. Publish the packaged template (`sam publish --template output.yaml`)
-
-```
-→ sam publish --template output.yaml
-
-Publish Succeeded
-The following metadata of application "arn:aws:serverlessrepo:us-west-2:739672403694:applications/hello-world-thing" has been updated:
-{
-  "Description": "A hello world",
-  "Author": "Observe Inc",
-  "ReadmeUrl": "s3://aws-sam-cli-managed-default-samclisourcebucket-1d9p458evhgwf/410049026555143131a24cfafb8eb862",
-  "HomePageUrl": "https://github.com/observeinc/aws-sam-testing",
-  "SemanticVersion": "0.0.2",
-  "SourceCodeUrl": "https://github.com/observeinc/aws-sam-testing"
-}
-Click the link below to view your application in AWS console:
-https://console.aws.amazon.com/serverlessrepo/home?region=us-west-2#/published-applications/arn:aws:serverlessrepo:us-west-2:739672403694:applications~hello-world-thing
-```
-## Release Workflow
-
-Our release process is automated using GitHub Actions, ensuring consistency and reliability in each release.
-
-### Release Steps
-
-1. **Pre-release (Beta Releases on `main` branch):**
-   Whenever changes are pushed to the `main` branch, our automated workflow triggers a beta release. This provides early access versions for testing and validation purposes.
-
-2. **Full Release (Manual Trigger):**
-   For creating an official release, manually trigger the release workflow from the GitHub Actions interface. This performs a full release.
-
-3. **AWS SAM Build & Deployment:**
-   - The AWS SAM application is built once at the beginning of the release phase to ensure consistency across regions.
-   - AWS SAM resources are packaged and deployed across multiple AWS regions, specified in the `REGIONS` variable of our Makefile.
-
-Upon each release, the SAM applications and their associated artifacts are packaged and uploaded to our S3 buckets. The naming convention and directory structure for these buckets are as follows:
-
-```
-observeinc-$REGION/apps/$APP/$VERSION/packaged.yaml
-observeinc-$REGION/apps/$APP/latest/packaged.yaml
-observeinc-$REGION/apps/$APP/beta/packaged.yaml
-```
-
-For instance:
-
-For the collection app, version 1.0.1 being deployed to the us-west-1 region, the artifact would be located at:
-observeinc-us-west-1/apps/collection/1.0.1/packaged.yaml
-
-For the latest version of the same app in the same region:
-observeinc-us-west-1/apps/collection/latest/packaged.yaml
-
-For the beta version of the same app in the same region:
-observeinc-us-west-1/apps/collection/beta/packaged.yaml
-
-### Notes
-
-- All semantic versioning is handled automatically by the `semantic-release` tool. This determines the version number based on the commit messages since the last release.
-  
-- Always ensure commit messages adhere to the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard, as our release tooling relies on this format.
-
-- For region-specific AWS SAM builds or configurations, check the build artifacts located in `.aws-sam/build/<REGION_NAME>/`.
+We welcome contributions from the community. For more information on the contribution process, commit message standards, and branch naming conventions, please see our [CONTRIBUTING.md](CONTRIBUTING.md). For information on how to develop, please read through the [DEVELOPER.md](DEVELOPER.md) file and the documentation for the specific application you are interested in.

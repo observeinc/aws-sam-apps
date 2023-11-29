@@ -19,29 +19,31 @@ endef
 
 SUBDIR = $(shell ls apps)
 
+.PHONY: help go-lint go-lint-all go-test integration-test debug sam-validate sam-validate-all sam-build-all sam-build sam-publish sam-package-all sam-package release-all release sam-package-all-regions sam-publish-all build-App build-Forwarder build-Subscriber clean-aws-sam
+
 clean-aws-sam:
 	rm -rf $(SAM_BUILD_DIR)
 
-## help: shows this help message
+## help: Displays this help message listing all targets
 help:
 	@echo "Usage: make [target]"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
 
-## go-lint: runs linter for a given directory, specified via PACKAGE variable
+## go-lint: Runs Go linter for a specified directory, set with PACKAGE variable
 go-lint:
 	$(call check_var,PACKAGE)
 	docker run --rm -v "`pwd`:/workspace:cached" -w "/workspace/$(PACKAGE)" golangci/golangci-lint:latest golangci-lint run
 
-## go-lint-all: runs linter for all packages
+## go-lint-all: Executes Go linter for all Go packages in the project
 go-lint-all:
 	docker run --rm -v "`pwd`:/workspace:cached" -w "/workspace/." golangci/golangci-lint:latest golangci-lint run
 
-## go-test: run go tests
+## go-test: Runs Go tests across all packages
 go-test:
 	go build ./...
 	go test -v -race ./...
 
-.PHONY: integration-test
+## integration-test: Executes integration tests, with optional debugging if DEBUG=1
 integration-test:
 	cd integration && terraform init && \
 	if [ "$(DEBUG)" = "1" ]; then \
@@ -50,13 +52,7 @@ integration-test:
 		terraform test $(TEST_ARGS); \
 	fi
 
-## debug: Echo the sam-package command instead of running it
-debug:
-	cd integration && terraform init && \
-	@echo terraform test $(TEST_ARGS)
-
-
-## sam-validate: validate cloudformation templates
+## sam-validate: Validates a specific CloudFormation template specified by APP variable
 sam-validate:
 	$(call check_var,APP)
 	sam validate \
@@ -64,14 +60,13 @@ sam-validate:
 		--config-file $(SAM_CONFIG_FILE) \
 		--config-env $(SAM_CONFIG_ENV)
 
-## sam-validate-all: validate all cloudformation templates
+## sam-validate-all: Validates all CloudFormation templates in the project
 sam-validate-all:
 	@ for dir in $(SUBDIR); do \
 		APP=$$dir $(MAKE) sam-validate || exit 1; \
 	done
 
-.PHONY: sam-build-all
-## sam-build-all: build assets for all SAM applications across all regions
+## sam-build-all: Builds assets for all SAM applications across specified regions
 sam-build-all:
 	@ for app in $(SUBDIR); do \
 		for region in $(REGIONS); do \
@@ -79,7 +74,7 @@ sam-build-all:
 		done \
 	done
 
-## sam-build: build assets
+## sam-build: Builds assets for a specific SAM application, specified by APP variable
 sam-build:
 	$(call check_var,APP)
 	sam build \
@@ -88,7 +83,7 @@ sam-build:
 		--config-file $(SAM_CONFIG_FILE) \
 		--config-env $(SAM_CONFIG_ENV)
 
-## sam-publish: publish serverless repo app
+## sam-publish: Publishes a specific serverless repository application, after packaging
 sam-publish: sam-package
 	sam publish \
 		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
@@ -96,13 +91,13 @@ sam-publish: sam-package
 		--config-file $(SAM_CONFIG_FILE) \
 		--config-env $(SAM_CONFIG_ENV)
 
-## sam-package-all: package all cloudformation templates and push assets to S3
+## sam-package-all: Packages and pushes all CloudFormation templates to S3
 sam-package-all:
 	@ for dir in $(SUBDIR); do \
 		APP=$$dir $(MAKE) sam-package || exit 1; \
 	done
 
-## sam-package: package cloudformation templates and push assets to S3
+## sam-package: Packages a specific CloudFormation template and pushes assets to S3, specified by APP variable
 sam-package: sam-build
 	$(call check_var,APP)
 	$(call check_var,VERSION)
@@ -126,7 +121,7 @@ else
 		--config-env $(SAM_CONFIG_ENV)
 endif
 
-## release-all: make sure S3_BUCKET_PREFIX isn't empty, run release for all apps
+## release-all: Releases all applications, ensuring S3_BUCKET_PREFIX is set
 release-all:
 ifeq ($(S3_BUCKET_PREFIX),)
 	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release-all.)
@@ -135,7 +130,7 @@ endif
 		APP=$$dir $(MAKE) release || exit 1; \
 	done
 
-## release: make sure S3_BUCKET_PREFIX isn't empty, run sam-package, then set the s3 acl
+## release: Packages, uploads, and sets ACL for a specific app, ensuring S3_BUCKET_PREFIX is set, specified by APP variable
 release:
 ifeq ($(S3_BUCKET_PREFIX),)
 	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release.)
@@ -152,8 +147,7 @@ endif
 		aws s3api put-object-acl --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --key $$object --acl public-read; \
 	done
 
-.PHONY: sam-package-all-regions
-## sam-package-all-regions: Packages and uploads all SAM applications to S3 in multiple regions
+## sam-package-all-regions: Packages and uploads all SAM applications to S3 across multiple regions
 sam-package-all-regions:
 	@ for app in $(SUBDIR); do \
 		for region in $(REGIONS); do \
@@ -161,7 +155,7 @@ sam-package-all-regions:
 		done \
 	done
 
-## sam-publish-all: publish all apps
+## sam-publish-all: Publishes all serverless applications
 sam-publish-all:
 	for dir in $(SUBDIR); do
 		APP=$$dir $(MAKE) sam-publish || exit 1;
