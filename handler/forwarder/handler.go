@@ -82,7 +82,6 @@ func (h *Handler) GetDestinationRegion(ctx context.Context, client s3.HeadBucket
 }
 
 func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
-
 	lctx, ok := lambdacontext.FromContext(ctx)
 	if !ok {
 		return response, errNoLambdaContext
