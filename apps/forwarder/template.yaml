@@ -291,6 +291,9 @@ Resources:
           CONTENT_TYPE_OVERRIDES: !Join
             - ","
             - !Ref ContentTypeOverrides
+          SOURCE_BUCKET_NAMES: !Join
+            - ','
+            - !Ref SourceBucketNames
 Outputs:
   Function:
     Description: "Lambda Function ARN"
