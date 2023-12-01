@@ -20,6 +20,7 @@ var env struct {
 	Verbosity            int      `env:"VERBOSITY,default=1"`
 	MaxFileSize          int64    `env:"MAX_FILE_SIZE"`
 	ContentTypeOverrides []string `env:"CONTENT_TYPE_OVERRIDES"`
+	SourceBucketNames    []string `env:"SOURCE_BUCKET_NAMES"`
 }
 
 var (
@@ -61,6 +62,7 @@ func realInit() error {
 		S3Client:             s3client,
 		Logger:               &logger,
 		ContentTypeOverrides: env.ContentTypeOverrides,
+		SourceBucketNames:    env.SourceBucketNames,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)

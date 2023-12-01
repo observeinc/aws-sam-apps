@@ -108,8 +108,9 @@ func TestHandler(t *testing.T) {
 			// File size does not exceed MaxFileSize limit
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
-				MaxFileSize:    20,
-				DestinationURI: "s3://my-bucket",
+				MaxFileSize:       20,
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
 					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
@@ -125,8 +126,9 @@ func TestHandler(t *testing.T) {
 			// File size exceeds MaxFileSize limit
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
-				MaxFileSize:    1,
-				DestinationURI: "s3://my-bucket",
+				MaxFileSize:       1,
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
 					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
@@ -142,7 +144,8 @@ func TestHandler(t *testing.T) {
 			// Failing a copy should fail the individual item in the queue affected
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
-				DestinationURI: "s3://my-bucket",
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
 					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						copyFuncCallCount++
@@ -161,7 +164,8 @@ func TestHandler(t *testing.T) {
 			// Failing to put a record to the destination URI is a terminal condition. Error out.
 			RequestFile: "testdata/event.json",
 			Config: forwarder.Config{
-				DestinationURI: "s3://my-bucket",
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
 					PutObjectFunc: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 						return nil, errSentinel
@@ -170,6 +174,41 @@ func TestHandler(t *testing.T) {
 			},
 			ExpectedCopyCalls: 1,
 			ExpectErr:         errSentinel,
+		},
+		{
+			// Source bucket isn't in source bucket names
+			RequestFile: "testdata/event.json",
+			Config: forwarder.Config{
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"doesntexist"},
+				S3Client: &handlertest.S3Client{
+					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+						return nil, nil
+					},
+				},
+			},
+			ExpectedCopyCalls: 0,
+			ExpectResponse:    events.SQSEventResponse{
+				// Expect no batch item failures as the file should be skipped, not failed
+			},
+		},
+		{
+			// Successful copy where source bucket matches a name in SourceBucketNames
+			RequestFile: "testdata/event.json",
+			Config: forwarder.Config{
+				MaxFileSize:       50, // Adjust size limit to allow the file to be copied
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"doesntexist", "observeinc-filedrop-hoho-us-west-2-7xmjt"}, // List includes the exact bucket name
+				S3Client: &handlertest.S3Client{
+					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+						return nil, nil // Mock successful copy
+					},
+				},
+			},
+			ExpectedCopyCalls: 1, // Expect one successful call to CopyObjectFunc
+			ExpectResponse:    events.SQSEventResponse{
+				// Expect no batch item failures as the copy should be successful
+			},
 		},
 	}
 

@@ -19,6 +19,7 @@ type Config struct {
 	LogPrefix            string   // prefix used when writing SQS messages to S3
 	MaxFileSize          int64    // maximum file size in bytes for the files to be processed
 	ContentTypeOverrides []string // list of key pair values containing regular expressions to content type values
+	SourceBucketNames    []string
 	S3Client             S3Client
 	Logger               *logr.Logger
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -34,6 +35,7 @@ type Handler struct {
 	LogPrefix           string
 	S3Client            S3Client
 	ContentTypeOverride Matcher
+	SourceBucketNames   []string
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -101,16 +103,20 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 		m := &SQSMessage{SQSMessage: record}
 		copyRecords := m.GetObjectCreated()
 		for _, copyRecord := range copyRecords {
+			sourceURL, err := url.Parse(copyRecord.URI)
+			if err != nil {
+				logger.Error(err, "error parsing source URI", "SourceURI", copyRecord.URI)
+				continue
+			}
+
+			if !h.isBucketAllowed(sourceURL.Host) {
+				logger.Info("Received event from a bucket not in the allowed list; skipping", "bucket", sourceURL.Host)
+				continue
+			}
 			if copyRecord.Size != nil && h.MaxFileSize > 0 && *copyRecord.Size > h.MaxFileSize {
 				logger.V(1).Info("object size exceeds the maximum file size limit; skipping copy",
 					"max", h.MaxFileSize, "size", *copyRecord.Size, "uri", copyRecord.URI)
 				// Log a warning and skip this object by continuing to the next iteration
-				continue
-			}
-
-			sourceURL, err := url.Parse(copyRecord.URI)
-			if err != nil {
-				logger.Error(err, "error parsing source URI", "SourceURI", copyRecord.URI)
 				continue
 			}
 
@@ -140,6 +146,16 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 	return response, nil
 }
 
+// isBucketAllowed checks if the given bucket is in the allowed list or matches a pattern.
+func (h *Handler) isBucketAllowed(bucket string) bool {
+	for _, pattern := range h.SourceBucketNames {
+		if match, _ := filepath.Match(pattern, bucket); match {
+			return true
+		}
+	}
+	return false
+}
+
 func New(cfg *Config) (h *Handler, err error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -155,6 +171,7 @@ func New(cfg *Config) (h *Handler, err error) {
 		S3Client:            cfg.S3Client,
 		MaxFileSize:         cfg.MaxFileSize,
 		ContentTypeOverride: m,
+		SourceBucketNames:   cfg.SourceBucketNames,
 	}
 
 	if cfg.Logger != nil {
