@@ -32,6 +32,20 @@ Parameters:
     Description: >-
       The ARN of the SNS topic that AWS Config delivers notifications to.
     Default: ""
+  IncludeResourceTypes:
+    Type: CommaDelimitedList
+    Description: >-
+      Restrict configuration collection to a subset of resource types. This
+      parameter is mutually exclusive with ExcludeResourceTypes. If neither
+      IncludeResourceTypes or ExcludeResourceTypes is set, all supported
+      resource types are collected.
+    Default: ""
+  ExcludeResourceTypes:
+    Type: CommaDelimitedList
+    Description: >-
+      Exclude a subset of resource types from configuration collection. This
+      parameter is mutually exclusive with IncludeResourceTypes.
+    Default: ""
   Prefix:
     Type: String
     Description: >-
@@ -52,7 +66,25 @@ Conditions:
   DisableSNS: !Equals
     - !Ref TopicARN
     - ""
-
+  IncludeResources: !Not
+    - !Equals
+      - ''
+      - !Join
+        - ','
+        - !Ref IncludeResourceTypes
+  ExcludeResources: !Not
+    - !Equals
+      - ''
+      - !Join
+        - ','
+        - !Ref ExcludeResourceTypes
+  IncludeAll: !Not
+    - !Or
+      - !Condition IncludeResources
+      - !Condition ExcludeResources
+  # we may want to make this configurable in the future,
+  # but it can only be set for "ALL_SUPPORTED_RESOURCE_TYPES".
+  IncludeGlobal: !Condition IncludeAll
 Resources:
   ConfigurationRecorderRole:
     Type: AWS::IAM::Role
@@ -98,8 +130,30 @@ Resources:
     Properties:
       Name: default
       RecordingGroup:
-        AllSupported: true
-        IncludeGlobalResourceTypes: true
+        AllSupported: !If
+          - IncludeAll
+          - true
+          - false
+        IncludeGlobalResourceTypes: !If
+          - IncludeGlobal
+          - true
+          - false
+        ExclusionByResourceTypes: !If
+          - ExcludeResources
+          - ResourceTypes: !Ref ExcludeResourceTypes
+          - !Ref 'AWS::NoValue'
+        ResourceTypes: !If
+          - IncludeResources
+          - !Ref IncludeResourceTypes
+          - !Ref 'AWS::NoValue'
+        RecordingStrategy:
+          UseOnly: !If
+           - IncludeResources
+           - "INCLUSION_BY_RESOURCE_TYPES"
+           - !If
+            - ExcludeResources
+            - "EXCLUSION_BY_RESOURCE_TYPES"
+            - "ALL_SUPPORTED_RESOURCE_TYPES"
       RoleARN: !GetAtt ConfigurationRecorderRole.Arn
   ConfigurationDeliveryChannel:
     Type: AWS::Config::DeliveryChannel

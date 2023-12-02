@@ -16,6 +16,8 @@ The following parameters are required for stack configuration:
 | `TopicARN`          | (Optional) The ARN of the SNS topic for AWS Config notifications. If not provided, notifications are disabled. |
 | `Prefix`            | (Optional) The prefix for the S3 bucket where AWS Config stores configuration snapshots. |
 | `DeliveryFrequency` | The frequency at which AWS Config delivers configuration snapshots. Options range from one hour to twenty-four hours. |
+| `IncludeResourceTypes` | Restrict configuration collection to a subset of resource types. This parameter is mutually exclusive with ExcludeResourceTypes. If neither IncludeResourceTypes or ExcludeResourceTypes is set, all supported resource types are collected. |
+| `ExcludeResourceTypes` | Exclude a subset of resource types from configuration collection. This parameter is mutually exclusive with IncludeResourceTypes. |
 
 ## Resources
 

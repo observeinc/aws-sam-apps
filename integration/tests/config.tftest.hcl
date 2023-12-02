@@ -40,3 +40,33 @@ run "check" {
     error_message = "Bucket is empty"
   }
 }
+
+run "install_include" {
+  variables {
+    name = run.setup.id
+    app  = "config"
+    parameters = {
+      BucketName    = run.setup.access_point.bucket
+      IncludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
+    }
+    capabilities = [
+      "CAPABILITY_NAMED_IAM",
+      "CAPABILITY_AUTO_EXPAND",
+    ]
+  }
+}
+
+run "install_exclude" {
+  variables {
+    name = run.setup.id
+    app  = "config"
+    parameters = {
+      BucketName    = run.setup.access_point.bucket
+      ExcludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
+    }
+    capabilities = [
+      "CAPABILITY_NAMED_IAM",
+      "CAPABILITY_AUTO_EXPAND",
+    ]
+  }
+}
