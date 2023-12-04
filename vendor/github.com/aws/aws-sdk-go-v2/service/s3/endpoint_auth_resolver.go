@@ -23,6 +23,13 @@ func (r *endpointAuthResolver) ResolveAuthSchemes(
 		return nil, err
 	}
 
+	// canonicalize sigv4-s3express ID
+	for _, opt := range opts {
+		if opt.SchemeID == "sigv4-s3express" {
+			opt.SchemeID = "com.amazonaws.s3#sigv4express"
+		}
+	}
+
 	// a host of undocumented s3 operations can be done anonymously
 	return append(opts, &smithyauth.Option{
 		SchemeID: smithyauth.SchemeIDAnonymous,
@@ -36,12 +43,12 @@ func (r *endpointAuthResolver) resolveAuthSchemes(
 ) {
 	baseOpts, err := (&defaultAuthSchemeResolver{}).ResolveAuthSchemes(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("get base options: %v", err)
+		return nil, fmt.Errorf("get base options: %w", err)
 	}
 
 	endpt, err := r.EndpointResolver.ResolveEndpoint(ctx, *params.endpointParams)
 	if err != nil {
-		return nil, fmt.Errorf("resolve endpoint: %v", err)
+		return nil, fmt.Errorf("resolve endpoint: %w", err)
 	}
 
 	endptOpts, ok := smithyauth.GetAuthOptions(&endpt.Properties)
