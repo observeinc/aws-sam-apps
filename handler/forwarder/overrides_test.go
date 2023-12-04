@@ -13,7 +13,7 @@ func TestContentTypeOverridesErrors(t *testing.T) {
 	t.Parallel()
 
 	testcases := []string{
-		"",
+		"nonono",
 		"\\=",
 	}
 
@@ -40,6 +40,7 @@ func TestContentTypeOverrides(t *testing.T) {
 		{
 			ContentTypeOverrides: []string{
 				".*=application/json",
+				"",
 			},
 			Delimiter: "=",
 			Expect: map[string]string{
