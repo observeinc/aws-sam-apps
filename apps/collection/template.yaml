@@ -195,7 +195,10 @@ Resources:
             - !Ref SourceTopicArn
         ContentTypeOverrides: !Join
             - ","
-            - !Ref ContentTypeOverrides
+            - - !Sub "s3://${Bucket}/cloudwatchlogs/=application/x-aws-cloudwatchlogs"
+              - !Join
+                - ","
+                - !Ref ContentTypeOverrides
         NameOverride: !If
           - UseStackName
           - !Ref 'AWS::StackName'
