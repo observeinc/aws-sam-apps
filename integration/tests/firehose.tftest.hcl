@@ -4,10 +4,21 @@ run "setup" {
   }
 }
 
+run "cloudformation_role" {
+  module {
+    source = "./modules/setup/cloudformation_role"
+  }
+
+  variables {
+    stack_name = "firehose"
+  }
+}
+
 run "install" {
   variables {
     name = run.setup.id
     app  = "firehose"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketARN = "arn:aws:s3:::${run.setup.access_point.bucket}"
     }
@@ -40,6 +51,7 @@ run "set_prefix" {
   variables {
     name = run.setup.id
     app  = "firehose"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketARN         = "arn:aws:s3:::${run.setup.access_point.bucket}"
       Prefix            = "${run.setup.id}/"

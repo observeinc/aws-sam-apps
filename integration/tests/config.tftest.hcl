@@ -4,10 +4,21 @@ run "setup" {
   }
 }
 
+run "cloudformation_role" {
+  module {
+    source = "./modules/setup/cloudformation_role"
+  }
+
+  variables {
+    stack_name = "config"
+  }
+}
+
 run "install_config" {
   variables {
     name = run.setup.id
     app  = "config"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketName = run.setup.access_point.bucket
     }
@@ -45,6 +56,7 @@ run "install_include" {
   variables {
     name = run.setup.id
     app  = "config"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketName    = run.setup.access_point.bucket
       IncludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
@@ -60,6 +72,7 @@ run "install_exclude" {
   variables {
     name = run.setup.id
     app  = "config"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketName    = run.setup.access_point.bucket
       ExcludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"

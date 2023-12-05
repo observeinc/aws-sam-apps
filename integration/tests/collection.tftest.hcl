@@ -4,10 +4,21 @@ run "setup" {
   }
 }
 
+run "cloudformation_role" {
+  module {
+    source = "./modules/setup/cloudformation_role"
+  }
+
+  variables {
+    stack_name = "collection"
+  }
+}
+
 run "install_collection" {
   variables {
     name        = "collection-stack-${run.setup.id}"
     app         = "collection"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters  = {
       DataAccessPointArn   = run.setup.access_point.arn
       DestinationUri       = "s3://${run.setup.access_point.alias}"

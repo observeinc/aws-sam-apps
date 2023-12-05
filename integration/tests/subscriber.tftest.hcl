@@ -4,10 +4,21 @@ run "setup" {
   }
 }
 
+run "cloudformation_role" {
+  module {
+    source = "./modules/setup/cloudformation_role"
+  }
+
+  variables {
+    stack_name = "subscriber"
+  }
+}
+
 run "install" {
   variables {
     name = run.setup.id
     app  = "subscriber"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
     }
     capabilities = [

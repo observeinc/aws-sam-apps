@@ -9,10 +9,21 @@ run "setup" {
   }
 }
 
+run "cloudformation_role" {
+  module {
+    source = "./modules/setup/cloudformation_role"
+  }
+
+  variables {
+    stack_name = "forwarder"
+  }
+}
+
 run "install_forwarder" {
   variables {
     name = run.setup.id
     app  = "forwarder"
+    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       DataAccessPointArn   = run.setup.access_point.arn
       DestinationUri       = "s3://${run.setup.access_point.alias}"

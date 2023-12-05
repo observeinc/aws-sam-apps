@@ -1,0 +1,34 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+	  {
+		"Effect": "Allow",
+		"Action": [
+		  "cloudformation:*",
+		  "iam:CreateRole",
+		  "iam:DeleteRole",
+		  "iam:UpdateRole",
+		  "iam:DeleteRolePolicy",
+		  "iam:GetRole",
+		  "iam:GetRolePolicy",
+		  "iam:ListAttachedRolePolicies",
+		  "iam:ListRolePolicies",
+		  "iam:PutRolePolicy",
+		  "iam:PassRole",
+		  "iam:AttachRolePolicy",
+		  "iam:DetachRolePolicy",
+		  "config:DescribeDeliveryChannels",
+		  "config:DescribeDeliveryChannelStatus",
+		  "config:PutDeliveryChannel",
+		  "config:DeleteDeliveryChannel",
+		  "config:DescribeConfigurationRecorders",
+		  "config:DescribeConfigurationRecorderStatus",
+		  "config:DeleteConfigurationRecorder",
+		  "config:PutConfigurationRecorder",
+		  "config:StartConfigurationRecorder",
+		  "config:StopConfigurationRecorder"
+		],
+		"Resource": "*"
+	  }
+	]
+  }

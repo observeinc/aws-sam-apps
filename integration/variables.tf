@@ -18,4 +18,8 @@ variable "capabilities" {
   type        = list(string)
 }
 
+variable "cloudformation_role" {
+  description = "The role to use to do the installation"
+  type        = string
+}
 
