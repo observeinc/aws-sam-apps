@@ -34,7 +34,7 @@ Metadata:
           default: Forwarder Options
         Parameters:
           - SourceBucketNames
-          - SourceTopicArns
+          - SourceTopicArn
           - ContentTypeOverrides
           - NameOverride
 
@@ -52,10 +52,10 @@ Parameters:
     Description: >-
       A list of bucket names which the forwarder is allowed to read from.
     Default: ""
-  SourceTopicArns:
-    Type: CommaDelimitedList
+  SourceTopicArn:
+    Type: String
     Description: >-
-      A list of SNS topics the forwarder is allowed to be subscribed to.
+      The arn of the SNS topic the forwarder is allowed to be subscribed to.
     Default: ""
   ContentTypeOverrides:
     Type: CommaDelimitedList
@@ -115,9 +115,7 @@ Conditions:
   EmptySourceBucketNames: !Equals
     - !Join [",", !Ref SourceBucketNames]
     - ""
-  EmptySourceTopicArns: !Equals
-    - !Join [",", !Ref SourceTopicArns]
-    - ""
+  EmptySourceTopicArn: !Equals [ !Ref SourceTopicArn, "" ]
 
 Resources:
   Topic:
@@ -190,14 +188,11 @@ Resources:
                 - ","
                 - - !Ref Bucket
                   - !Join [",", !Ref SourceBucketNames]
-        SourceTopicArns:
+        SourceTopicArn: 
           !If
-            - EmptySourceTopicArns
-            - !Sub "${Topic}"
-            - !Join 
-                - ","
-                - - !Ref Topic
-                  - !Join [",", !Ref SourceTopicArns]
+            - EmptySourceTopicArn
+            - !Ref Topic
+            - !Ref SourceTopicArn
         ContentTypeOverrides: !Join
             - ","
             - !Ref ContentTypeOverrides

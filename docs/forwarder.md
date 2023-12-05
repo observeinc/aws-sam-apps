@@ -46,7 +46,7 @@ These parameters must be used to configure the Forwarder stack:
 Additionally, you may configure the following optional parameters:
 
 - **SourceBucketNames**: Comma-delimited list of S3 Bucket names for read permissions. The wildcard pattern `*` is supported. This parameter only grants the forwarder read permissions from the provided buckets. In order to copy objects, you must trigger the lambda on object creation through a [supported subscription method](#s3-bucket-subscription).
-- **SourceTopicArns**: Comma-delimited list of SNS Topic ARNs to receive messages from. The wildcard pattern `*` is supported. This parameter grants the topics the ability to publish to the Forwarder stack's SQS Queue.
+- **SourceTopicArn**: SNS Topic ARN to receive messages from. The wildcard pattern `*` is supported. This parameter grants the topics the ability to publish to the Forwarder stack's SQS Queue.
 - **ContentTypeOverrides**: Comma-delimited list of [content type overrides](#content-type-overrides).
 
 ## S3 Bucket Subscription
@@ -91,7 +91,7 @@ Click "Create Event Notification" and provide:
 You may also consider forwarding S3 event notifications to an existing SNS topic in order to route the messages to multiple consumers.
 In this case you would:
 - create an SNS topic
-- update your stack to include the created topic ARN in `SourceTopicArns`
+- update your stack to include the created topic ARN in `SourceTopicArn`
 - subscribe the SNS topic to the Forwarder SQS queue
 - subscribe the S3 bucket to the SNS topic
 
