@@ -18,8 +18,12 @@ variable "capabilities" {
   type        = list(string)
 }
 
-variable "cloudformation_role" {
-  description = "The role to use to do the installation"
+variable "install_policy_json" {
+  description = "Cloudformation policy to associate to role used for install."
   type        = string
+  default     = null
+  validation {
+    condition     = can(jsondecode(var.install_policy_json))
+    error_message = "must be valid JSON"
+  }
 }
-
