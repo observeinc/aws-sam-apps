@@ -45,7 +45,7 @@ jobs:
 
     - uses: actions/checkout@v4
 
-    - uses: actions/setup-go@v4
+    - uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'
 
@@ -104,7 +104,7 @@ jobs:
         name: repo-and-sam-build
         path: ${{ github.workspace }}/.aws-sam/
 
-    - uses: actions/setup-go@v4
+    - uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'
 
