@@ -1,16 +1,45 @@
+variables {
+  install_policy_json = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "cloudformation:*",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:DeleteRolePolicy",
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:PutRolePolicy",
+          "iam:PassRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "config:DescribeDeliveryChannels",
+          "config:DescribeDeliveryChannelStatus",
+          "config:PutDeliveryChannel",
+          "config:DeleteDeliveryChannel",
+          "config:DescribeConfigurationRecorders",
+          "config:DescribeConfigurationRecorderStatus",
+          "config:DeleteConfigurationRecorder",
+          "config:PutConfigurationRecorder",
+          "config:StartConfigurationRecorder",
+          "config:StopConfigurationRecorder"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+EOF
+}
+
 run "setup" {
   module {
     source = "./modules/setup/run"
-  }
-}
-
-run "cloudformation_role" {
-  module {
-    source = "./modules/setup/cloudformation_role"
-  }
-
-  variables {
-    stack_name = "config"
   }
 }
 
@@ -18,7 +47,6 @@ run "install_config" {
   variables {
     name = run.setup.id
     app  = "config"
-    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketName = run.setup.access_point.bucket
     }
@@ -56,7 +84,6 @@ run "install_include" {
   variables {
     name = run.setup.id
     app  = "config"
-    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketName    = run.setup.access_point.bucket
       IncludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
@@ -72,7 +99,6 @@ run "install_exclude" {
   variables {
     name = run.setup.id
     app  = "config"
-    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       BucketName    = run.setup.access_point.bucket
       ExcludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"

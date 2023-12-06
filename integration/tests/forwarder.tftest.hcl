@@ -1,4 +1,69 @@
 variables {
+  install_policy_json = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "cloudformation:*",
+          "ec2:DescribeNetworkInterfaces",
+          "events:DeleteRule",
+          "events:DescribeRule",
+          "events:PutRule",
+          "events:PutTargets",
+          "events:RemoveTargets",
+          "iam:AttachRolePolicy",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:DeleteRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:PassRole",
+          "iam:PutRolePolicy",
+          "iam:UpdateRole",
+          "kms:CreateGrant",
+          "kms:Decrypt",
+          "kms:DescribeKey",
+          "kms:Encrypt",
+          "kms:ListGrants",
+          "kms:RevokeGrant",
+          "lambda:CreateEventSourceMapping",
+          "lambda:CreateFunction",
+          "lambda:DeleteEventSourceMapping",
+          "lambda:DeleteFunction",
+          "lambda:GetEventSourceMapping",
+          "lambda:GetFunction",
+          "lambda:GetFunctionCodeSigningConfig",
+          "lambda:GetRuntimeManagementConfig",
+          "lambda:ListEventSourceMappings",
+          "lambda:ListTags",
+          "lambda:TagResource",
+          "lambda:UntagResource",
+          "lambda:UpdateEventSourceMapping",
+          "lambda:UpdateFunctionCode",
+          "lambda:UpdateFunctionConfiguration",
+          "logs:CreateLogGroup",
+          "logs:DeleteLogGroup",
+          "logs:DescribeLogGroups",
+          "logs:ListTagsForResource",
+          "logs:PutRetentionPolicy",
+          "s3:GetObject",
+          "sqs:CreateQueue",
+          "sqs:DeleteQueue",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:PurgeQueue",
+          "sqs:SetQueueAttributes"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+EOF
   override_match        = "example"
   override_content_type = "application/x-csv;delimiter=space"
 }
@@ -9,21 +74,10 @@ run "setup" {
   }
 }
 
-run "cloudformation_role" {
-  module {
-    source = "./modules/setup/cloudformation_role"
-  }
-
-  variables {
-    stack_name = "forwarder"
-  }
-}
-
 run "install_forwarder" {
   variables {
     name = run.setup.id
     app  = "forwarder"
-    cloudformation_role = run.cloudformation_role.role_arn
     parameters = {
       DataAccessPointArn   = run.setup.access_point.arn
       DestinationUri       = "s3://${run.setup.access_point.alias}"
