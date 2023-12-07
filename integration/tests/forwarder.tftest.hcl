@@ -81,7 +81,7 @@ run "install_forwarder" {
     parameters = {
       DataAccessPointArn   = run.setup.access_point.arn
       DestinationUri       = "s3://${run.setup.access_point.alias}"
-      SourceBucketNames    = "*"
+      SourceBucketNames    = "${run.setup.id}-sns,${run.setup.id}-sqs,${run.setup.id}-eventbridge"
       # TODO: wildcard does not appear to work for SNS topics
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:${run.setup.id}"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
