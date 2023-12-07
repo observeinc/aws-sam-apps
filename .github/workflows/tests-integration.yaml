@@ -7,6 +7,12 @@ on:
   # release.yaml runs the tests on commits to main
   pull_request:
   workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
   workflow_call:
   schedule:
     - cron:  '0 0 * * 1' # Monday at 00:00 UTC
@@ -72,6 +78,12 @@ jobs:
       env:
         AWS_REGION: us-west-2
         S3_BUCKET_PREFIX: ${{ github.run_id }}
+
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+      with:
+        limit-access-to-actor: true
 
     - name: Archive SAM directory
       uses: actions/upload-artifact@v3
