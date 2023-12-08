@@ -8,6 +8,11 @@ variables {
         "Action": [
           "cloudformation:*",
           "ec2:DescribeNetworkInterfaces",
+          "events:DescribeRule",
+          "events:DeleteRule",
+          "events:PutRule",
+          "events:PutTargets",
+          "events:RemoveTargets",
           "iam:AttachRolePolicy",
           "iam:CreateRole",
           "iam:DeleteRole",
@@ -40,6 +45,10 @@ variables {
           "logs:ListTagsForResource",
           "logs:PutRetentionPolicy",
           "s3:GetObject",
+          "scheduler:GetSchedule",
+          "scheduler:CreateSchedule",
+          "scheduler:UpdateSchedule",
+          "scheduler:DeleteSchedule",
           "sqs:CreateQueue",
           "sqs:DeleteQueue",
           "sqs:GetQueueAttributes",
@@ -63,6 +72,8 @@ run "install" {
     name = run.setup.id
     app  = "subscriber"
     parameters = {
+      LogGroupNamePatterns = "*"
+      DiscoveryRate        = "24 hours"
     }
     capabilities = [
       "CAPABILITY_IAM",
@@ -71,7 +82,7 @@ run "install" {
   }
 }
 
-run "check_invoke" {
+run "check_eventbridge_invoked" {
   module {
     source = "./modules/exec"
   }
@@ -85,6 +96,6 @@ run "check_invoke" {
 
   assert {
     condition     = output.error == ""
-    error_message = "Failed to invoke lambda function"
+    error_message = "Failed to verify subscriber invocation"
   }
 }

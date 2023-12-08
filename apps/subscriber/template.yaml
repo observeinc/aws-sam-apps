@@ -1,6 +1,8 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
+Transform:
+  - AWS::Serverless-2016-10-31
+  - AWS::LanguageExtensions
 Description: 'Subscribe logs to Observe.'
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -60,6 +62,12 @@ Parameters:
     Description: Maximum number of concurrent workers when processing log groups.
     Default: ''
     AllowedPattern: '^[0-9]*$'
+  DiscoveryRate:
+    Type: String
+    Description: EventBridge rate expression for periodically triggering
+      discovery. If not set, no eventbridge rules are configured.
+    Default: ''
+    AllowedPattern: '^([1-9]\d* (minute|hour|day)s?)?$'
   NameOverride:
     Type: String
     Description: >-
@@ -73,6 +81,22 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
+  HasDiscoveryRate: !Not
+    - !Equals
+      - !Ref DiscoveryRate
+      - ''
+  HasLogGroupNamePatterns: !Not
+    - !Equals
+      - !Join
+        - ','
+        - !Ref LogGroupNamePatterns
+      - ''
+  HasLogGroupNamePrefixes: !Not
+    - !Equals
+      - !Join
+        - ','
+        - !Ref LogGroupNamePrefixes
+      - ''
 
 Resources:
   DeadLetter:
@@ -171,7 +195,9 @@ Resources:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: makefile
-    DependsOn: LogGroup
+    DependsOn:
+      - QueuePolicy
+      - LogGroup
     Properties:
       FunctionName: !If
         - UseStackName
@@ -208,6 +234,77 @@ Resources:
           QUEUE_URL: !Ref Queue
           VERBOSITY: 9
           NUM_WORKERS: !Ref NumWorkers
+  SubscriptionEvents:
+    Type: AWS::Events::Rule
+    Condition: HasDiscoveryRate
+    DependsOn: Subscriber
+    Properties:
+      Description: "Subscribe new log groups"
+      State: ENABLED
+      EventPattern:
+        source:
+          - "aws.logs"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "logs.amazonaws.com"
+          eventName:
+            - "CreateLogGroup"
+      Targets:
+        - Arn: !GetAtt Queue.Arn
+          Id: SubscriptionEvent
+          InputTransformer:
+            InputPathsMap:
+              logGroupName: "$.detail.requestParameters.logGroupName"
+            InputTemplate: >-
+              {"subscribe": {"logGroups": [{ "logGroupName": "<logGroupName>"}]}}
+  SchedulerRole:
+    Type: 'AWS::IAM::Role'
+    Condition: HasDiscoveryRate
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: queue
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt Queue.Arn
+  DiscoverySchedule:
+    Type: 'AWS::Scheduler::Schedule'
+    Condition: HasDiscoveryRate
+    Properties:
+      Description: Trigger log group discovery
+      ScheduleExpression: !Sub 'rate(${DiscoveryRate})'
+      State: ENABLED
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt Queue.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: !ToJsonString
+          discover:
+            logGroupNamePatterns: !If
+              - HasLogGroupNamePatterns
+              - !Ref LogGroupNamePatterns
+              - []
+            logGroupNamePrefixes: !If
+              - HasLogGroupNamePrefixes
+              - !Ref LogGroupNamePrefixes
+              - []
+
 Outputs:
   Function:
     Description: "Lambda Function ARN"
