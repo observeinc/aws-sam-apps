@@ -25,7 +25,6 @@ Metadata:
           default: Data Sources
         Parameters:
           - SourceBucketNames
-          - SourceTopicArn
 
 Globals:
   Function:
@@ -56,12 +55,6 @@ Parameters:
       files copied to Filedrop, you must also subscribe S3 Bucket Notifications
       to the forwarder.
     Default: ''
-  SourceTopicArn:
-    Type: String
-    Description: >-
-      The arn of the SNS topic the forwarder is allowed to be subscribed to.
-    Default: ''
-    #AllowedPattern: '^arn:aws:sns:[a-zA-Z0-9-]{1,63}:[0-9]{12}:[a-zA-Z0-9-_]{1,256}$'
   MaxFileSize:
     Type: String
     Description: Max file size for objects to process (in bytes), default is 1GB
@@ -138,9 +131,6 @@ Resources:
             Resource: !GetAtt Queue.Arn
             Principal:
               Service: sns.amazonaws.com
-            Condition:
-              ArnLike:
-                aws:SourceArn: !Ref SourceTopicArn
           - Effect: Allow
             Action: sqs:SendMessage
             Resource: !GetAtt Queue.Arn
