@@ -35,7 +35,6 @@ Metadata:
           default: Forwarder Options
         Parameters:
           - SourceBucketNames
-          - SourceTopicArns
           - ContentTypeOverrides
           - NameOverride
 
@@ -52,11 +51,6 @@ Parameters:
     Type: CommaDelimitedList
     Description: >-
       A list of bucket names which the forwarder is allowed to read from.
-    Default: ""
-  SourceTopicArns:
-    Type: CommaDelimitedList
-    Description: >-
-      A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ""
   ContentTypeOverrides:
     Type: CommaDelimitedList
@@ -121,9 +115,6 @@ Conditions:
     - ""
   EmptySourceBucketNames: !Equals
     - !Join [",", !Ref SourceBucketNames]
-    - ""
-  EmptySourceTopicArns: !Equals
-    - !Join [",", !Ref SourceTopicArns]
     - ""
 Resources:
   Topic:
@@ -196,14 +187,7 @@ Resources:
                 - ","
                 - - !Ref Bucket
                   - !Join [",", !Ref SourceBucketNames]
-        SourceTopicArns:
-          !If
-            - EmptySourceTopicArns
-            - !Sub "${Topic}"
-            - !Join 
-                - ","
-                - - !Ref Topic
-                  - !Join [",", !Ref SourceTopicArns]
+        SourceTopicArns: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*"
         ContentTypeOverrides: !Join
             - ","
             - - !Sub "s3://${Bucket}/cloudwatchlogs/=application/x-aws-cloudwatchlogs"
