@@ -22,11 +22,12 @@ Metadata:
           - DataAccessPointArn
           - DestinationUri
       - Label:
-          default: Resources
+          default: AWS Config
         Parameters:
-          - InstallConfig
+          - IncludeResourceTypes
+          - ExcludeResourceTypes
       - Label:
-          default: Logs
+          default: CloudWatch Logs
         Parameters:
           - LogGroupNamePatterns
           - LogGroupNamePrefixes
@@ -66,17 +67,19 @@ Parameters:
       Name of IAM role expected by Filedrop. This role will be created as part
       of this stack, and must therefore be unique within the account.
     Default: ""
-  InstallConfig:
-    Type: String
-    AllowedValues:
-      - "true"
-      - "false"
-    Default: "true"
+  IncludeResourceTypes:
+    Type: CommaDelimitedList
     Description: >-
-      Set to `true` to install AWS Config. AWS Config can only be configured
-      once per region. If you already have an existing AWS Config Recorder
-      installed, set this value to `false` and subscribe the S3 bucket
-      containing the configuration snapshots.
+      Resources to collect using AWS Config. Use a wildcard to collect all
+      supported resource types. Do not set this parameter if AWS Config is
+      already installed for this region.
+    Default: ""
+  ExcludeResourceTypes:
+    Type: CommaDelimitedList
+    Description: >-
+      Exclude a subset of resource types from configuration collection. This
+      parameter can only be set if IncludeResourceTypes is wildcarded.
+    Default: ""
   LogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
@@ -92,9 +95,13 @@ Parameters:
     Default: ''
 
 Conditions:
-  EnableConfig: !Equals
-    - !Ref InstallConfig
-    - "true"
+  EnableConfig: !Not
+    - !Equals
+      - ""
+      - !Join [",", !Ref IncludeResourceTypes]
+  IncludeAllResourceTypes: !Equals
+    - "*"
+    - !Join [",", !Ref IncludeResourceTypes]
   EnableSubscriber: !Not
     - !And
       - !Equals
@@ -109,7 +116,6 @@ Conditions:
   EmptySourceBucketNames: !Equals
     - !Join [",", !Ref SourceBucketNames]
     - ""
-
 Resources:
   Topic:
     Type: "AWS::SNS::Topic"
@@ -210,6 +216,11 @@ Resources:
       Parameters:
         BucketName: !Ref Bucket
         TopicARN: !Ref Topic
+        IncludeResourceTypes: !If
+          - IncludeAllResourceTypes
+          - ""
+          - !Join [",", !Ref IncludeResourceTypes]
+        ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
   Firehose:
     Type: AWS::Serverless::Application
     Properties:

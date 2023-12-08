@@ -1,3 +1,45 @@
+variables {
+  install_policy_json = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "cloudformation:*",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:DeleteRolePolicy",
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:PutRolePolicy",
+          "iam:PassRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "logs:DescribeLogGroups",
+          "logs:ListTagsForResource",
+          "firehose:CreateDeliveryStream",
+          "firehose:DeleteDeliveryStream",
+          "firehose:DescribeDeliveryStream",
+          "firehose:ListTagsForDeliveryStream",
+          "firehose:UpdateDestination",
+          "logs:CreateLogGroup",
+          "logs:DeleteLogGroup",
+          "logs:PutRetentionPolicy",
+          "logs:CreateLogStream",
+          "logs:DeleteLogStream",
+          "logs:DescribeLogStreams"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+EOF
+}
+
 run "setup" {
   module {
     source = "./modules/setup/run"
