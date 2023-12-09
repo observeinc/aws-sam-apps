@@ -8,7 +8,6 @@ variables {
         "Action": [
           "cloudformation:*",
           "ec2:DescribeNetworkInterfaces",
-          "events:DeleteRule",
           "events:DescribeRule",
           "events:PutRule",
           "events:PutTargets",
