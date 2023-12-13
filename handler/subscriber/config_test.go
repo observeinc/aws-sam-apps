@@ -7,6 +7,7 @@ import (
 	"github.com/observeinc/aws-sam-testing/handler/handlertest"
 	"github.com/observeinc/aws-sam-testing/handler/subscriber"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -45,7 +46,7 @@ func TestConfig(t *testing.T) {
 			Config: subscriber.Config{
 				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
-				RoleARN:              "arn:aws:iam::123456789012:role/test",
+				RoleARN:              aws.String("arn:aws:iam::123456789012:role/test"),
 			},
 			ExpectError: subscriber.ErrMissingDestinationARN,
 		},
@@ -55,7 +56,7 @@ func TestConfig(t *testing.T) {
 				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
 				DestinationARN:       "arn:aws:firehose:us-west-2:123456789012:deliverystream/test",
-				RoleARN:              "arn:aws:iam::123456789012:role/test",
+				RoleARN:              aws.String("arn:aws:iam::123456789012:role/test"),
 			},
 		},
 		{
