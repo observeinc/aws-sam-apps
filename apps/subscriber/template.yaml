@@ -81,6 +81,10 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
+  HasRoleArn: !Not
+    - !Equals
+      - !Ref RoleArn
+      - ''
   HasDiscoveryRate: !Not
     - !Equals
       - !Ref DiscoveryRate
@@ -158,6 +162,17 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !GetAtt LogGroup.Arn
+        - !If
+          - HasRoleArn
+          - PolicyName: pass
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - iam:PassRole
+                  Resource: !Ref RoleArn
+          - !Ref AWS::NoValue
         - PolicyName: queue
           PolicyDocument:
             Version: 2012-10-17
@@ -230,7 +245,10 @@ Resources:
           LOG_GROUP_NAME_PATTERNS: !Join
             - ','
             - !Ref LogGroupNamePatterns
-          ROLE_ARN: !Ref RoleArn
+          ROLE_ARN: !If
+            - HasRoleArn
+            - !Ref RoleArn
+            - !Ref AWS::NoValue
           QUEUE_URL: !Ref Queue
           VERBOSITY: 9
           NUM_WORKERS: !Ref NumWorkers
