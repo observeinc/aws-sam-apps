@@ -94,7 +94,7 @@ func New(cfg *Config) (*Handler, error) {
 			FilterName:     aws.String(cfg.FilterName),
 			FilterPattern:  aws.String(cfg.FilterPattern),
 			DestinationArn: aws.String(cfg.DestinationARN),
-			RoleArn:        aws.String(cfg.RoleARN),
+			RoleArn:        cfg.RoleARN,
 		},
 		logGroupNameFilter: cfg.LogGroupFilter(),
 	}

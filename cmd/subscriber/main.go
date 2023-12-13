@@ -19,7 +19,7 @@ var env struct {
 	FilterName           string   `env:"FILTER_NAME"`
 	FilterPattern        string   `env:"FILTER_PATTERN"`
 	DestinationARN       string   `env:"DESTINATION_ARN"`
-	RoleARN              string   `env:"ROLE_ARN"`
+	RoleARN              *string  `env:"ROLE_ARN,noinit"` // noinit retains nil if env var unset
 	LogGroupNamePatterns []string `env:"LOG_GROUP_NAME_PATTERNS"`
 	LogGroupNamePrefixes []string `env:"LOG_GROUP_NAME_PREFIXES"`
 	QueueURL             string   `env:"QUEUE_URL,required"`

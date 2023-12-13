@@ -123,7 +123,7 @@ func (h *Handler) SubscriptionFilterDiff(subscriptionFilters []types.Subscriptio
 				FilterName:     h.subscriptionFilter.FilterName,
 				FilterPattern:  h.subscriptionFilter.FilterPattern,
 				DestinationArn: h.subscriptionFilter.DestinationArn,
-				RoleArn:        h.subscriptionFilter.LogGroupName,
+				RoleArn:        h.subscriptionFilter.RoleArn,
 			})
 		}
 	}
@@ -133,7 +133,7 @@ func (h *Handler) SubscriptionFilterDiff(subscriptionFilters []types.Subscriptio
 			FilterName:     h.subscriptionFilter.FilterName,
 			FilterPattern:  h.subscriptionFilter.FilterPattern,
 			DestinationArn: h.subscriptionFilter.DestinationArn,
-			RoleArn:        h.subscriptionFilter.LogGroupName,
+			RoleArn:        h.subscriptionFilter.RoleArn,
 		})
 	}
 

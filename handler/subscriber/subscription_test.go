@@ -159,6 +159,32 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 			},
 		},
 		{
+			Configure: types.SubscriptionFilter{
+				FilterName:     aws.String("observe"),
+				DestinationArn: aws.String("arn:aws:firehose:us-west-2:123456789012:deliverystream/example"),
+				RoleArn:        aws.String("arn:aws:iam::123456789012:role/example"),
+			},
+			Existing: []types.SubscriptionFilter{
+				{
+					FilterName: aws.String("foo"),
+				},
+				{
+					FilterName: aws.String("observe-logs-subscription"),
+				},
+			},
+			ExpectedActions: []any{
+				&cloudwatchlogs.DeleteSubscriptionFilterInput{
+					FilterName: aws.String("observe-logs-subscription"),
+				},
+				&cloudwatchlogs.PutSubscriptionFilterInput{
+					FilterName:     aws.String("observe"),
+					FilterPattern:  aws.String(""),
+					DestinationArn: aws.String("arn:aws:firehose:us-west-2:123456789012:deliverystream/example"),
+					RoleArn:        aws.String("arn:aws:iam::123456789012:role/example"),
+				},
+			},
+		},
+		{
 			/*
 				Do nothing if we exceed the two subscription filter limit
 			*/
@@ -201,7 +227,7 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 					CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
 					FilterName:           aws.ToString(tt.Configure.FilterName),
 					DestinationARN:       aws.ToString(tt.Configure.DestinationArn),
-					RoleARN:              aws.ToString(tt.Configure.RoleArn),
+					RoleARN:              tt.Configure.RoleArn,
 				})
 			if err != nil {
 				t.Fatal(err)

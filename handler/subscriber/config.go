@@ -35,8 +35,10 @@ type Config struct {
 	// DestinationARN to subscribe log groups to.
 	// If empty, delete any subscription filters we manage.
 	DestinationARN string
-	// RoleARN for subscription filter
-	RoleARN string
+
+	// RoleARN for subscription filter.
+	// Only required if destination is a firehose delivery stream
+	RoleARN *string
 
 	// LogGroupNamePrefixes contains a list of prefixes which restricts the log
 	// groups we operate on.
@@ -68,12 +70,12 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	if c.RoleARN != "" {
+	if c.RoleARN != nil {
 		if c.DestinationARN == "" {
 			errs = append(errs, ErrMissingDestinationARN)
 		}
 
-		roleARN, err := arn.Parse(c.RoleARN)
+		roleARN, err := arn.Parse(*c.RoleARN)
 		if err != nil || roleARN.Service != "iam" || !strings.HasPrefix(roleARN.Resource, "role/") {
 			errs = append(errs, fmt.Errorf("failed to parse role: %w", ErrInvalidARN))
 		}
