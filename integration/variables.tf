@@ -27,3 +27,12 @@ variable "install_policy_json" {
     error_message = "must be valid JSON"
   }
 }
+
+variable "tags" {
+  description = <<-EOF
+    Set of tags to apply to stack. By default we always apply at least one tag
+    in order to exercise the required IAM policies.
+  EOF
+  type        = map(string)
+  default     = { hello = "world" }
+}

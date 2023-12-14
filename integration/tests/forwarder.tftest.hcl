@@ -51,6 +51,7 @@ variables {
           "logs:DescribeLogGroups",
           "logs:ListTagsForResource",
           "logs:PutRetentionPolicy",
+          "logs:TagResource",
           "s3:GetObject",
           "sqs:CreateQueue",
           "sqs:DeleteQueue",
