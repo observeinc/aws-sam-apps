@@ -86,7 +86,7 @@ jobs:
         limit-access-to-actor: true
 
     - name: Archive SAM directory
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: repo-and-sam-build
         path: |
