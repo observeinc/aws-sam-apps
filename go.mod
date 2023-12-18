@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.24.0
 	github.com/aws/aws-sdk-go-v2/config v1.26.1
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.15.7
-	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.29.5
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.30.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.5
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.29.5
 	github.com/go-logr/logr v1.3.0
