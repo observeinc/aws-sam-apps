@@ -73,6 +73,7 @@ Parameters:
     Description: >-
       Name of Lambda function.
     Default: ''
+    MaxLength: 64
 
 Conditions:
   SetDefaultFilterName: !Equals

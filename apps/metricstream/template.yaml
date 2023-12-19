@@ -37,6 +37,7 @@ Parameters:
       Set Firehose Delivery Stream name. In the absence of a value, the stack
       name will be used.
     Default: ''
+    MaxLength: 64
   BufferingInterval:
     Type: Number
     Default: 60

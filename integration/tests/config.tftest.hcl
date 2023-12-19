@@ -48,10 +48,10 @@ run "setup" {
 
 run "install_config" {
   variables {
-    name = run.setup.id
-    app  = "config"
+    setup = run.setup
+    app   = "config"
     parameters = {
-      BucketName = run.setup.access_point.bucket
+      BucketName   = run.setup.access_point.bucket
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",
@@ -85,10 +85,10 @@ run "check" {
 
 run "install_include" {
   variables {
-    name = run.setup.id
-    app  = "config"
+    setup = run.setup
+    app   = "config"
     parameters = {
-      BucketName    = run.setup.access_point.bucket
+      BucketName           = run.setup.access_point.bucket
       IncludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
     }
     capabilities = [
@@ -100,10 +100,10 @@ run "install_include" {
 
 run "install_exclude" {
   variables {
-    name = run.setup.id
+    setup = run.setup
     app  = "config"
     parameters = {
-      BucketName    = run.setup.access_point.bucket
+      BucketName           = run.setup.access_point.bucket
       ExcludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
     }
     capabilities = [

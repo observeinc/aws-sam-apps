@@ -1,7 +1,7 @@
 data "aws_region" "current" {}
 
 resource "aws_cloudformation_stack" "this" {
-  name          = var.name
+  name          = var.setup.stack_name
   template_body = file("../.aws-sam/build/${var.app}/${data.aws_region.current.name}/packaged.yaml")
   parameters    = var.parameters
   capabilities  = var.capabilities
@@ -11,7 +11,7 @@ resource "aws_cloudformation_stack" "this" {
 
 resource "aws_iam_role" "this" {
   count       = var.install_policy_json == null ? 0 : 1
-  name_prefix = "${var.name}-"
+  name_prefix = "${var.setup.short}-"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",

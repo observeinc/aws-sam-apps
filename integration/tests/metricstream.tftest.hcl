@@ -56,10 +56,11 @@ run "setup" {
 
 run "install" {
   variables {
-    name = run.setup.id
-    app  = "metricstream"
+    setup = run.setup
+    app   = "metricstream"
     parameters = {
-      BucketARN = "arn:aws:s3:::${run.setup.access_point.bucket}"
+      BucketARN    = "arn:aws:s3:::${run.setup.access_point.bucket}"
+      NameOverride = run.setup.id
     }
     capabilities = [
       "CAPABILITY_IAM",

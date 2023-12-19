@@ -77,14 +77,15 @@ run "setup" {
 
 run "install_forwarder" {
   variables {
-    name = run.setup.id
-    app  = "forwarder"
+    setup = run.setup
+    app   = "forwarder"
     parameters = {
       DataAccessPointArn   = run.setup.access_point.arn
       DestinationUri       = "s3://${run.setup.access_point.alias}"
-      SourceBucketNames    = "${run.setup.id}-sns,${run.setup.id}-sqs,${run.setup.id}-eventbridge"
+      SourceBucketNames    = "${run.setup.short}-sns,${run.setup.short}-sqs,${run.setup.short}-eventbridge"
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
+      NameOverride         = run.setup.id
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",
@@ -99,7 +100,7 @@ run "setup_subscriptions" {
   }
 
   variables {
-    run_id             = run.setup.id
+    run_id             = run.setup.short
     queue_arn          = run.install_forwarder.stack.outputs["Queue"]
     sources            = ["sqs", "eventbridge", "sns"]
   }
