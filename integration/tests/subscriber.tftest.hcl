@@ -16,6 +16,11 @@ variables {
           "events:PutRule",
           "events:PutTargets",
           "events:RemoveTargets",
+          "firehose:CreateDeliveryStream",
+          "firehose:DeleteDeliveryStream",
+          "firehose:DescribeDeliveryStream",
+          "firehose:ListTagsForDeliveryStream",
+          "firehose:UpdateDestination",
           "iam:AttachRolePolicy",
           "iam:CreateRole",
           "iam:DeleteRole",
@@ -43,8 +48,11 @@ variables {
           "lambda:UntagResource",
           "lambda:UpdateEventSourceMapping",
           "logs:CreateLogGroup",
+          "logs:CreateLogStream",
           "logs:DeleteLogGroup",
+          "logs:DeleteLogStream",
           "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
           "logs:ListTagsForResource",
           "logs:PutRetentionPolicy",
           "logs:TagResource",
@@ -76,6 +84,7 @@ run "install" {
     setup = run.setup
     app   = "subscriber"
     parameters = {
+      BucketARN            = "arn:aws:s3:::${run.setup.access_point.bucket}"
       LogGroupNamePatterns = "*"
       DiscoveryRate        = "24 hours"
       NameOverride         = run.setup.id

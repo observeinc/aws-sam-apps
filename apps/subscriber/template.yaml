@@ -3,11 +3,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform:
   - AWS::Serverless-2016-10-31
   - AWS::LanguageExtensions
-Description: 'Subscribe logs to Observe.'
+Description: 'Subscribe logs to S3.'
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: observe-subscriber
-    Description: Subscribe logs to Observe.
+    Description: Subscribe logs to S3.
     Author: Observe Inc
     SpdxLicenseId: Apache-2.0
     ReadmeUrl: README.md
@@ -21,6 +21,15 @@ Globals:
     MemorySize: 128
 
 Parameters:
+  BucketARN:
+    Type: String
+    Description: >-
+      S3 Bucket ARN to write log records to.
+  Prefix:
+    Type: String
+    Description: >-
+      Optional prefix to write log records to.
+    Default: ''
   FilterName:
     Type: String
     Description: >-
@@ -31,25 +40,14 @@ Parameters:
     Description: >-
       Subscription filter pattern.
     Default: ''
-  DestinationArn:
-    Type: String
-    Description: >-
-      Destination ARN for subscription filter. If empty, any matching
-      subscription filter named `FILTER_NAME` will be removed.
-    Default: ''
-  RoleArn:
-    Type: String
-    Description: >-
-      Role ARN. Can only be set if DestinationArn is also set.
-    Default: ''
   LogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
-      Comma separated list of patterns. 
+      Comma separated list of patterns.
       We will only subscribe to log groups that have names matching one of the
       provided strings based on strings based on a case-sensitive substring
-      search. To subscribe to all log groups, use the wildcard operator *. 
-    Default: '*'
+      search. To subscribe to all log groups, use the wildcard operator *.
+    Default: ''
   LogGroupNamePrefixes:
     Type: CommaDelimitedList
     Description: >-
@@ -57,6 +55,22 @@ Parameters:
       log groups that start with a provided string. To subscribe to all log
       groups, use the wildcard operator *.
     Default: ''
+  BufferingInterval:
+    Type: Number
+    Default: 60
+    MinValue: 60
+    MaxValue: 900
+    Description: |
+      Buffer incoming data for the specified period of time, in seconds, before
+      delivering it to S3.
+  BufferingSize:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 64
+    Description: |
+      Buffer incoming data to the specified size, in MiBs, before delivering it
+      to S3.
   NumWorkers:
     Type: String
     Description: Maximum number of concurrent workers when processing log groups.
@@ -82,10 +96,6 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
-  HasRoleArn: !Not
-    - !Equals
-      - !Ref RoleArn
-      - ''
   HasDiscoveryRate: !Not
     - !Equals
       - !Ref DiscoveryRate
@@ -104,6 +114,106 @@ Conditions:
       - ''
 
 Resources:
+  FirehoseRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - firehose.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logging
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt FirehoseLogGroup.Arn
+        - PolicyName: s3writer
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                  - s3:PutObject
+                Resource:
+                  - !Ref BucketARN
+                  - !Sub '${BucketARN}/${Prefix}*'
+  FirehoseLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/firehose/
+          - !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+      RetentionInDays: 365
+  FirehoseLogStream:
+    Type: 'AWS::Logs::LogStream'
+    Properties:
+      LogStreamName: s3logs
+      LogGroupName: !Ref FirehoseLogGroup
+  DeliveryStream:
+    Type: 'AWS::KinesisFirehose::DeliveryStream'
+    Properties:
+      DeliveryStreamName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      DeliveryStreamType: DirectPut
+      S3DestinationConfiguration:
+        BucketARN: !Ref BucketARN
+        RoleARN: !GetAtt FirehoseRole.Arn
+        Prefix: !Ref Prefix
+        ErrorOutputPrefix: !Ref Prefix
+        BufferingHints:
+          IntervalInSeconds: !Ref BufferingInterval
+          SizeInMBs: !Ref BufferingSize
+        CloudWatchLoggingOptions:
+          Enabled: true
+          LogGroupName: !Ref FirehoseLogGroup
+          LogStreamName: !Ref FirehoseLogStream
+  DestinationRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - logs.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: firehose
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - firehose:DescribeDeliveryStream
+                  - firehose:ListDeliveryStreams
+                  - firehose:ListTagsForDeliveryStream
+                  - firehose:PutRecord
+                  - firehose:PutRecordBatch
+                Resource: !GetAtt 'DeliveryStream.Arn'
   DeadLetter:
     Type: AWS::SQS::Queue
     Properties:
@@ -139,7 +249,7 @@ Resources:
               Service: events.amazonaws.com
       Queues:
         - !Ref Queue
-  Role:
+  SubscriberRole:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -162,18 +272,15 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !GetAtt LogGroup.Arn
-        - !If
-          - HasRoleArn
-          - PolicyName: pass
-            PolicyDocument:
-              Version: 2012-10-17
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - iam:PassRole
-                  Resource: !Ref RoleArn
-          - !Ref AWS::NoValue
+                Resource: !GetAtt SubscriberLogGroup.Arn
+        - PolicyName: pass
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt DestinationRole.Arn
         - PolicyName: queue
           PolicyDocument:
             Version: 2012-10-17
@@ -196,7 +303,7 @@ Resources:
                   - logs:DeleteSubscriptionFilter
                   - logs:PutSubscriptionFilter
                 Resource: "*"
-  LogGroup:
+  SubscriberLogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
       LogGroupName: !Join
@@ -213,13 +320,13 @@ Resources:
       BuildMethod: makefile
     DependsOn:
       - QueuePolicy
-      - LogGroup
+      - SubscriberLogGroup
     Properties:
       FunctionName: !If
         - UseStackName
         - !Ref AWS::StackName
         - !Ref NameOverride
-      Role: !GetAtt Role.Arn
+      Role: !GetAtt SubscriberRole.Arn
       CodeUri: ../..
       Handler: bootstrap
       Runtime: provided.al2
@@ -239,17 +346,14 @@ Resources:
            - 'observe-logs-subscription'
            - !Ref FilterName
           FILTER_PATTERN: !Ref FilterPattern
-          DESTINATION_ARN: !Ref DestinationArn
+          DESTINATION_ARN: !GetAtt DeliveryStream.Arn
           LOG_GROUP_NAME_PREFIXES: !Join
             - ','
             - !Ref LogGroupNamePrefixes
           LOG_GROUP_NAME_PATTERNS: !Join
             - ','
             - !Ref LogGroupNamePatterns
-          ROLE_ARN: !If
-            - HasRoleArn
-            - !Ref RoleArn
-            - !Ref AWS::NoValue
+          ROLE_ARN: !GetAtt DestinationRole.Arn
           QUEUE_URL: !Ref Queue
           VERBOSITY: 9
           NUM_WORKERS: !Ref NumWorkers
@@ -323,11 +427,10 @@ Resources:
               - HasLogGroupNamePrefixes
               - !Ref LogGroupNamePrefixes
               - []
-
 Outputs:
   Function:
     Description: "Lambda Function ARN"
     Value: !GetAtt Subscriber.Arn
-  LogGroupName:
-    Description: "Log Group Name"
-    Value: !Ref LogGroup
+  Firehose:
+    Description: "Kinesis Firehose Delivery Stream ARN"
+    Value: !GetAtt DeliveryStream.Arn
