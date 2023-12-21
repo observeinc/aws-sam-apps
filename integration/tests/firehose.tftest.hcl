@@ -51,10 +51,11 @@ run "setup" {
 
 run "install" {
   variables {
-    name = run.setup.id
-    app  = "firehose"
+    setup = run.setup
+    app   = "firehose"
     parameters = {
-      BucketARN = "arn:aws:s3:::${run.setup.access_point.bucket}"
+      NameOverride = run.setup.id
+      BucketARN    = "arn:aws:s3:::${run.setup.access_point.bucket}"
     }
     capabilities = [
       "CAPABILITY_IAM",
@@ -83,9 +84,10 @@ run "check_firehose" {
 
 run "set_prefix" {
   variables {
-    name = run.setup.id
-    app  = "firehose"
+    setup = run.setup
+    app   = "firehose"
     parameters = {
+      NameOverride      = run.setup.id
       BucketARN         = "arn:aws:s3:::${run.setup.access_point.bucket}"
       Prefix            = "${run.setup.id}/"
       WriterRoleService = "logs.amazonaws.com"

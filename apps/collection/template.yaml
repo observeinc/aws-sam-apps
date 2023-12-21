@@ -67,6 +67,7 @@ Parameters:
       Name of IAM role expected by Filedrop. This role will be created as part
       of this stack, and must therefore be unique within the account.
     Default: ""
+    MaxLength: 52
   IncludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
@@ -110,11 +111,11 @@ Conditions:
       - !Equals
         - !Join [",", !Ref LogGroupNamePrefixes]
         - ""
-  UseStackName: !Equals
-    - !Ref NameOverride
-    - ""
   EmptySourceBucketNames: !Equals
     - !Join [",", !Ref SourceBucketNames]
+    - ""
+  UseStackName: !Equals
+    - !Ref NameOverride
     - ""
 Resources:
   Topic:
@@ -194,10 +195,7 @@ Resources:
               - !Join
                 - ","
                 - !Ref ContentTypeOverrides
-        NameOverride: !If
-          - UseStackName
-          - !Ref 'AWS::StackName'
-          - !Ref NameOverride
+        NameOverride: !Ref NameOverride
   TopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
@@ -232,7 +230,10 @@ Resources:
         BucketARN: !GetAtt Bucket.Arn
         Prefix: "cloudwatchlogs/"
         WriterRoleService: "logs.amazonaws.com"
-        NameOverride: !Ref NameOverride
+        NameOverride: !If
+          - UseStackName
+          - !Ref AWS::NoValue
+          - !Sub "${NameOverride}-Firehose"
   Subscriber:
     Type: AWS::Serverless::Application
     Condition: EnableSubscriber
@@ -251,8 +252,10 @@ Resources:
         LogGroupNamePrefixes: !Join [",", !Ref LogGroupNamePrefixes]
         LogGroupNamePatterns: !Join [",", !Ref LogGroupNamePatterns]
         DiscoveryRate: "24 hours"
-        NameOverride: !Ref NameOverride
-
+        NameOverride: !If
+          - UseStackName
+          - !Ref AWS::NoValue
+          - !Sub "${NameOverride}-Subscriber"
 Outputs:
   Bucket:
     Description: "S3 Bucket Name"

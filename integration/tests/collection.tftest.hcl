@@ -115,18 +115,22 @@ EOF
 
 run "setup" {
   module {
-    source = "./modules/setup/run"
+    source    = "./modules/setup/run"
+  }
+  variables {
+    id_length = 52
   }
 }
 
 run "install_collection" {
   variables {
-    name        = "collection-stack-${run.setup.id}"
-    app         = "collection"
+    setup = run.setup
+    app   = "collection"
     parameters  = {
       DataAccessPointArn   = run.setup.access_point.arn
       DestinationUri       = "s3://${run.setup.access_point.alias}"
       LogGroupNamePatterns = "*"
+      NameOverride         = run.setup.id
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",

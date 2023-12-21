@@ -73,11 +73,12 @@ run "setup" {
 
 run "install" {
   variables {
-    name = run.setup.id
-    app  = "subscriber"
+    setup = run.setup
+    app   = "subscriber"
     parameters = {
       LogGroupNamePatterns = "*"
       DiscoveryRate        = "24 hours"
+      NameOverride         = run.setup.id
     }
     capabilities = [
       "CAPABILITY_IAM",

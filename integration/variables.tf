@@ -1,6 +1,10 @@
-variable "name" {
-  description = "Stack name"
-  type        = string
+variable "setup" {
+  description = "Setup module"
+  type = object({
+    stack_name = string
+    short      = string
+  })
+
 }
 
 variable "app" {

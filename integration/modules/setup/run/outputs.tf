@@ -1,6 +1,16 @@
+output "stack_name" {
+  description = "Random test identifier padded out to 128 characters."
+  value       = local.stack_name
+}
+
 output "id" {
-  description = "Random test identifier"
-  value       = random_pet.run.id
+  description = "Run identifier"
+  value       = local.id
+}
+
+output "short" {
+  description = "Identifier truncated to a shorter length."
+  value       = local.short
 }
 
 output "region" {
