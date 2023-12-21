@@ -103,14 +103,6 @@ Conditions:
   IncludeAllResourceTypes: !Equals
     - "*"
     - !Join [",", !Ref IncludeResourceTypes]
-  EnableSubscriber: !Not
-    - !And
-      - !Equals
-        - !Join [",", !Ref LogGroupNamePatterns]
-        - ""
-      - !Equals
-        - !Join [",", !Ref LogGroupNamePrefixes]
-        - ""
   EmptySourceBucketNames: !Equals
     - !Join [",", !Ref SourceBucketNames]
     - ""
@@ -223,24 +215,23 @@ Resources:
           - ""
           - !Join [",", !Ref IncludeResourceTypes]
         ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
-  Subscriber:
+  LogWriter:
     Type: AWS::Serverless::Application
-    Condition: EnableSubscriber
     Properties:
-      Location: ../subscriber/template.yaml
+      Location: ../logwriter/template.yaml
       NotificationARNs:
         - !Ref Topic
       Parameters:
         BucketARN: !GetAtt Bucket.Arn
         Prefix: "cloudwatchlogs/"
-        FilterName: 'observe-logs-subscription'
         LogGroupNamePrefixes: !Join [",", !Ref LogGroupNamePrefixes]
         LogGroupNamePatterns: !Join [",", !Ref LogGroupNamePatterns]
+        FilterName: 'observe-logs-subscription'
         DiscoveryRate: "24 hours"
         NameOverride: !If
           - UseStackName
-          - !Sub "${AWS::StackName}-Subscriber"
-          - !Sub "${NameOverride}-Subscriber"
+          - !Sub "${AWS::StackName}-LogWriter"
+          - !Sub "${NameOverride}-LogWriter"
 Outputs:
   Bucket:
     Description: "S3 Bucket Name"

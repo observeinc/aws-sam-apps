@@ -82,7 +82,7 @@ run "setup" {
 run "install" {
   variables {
     setup = run.setup
-    app   = "subscriber"
+    app   = "logwriter"
     parameters = {
       BucketARN            = "arn:aws:s3:::${run.setup.access_point.bucket}"
       LogGroupNamePatterns = "*"
