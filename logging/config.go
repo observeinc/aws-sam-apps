@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
-	"github.com/go-logr/logr/slogr"
 )
 
 type Config struct {
@@ -17,5 +16,5 @@ func New(config *Config) logr.Logger {
 		AddSource: true,
 		Level:     slog.Level(-config.Verbosity),
 	}
-	return slogr.NewLogr(slog.NewJSONHandler(os.Stderr, &logOptions))
+	return logr.FromSlogHandler(slog.NewJSONHandler(os.Stderr, &logOptions))
 }
