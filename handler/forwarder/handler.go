@@ -18,7 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/go-logr/logr"
 
-	"github.com/observeinc/aws-sam-testing/handler"
+	"github.com/observeinc/aws-sam-apps/handler"
 )
 
 var errNoLambdaContext = fmt.Errorf("no lambda context found")

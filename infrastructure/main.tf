@@ -1,6 +1,6 @@
 locals {
   organization = "observeinc"
-  repository   = "aws-sam-testing"
+  repository   = "aws-sam-apps"
 }
 
 data "aws_iam_openid_connect_provider" "github_actions" {

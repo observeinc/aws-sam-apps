@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/observeinc/aws-sam-testing/handler"
+	"github.com/observeinc/aws-sam-apps/handler"
 )
 
 func TestHandler(t *testing.T) {
