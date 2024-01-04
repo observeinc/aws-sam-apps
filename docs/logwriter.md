@@ -1,8 +1,8 @@
-# Observe Subscriber Application
+# Observe LogWriter Application
 
-The Observe Subscriber application is an AWS SAM application that subscribes CloudWatch Log Groups to a Kinesis Firehose which delivers records to an S3 bucket. It operates with two types of requests: subscription requests and discovery requests.
+The Observe LogWriter application is an AWS SAM application that writes CloudWatch Log Groups to an S3 bucket. 
 
-Additionally, the stack provides a method for automatically triggering subscription through Eventbridge rules.
+Additionally, the stack is capable of subscribing log groups and provides a method for automatically triggering subscription through Eventbridge rules.
 
 ## Configuration
 
