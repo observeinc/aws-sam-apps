@@ -195,7 +195,10 @@ Resources:
               - !Join
                 - ","
                 - !Ref ContentTypeOverrides
-        NameOverride: !Ref NameOverride
+        NameOverride: !If
+          - UseStackName
+          - !Ref AWS::StackName
+          - !Ref NameOverride
   TopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
@@ -220,20 +223,6 @@ Resources:
           - ""
           - !Join [",", !Ref IncludeResourceTypes]
         ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
-  Firehose:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location: ../firehose/template.yaml
-      NotificationARNs:
-        - !Ref Topic
-      Parameters:
-        BucketARN: !GetAtt Bucket.Arn
-        Prefix: "cloudwatchlogs/"
-        WriterRoleService: "logs.amazonaws.com"
-        NameOverride: !If
-          - UseStackName
-          - !Ref AWS::NoValue
-          - !Sub "${NameOverride}-Firehose"
   Subscriber:
     Type: AWS::Serverless::Application
     Condition: EnableSubscriber
@@ -242,19 +231,15 @@ Resources:
       NotificationARNs:
         - !Ref Topic
       Parameters:
+        BucketARN: !GetAtt Bucket.Arn
+        Prefix: "cloudwatchlogs/"
         FilterName: 'observe-logs-subscription'
-        DestinationArn: !GetAtt
-          - Firehose
-          - Outputs.Firehose
-        RoleArn: !GetAtt
-          - Firehose
-          - Outputs.WriterRole
         LogGroupNamePrefixes: !Join [",", !Ref LogGroupNamePrefixes]
         LogGroupNamePatterns: !Join [",", !Ref LogGroupNamePatterns]
         DiscoveryRate: "24 hours"
         NameOverride: !If
           - UseStackName
-          - !Ref AWS::NoValue
+          - !Sub "${AWS::StackName}-Subscriber"
           - !Sub "${NameOverride}-Subscriber"
 Outputs:
   Bucket:

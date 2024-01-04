@@ -1,6 +1,6 @@
 # Observe Subscriber Application
 
-The Observe Subscriber application is an AWS SAM application that subscribes CloudWatch Log Groups to a supported destination ARN, such as Kinesis Firehose or Lambda. It operates with two types of requests: subscription requests and discovery requests.
+The Observe Subscriber application is an AWS SAM application that subscribes CloudWatch Log Groups to a Kinesis Firehose which delivers records to an S3 bucket. It operates with two types of requests: subscription requests and discovery requests.
 
 Additionally, the stack provides a method for automatically triggering subscription through Eventbridge rules.
 
@@ -12,8 +12,6 @@ The subscriber Lambda function manages subscription filters for log groups and u
 |---------------------------|-------------|
 | `FILTER_NAME`             | (Required) Name for the subscription filter. Any existing filters with this prefix will be removed. |
 | `FILTER_PATTERN`          | Pattern for the subscription filter. See [AWS documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html) for details. |
-| `DESTINATION_ARN`         | Destination ARN for the subscription filter. If empty, any filters with `FILTER_NAME` will be removed. |
-| `ROLE_ARN`                | Role ARN. Can only be set if `DESTINATION_ARN` is also set.                                                                                   |
 
 The scope of log groups the Lambda function applies to is determined by:
 
