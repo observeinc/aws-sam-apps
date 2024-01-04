@@ -1,4 +1,4 @@
-module github.com/observeinc/aws-sam-testing
+module github.com/observeinc/aws-sam-apps
 
 go 1.21
 

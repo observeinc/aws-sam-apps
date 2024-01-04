@@ -20,11 +20,11 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/observeinc/aws-sam-testing/logging"
+	"github.com/observeinc/aws-sam-apps/logging"
 )
 
 const (
-	instrumentationName    = "github.com/observeinc/aws-sam-testing/cmd/loggroupgenerator"
+	instrumentationName    = "github.com/observeinc/aws-sam-apps/cmd/loggroupgenerator"
 	instrumentationVersion = "0.1.0"
 )
 

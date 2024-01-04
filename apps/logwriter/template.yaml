@@ -11,9 +11,9 @@ Metadata:
     Author: Observe Inc
     SpdxLicenseId: Apache-2.0
     ReadmeUrl: README.md
-    HomePageUrl: https://github.com/observeinc/aws-sam-testing
+    HomePageUrl: https://github.com/observeinc/aws-sam-apps
     SemanticVersion: '0.0.1'
-    SourceCodeUrl: https://github.com/observeinc/aws-sam-testing
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
 
 Globals:
   Function:

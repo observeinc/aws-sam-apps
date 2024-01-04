@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/observeinc/aws-sam-testing/handler/handlertest"
-	"github.com/observeinc/aws-sam-testing/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/handler/handlertest"
+	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 )
 
 func TestHandleDiscovery(t *testing.T) {

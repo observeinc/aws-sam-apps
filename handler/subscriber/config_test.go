@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/observeinc/aws-sam-testing/handler/handlertest"
-	"github.com/observeinc/aws-sam-testing/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/handler/handlertest"
+	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/go-cmp/cmp"

@@ -11,8 +11,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-envconfig"
 
-	"github.com/observeinc/aws-sam-testing/handler/subscriber"
-	"github.com/observeinc/aws-sam-testing/logging"
+	"github.com/observeinc/aws-sam-apps/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/logging"
 )
 
 var env struct {

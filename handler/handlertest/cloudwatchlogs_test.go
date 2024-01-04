@@ -12,7 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/observeinc/aws-sam-testing/handler/handlertest"
+	"github.com/observeinc/aws-sam-apps/handler/handlertest"
 )
 
 func TestCloudWatchLogsDescribeLogGroups(t *testing.T) {
