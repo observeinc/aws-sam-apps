@@ -214,8 +214,8 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/sethvargo/go-envconfig v0.9.0
-## explicit; go 1.17
+# github.com/sethvargo/go-envconfig v1.0.0
+## explicit; go 1.21
 github.com/sethvargo/go-envconfig
 # go.opentelemetry.io/contrib/exporters/autoexport v0.46.1
 ## explicit; go 1.20
