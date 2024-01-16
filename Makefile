@@ -137,7 +137,7 @@ ifeq ($(S3_BUCKET_PREFIX),)
 endif
 	$(MAKE) sam-package
 	@echo "Copying packaged.yaml to S3"
-	aws s3 cp apps/$(APP)/.aws-sam/build/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
+	aws s3 cp $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
 	@echo "Fetching objects with prefix: apps/$(APP)/$(VERSION)/ and filtering by last modified date"
 	@current_date=`date -u +"%Y-%m-%dT%H:%M:%SZ"`; \
 	week_ago=`date -u -v-7d +"%Y-%m-%dT%H:%M:%SZ"`; \
