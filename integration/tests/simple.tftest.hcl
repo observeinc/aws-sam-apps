@@ -1,12 +1,14 @@
 run "setup" {
   module {
-    source = "./modules/setup/run"
+    source  = "observeinc/collection/aws//modules/testing/run"
+    version = "2.6.0"
   }
 }
 
 run "check" {
   module {
-    source = "./modules/exec"
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.6.0"
   }
 
   variables {

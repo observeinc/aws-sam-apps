@@ -71,7 +71,8 @@ EOF
 
 run "setup" {
   module {
-    source = "./modules/setup/run"
+    source  = "observeinc/collection/aws//modules/testing/run"
+    version = "2.6.0"
   }
 }
 
@@ -96,7 +97,8 @@ run "install_forwarder" {
 
 run "setup_subscriptions" {
   module {
-    source = "./modules/setup/subscriptions"
+    source  = "observeinc/collection/aws//modules/testing/subscriptions"
+    version = "2.6.0"
   }
 
   variables {
@@ -108,7 +110,8 @@ run "setup_subscriptions" {
 
 run "check_sqs" {
   module {
-    source = "./modules/exec"
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.6.0"
   }
 
   variables {
@@ -127,7 +130,8 @@ run "check_sqs" {
 
 run "check_eventbridge" {
   module {
-    source = "./modules/exec"
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.6.0"
   }
 
   variables {
@@ -147,7 +151,8 @@ run "check_eventbridge" {
 
 run "check_sns" {
   module {
-    source = "./modules/exec"
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.6.0"
   }
 
   variables {
@@ -167,7 +172,8 @@ run "check_sns" {
 
 run "check_content_type_override" {
   module {
-    source = "./modules/exec"
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.6.0"
   }
 
   variables {
