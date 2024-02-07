@@ -29,7 +29,6 @@ func (q *queueWrapper) Put(ctx context.Context, items ...any) error {
 			MessageBody: aws.String(string(data)),
 			QueueUrl:    aws.String(q.URL),
 		})
-
 		if err != nil {
 			return fmt.Errorf("failed to send message %d: %w", i, err)
 		}
