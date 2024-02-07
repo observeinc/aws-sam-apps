@@ -17,11 +17,23 @@ Metadata:
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
+      # output destination
       - Label:
-          default: Required parameters
+          default: What to collect
+        Parameters:
+          - IncludeResourceTypes
+          - ExcludeResourceTypes
+          - IncludeGlobalResourceTypes
+      - Label:
+          - default: Where to send data
         Parameters:
           - BucketName
-          - IncludeResourceTypes
+          - Prefix
+          - TopicARN
+      - Label:
+          default: How often
+        Parameters:
+          - DeliveryFrequency
 
 Parameters:
   BucketName:
@@ -60,6 +72,7 @@ Parameters:
   Prefix:
     Type: String
     Description: >-
+      The prefix for the specified Amazon S3 bucket.
     Default: ""
   DeliveryFrequency:
     Description: >-
@@ -83,6 +96,10 @@ Conditions:
       - !Join
         - ','
         - !Ref IncludeResourceTypes
+  HasPrefix: !Not
+    - !Equals
+      - ''
+      - !Ref Prefix
   IncludeAllResources: !Equals
       - '*'
       - !Join
@@ -188,6 +205,10 @@ Resources:
       ConfigSnapshotDeliveryProperties:
         DeliveryFrequency: !Ref DeliveryFrequency
       S3BucketName: !Ref BucketName
+      S3KeyPrefix: !If
+        - HasPrefix
+        - !Ref Prefix
+        - !Ref 'AWS::NoValue'
       SnsTopicARN: !If
         - DisableSNS
         - !Ref AWS::NoValue
