@@ -21,6 +21,7 @@ Metadata:
           default: Required parameters
         Parameters:
           - BucketName
+          - IncludeResourceTypes
 
 Parameters:
   BucketName:
@@ -35,17 +36,27 @@ Parameters:
   IncludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
-      Restrict configuration collection to a subset of resource types. This
-      parameter is mutually exclusive with ExcludeResourceTypes. If neither
-      IncludeResourceTypes or ExcludeResourceTypes is set, all supported
-      resource types are collected.
-    Default: ""
+      Resources to collect using AWS Config. Use a wildcard to collect all
+      supported resource types. If set to blank, installing this stack will
+      have no effect.
+    Default: "*"
   ExcludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
       Exclude a subset of resource types from configuration collection. This
-      parameter is mutually exclusive with IncludeResourceTypes.
+      parameter can only be set if IncludeResourceTypes is wildcarded.
     Default: ""
+  IncludeGlobalResourceTypes:
+    Type: String
+    Description: >-
+      Specifies whether AWS Config includes all supported types of global
+      resources with the resources that it records. This field only takes
+      effect if all resources are included for collection. IncludeResourceTypes
+      must be set to *, and ExcludeResourceTypes must not be set.
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
   Prefix:
     Type: String
     Description: >-
@@ -66,28 +77,41 @@ Conditions:
   DisableSNS: !Equals
     - !Ref TopicARN
     - ""
-  IncludeResources: !Not
+  EnableConfig: !Not
     - !Equals
       - ''
       - !Join
         - ','
         - !Ref IncludeResourceTypes
+  IncludeAllResources: !Equals
+      - '*'
+      - !Join
+        - ','
+        - !Ref IncludeResourceTypes
+  IncludeResources: !And
+    - !Not
+      - !Condition IncludeAllResources
+    - !Not
+      - !Condition ExcludeResources
   ExcludeResources: !Not
     - !Equals
       - ''
       - !Join
         - ','
         - !Ref ExcludeResourceTypes
-  IncludeAll: !Not
-    - !Or
-      - !Condition IncludeResources
+  AllSupported: !And
+    - !Condition IncludeAllResources
+    - !Not
       - !Condition ExcludeResources
-  # we may want to make this configurable in the future,
-  # but it can only be set for "ALL_SUPPORTED_RESOURCE_TYPES".
-  IncludeGlobal: !Condition IncludeAll
+  IncludeGlobal: !And
+    - !Condition AllSupported
+    - !Equals
+      - !Ref IncludeGlobalResourceTypes
+      - "true"
 Resources:
   ConfigurationRecorderRole:
     Type: AWS::IAM::Role
+    Condition: EnableConfig
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -127,11 +151,12 @@ Resources:
                   Resource: !Ref TopicARN
   ConfigurationRecorder:
     Type: AWS::Config::ConfigurationRecorder
+    Condition: EnableConfig
     Properties:
       Name: default
       RecordingGroup:
         AllSupported: !If
-          - IncludeAll
+          - AllSupported
           - true
           - false
         IncludeGlobalResourceTypes: !If
@@ -157,6 +182,7 @@ Resources:
       RoleARN: !GetAtt ConfigurationRecorderRole.Arn
   ConfigurationDeliveryChannel:
     Type: AWS::Config::DeliveryChannel
+    Condition: EnableConfig
     Properties:
       Name: default
       ConfigSnapshotDeliveryProperties:

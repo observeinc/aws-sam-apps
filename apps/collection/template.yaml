@@ -99,10 +99,9 @@ Conditions:
   EnableConfig: !Not
     - !Equals
       - ""
-      - !Join [",", !Ref IncludeResourceTypes]
-  IncludeAllResourceTypes: !Equals
-    - "*"
-    - !Join [",", !Ref IncludeResourceTypes]
+      - !Join
+        - ","
+        - !Ref IncludeResourceTypes
   EmptySourceBucketNames: !Equals
     - !Join [",", !Ref SourceBucketNames]
     - ""
@@ -210,10 +209,7 @@ Resources:
       Parameters:
         BucketName: !Ref Bucket
         TopicARN: !Ref Topic
-        IncludeResourceTypes: !If
-          - IncludeAllResourceTypes
-          - ""
-          - !Join [",", !Ref IncludeResourceTypes]
+        IncludeResourceTypes: !Join [",", !Ref IncludeResourceTypes]
         ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
   LogWriter:
     Type: AWS::Serverless::Application
