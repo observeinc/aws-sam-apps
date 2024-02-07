@@ -346,9 +346,11 @@ Resources:
         Items:
           Type: SQS
           Properties:
-            Queue: !GetAtt Queue.Arn
             BatchSize: 1
             Enabled: true
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+            Queue: !GetAtt Queue.Arn
       Environment:
         Variables:
           FILTER_NAME: !If
