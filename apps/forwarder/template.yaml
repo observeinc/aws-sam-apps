@@ -73,7 +73,7 @@ Parameters:
       A list of key value pairs. The key is a regular expression which is
       applied to the S3 URI of forwarded files. The value is the content type
       to set for matching files. For example, `\.json$=application/x-ndjson`
-      would forward all files aending in `.json` as newline delimited JSON
+      would forward all files ending in `.json` as newline delimited JSON
       files.
     Default: ''
 Conditions:
@@ -281,9 +281,11 @@ Resources:
         Items:
           Type: SQS
           Properties:
-            Queue: !GetAtt Queue.Arn
             BatchSize: 10
             Enabled: true
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+            Queue: !GetAtt Queue.Arn
       Environment:
         Variables:
           DESTINATION_URI: !Ref DestinationUri
