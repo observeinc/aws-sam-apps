@@ -12,6 +12,7 @@ The application is configurable through several parameters that determine how da
 - **NameOverride**: If specified, sets the name of the Firehose Delivery Stream; otherwise, the stack name is used.
 - **BufferingInterval**: The amount of time Firehose buffers incoming data before delivering it (minimum 60 seconds, maximum 900 seconds).
 - **BufferingSize**: The size of the buffer, in MiBs, that Firehose accumulates before delivering data (minimum 1 MiB, maximum 64 MiBs).
+- **MetricStreamFilterURI**: An S3 URI containing a filter for collected metrics.
 
 ## Resources Created
 
@@ -22,6 +23,23 @@ The CloudWatch Metrics Stream application provisions the following AWS resources
 - **CloudWatch Log Stream**: A specific log stream for storing Firehose delivery logs.
 - **Kinesis Firehose Delivery Stream**: The core component that manages the delivery of data to the S3 bucket.
 - **CloudWatch Metrics Stream**: the component responsible for writing metrics to Kinesis Firehose.
+
+
+## Filtering metrics
+
+This module requires a URI to a pubicly readable S3 object containing a YAML or JSON definition
+for what metrics to collect. Observe hosts some boilerplate filters you can use:
+
+- `s3://observeinc/cloudwatchmetrics/filters/full.yaml` collects all metrics.
+- `s3://observeinc/cloudwatchmetrics/filters/recommended.yaml` collects a set of KPIs for each metric namespace.
+
+You can use `curl` to inspect the content of these files, e.g.:
+
+```
+curl https://observeinc.s3.us-west-2.amazonaws.com/cloudwatchmetrics/filters/recommended.yaml
+```
+
+You can host your own definition, so long as it conforms with the schema for [AWS::CloudWatch::MetricStream](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-metricstream.html). 
 
 ## Deployment
 

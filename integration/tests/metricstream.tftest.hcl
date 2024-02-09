@@ -6,7 +6,9 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
+          "cloudformation:CreateChangeSet",
           "cloudformation:CreateStack",
+          "cloudformation:DeleteChangeSet",
           "cloudformation:DeleteStack",
           "cloudformation:DescribeStacks",
           "cloudwatch:DeleteMetricStream",
@@ -29,6 +31,7 @@ variables {
           "iam:ListRolePolicies",
           "iam:PassRole",
           "iam:PutRolePolicy",
+          "iam:TagRole",
           "iam:UpdateRole",
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
@@ -42,6 +45,15 @@ variables {
           "logs:UntagResource"
         ],
         "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "s3:GetObject"
+        ],
+        "Resource": [
+          "arn:aws:s3:::observeinc/cloudwatchmetrics/filters/*"
+        ]
       }
     ]
   }
@@ -65,6 +77,23 @@ run "install" {
     }
     capabilities = [
       "CAPABILITY_IAM",
+      "CAPABILITY_AUTO_EXPAND",
+    ]
+  }
+}
+
+run "update" {
+  variables {
+    setup = run.setup
+    app   = "metricstream"
+    parameters = {
+      BucketARN    = "arn:aws:s3:::${run.setup.access_point.bucket}"
+      NameOverride = run.setup.id
+      OutputFormat = "opentelemetry1.0"
+    }
+    capabilities = [
+      "CAPABILITY_IAM",
+      "CAPABILITY_AUTO_EXPAND",
     ]
   }
 }
