@@ -112,7 +112,7 @@ func TestHandler(t *testing.T) {
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
-					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
 					},
 				},
@@ -130,7 +130,7 @@ func TestHandler(t *testing.T) {
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
-					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
 					},
 				},
@@ -147,7 +147,7 @@ func TestHandler(t *testing.T) {
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
-					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						copyFuncCallCount++
 						return nil, errSentinel
 					},
@@ -167,7 +167,7 @@ func TestHandler(t *testing.T) {
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
-					PutObjectFunc: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+					PutObjectFunc: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 						return nil, errSentinel
 					},
 				},
@@ -182,7 +182,7 @@ func TestHandler(t *testing.T) {
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"doesntexist"},
 				S3Client: &handlertest.S3Client{
-					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
 					},
 				},
@@ -200,7 +200,7 @@ func TestHandler(t *testing.T) {
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"doesntexist", "observeinc-filedrop-hoho-us-west-2-7xmjt"}, // List includes the exact bucket name
 				S3Client: &handlertest.S3Client{
-					CopyObjectFunc: func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil // Mock successful copy
 					},
 				},
