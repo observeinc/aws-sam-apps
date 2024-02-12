@@ -22,6 +22,11 @@ Parameters:
     Description: >-
       Optional prefix to write log records to.
     Default: ''
+  FilterURI:
+    Type: String
+    Description: >-
+      A file hosted in S3 containing list of metrics to stream.
+    Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
   OutputFormat:
     Type: String
     Description: >-
@@ -163,9 +168,21 @@ Resources:
                 Resource: !GetAtt 'DeliveryStream.Arn'
   MetricStream:
     Type: AWS::CloudWatch::MetricStream
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            # Disable false positive when using Fn::Transform
+            # https://github.com/aws-cloudformation/cfn-lint/issues/2887
+            - E3002
     Properties:
       FirehoseArn: !GetAtt 'DeliveryStream.Arn'
       RoleArn: !GetAtt MetricStreamRole.Arn
+      'Fn::Transform':
+        Name: "AWS::Include"
+        Parameters:
+          Location: !Ref FilterURI
+      # end of processable content for include
       OutputFormat: !Ref OutputFormat
 
 Outputs:
