@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -10,9 +11,29 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-envconfig"
+	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
+	"go.opentelemetry.io/contrib/exporters/autoexport"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/otel"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 	"github.com/observeinc/aws-sam-apps/logging"
+)
+
+const (
+	instrumentationName    = "github.com/observeinc/aws-sam-apps/cmd/subscriber"
+	instrumentationVersion = "0.1.0"
+)
+
+var tracer = otel.GetTracerProvider().Tracer(
+	instrumentationName,
+	trace.WithInstrumentationVersion(instrumentationVersion),
 )
 
 var env struct {
@@ -27,8 +48,9 @@ var env struct {
 }
 
 var (
-	logger  logr.Logger
-	handler lambda.Handler
+	logger         logr.Logger
+	handler        lambda.Handler
+	tracerProvider *sdktrace.TracerProvider
 )
 
 func init() {
@@ -39,8 +61,25 @@ func init() {
 
 func realInit() error {
 	ctx := context.Background()
+	detector := lambdadetector.NewResourceDetector()
+	res, err := resource.New(ctx,
+		resource.WithDetectors(detector),
+		resource.WithAttributes(semconv.ServiceName("aws-sam-apps/subscriber")),
+	)
+	if err != nil {
+		panic(err)
+	}
+	exporter, err := autoexport.NewSpanExporter(ctx)
+	if err != nil {
+		panic(err)
+	}
+	tracerProvider = sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(res),
+	)
+	otel.SetTracerProvider(tracerProvider)
 
-	err := envconfig.Process(ctx, &env)
+	err = envconfig.Process(ctx, &env)
 	if err != nil {
 		return fmt.Errorf("failed to load environment variables: %w", err)
 	}
@@ -55,6 +94,8 @@ func realInit() error {
 	if err != nil {
 		return fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
+
+	otelaws.AppendMiddlewares(&awsCfg.APIOptions)
 
 	queue, err := subscriber.NewQueue(sqs.NewFromConfig(awsCfg), env.QueueURL)
 	if err != nil {
@@ -71,6 +112,7 @@ func realInit() error {
 		Logger:               &logger,
 		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(awsCfg),
 		Queue:                queue,
+		Tracer:               tracer,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
@@ -79,5 +121,10 @@ func realInit() error {
 }
 
 func main() {
-	lambda.Start(handler)
+	ctx := context.Background()
+	lambda.StartWithOptions(handler, lambda.WithEnableSIGTERM(func() {
+		log.Printf("SIGTERM received, running shutdown")
+		tracerProvider.Shutdown(ctx)
+		log.Printf("Shutdown done running")
+	}))
 }

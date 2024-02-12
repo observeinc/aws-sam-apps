@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 var ErrMalformedRequest = errors.New("malformed request")
@@ -14,6 +15,7 @@ var ErrMalformedRequest = errors.New("malformed request")
 type Request struct {
 	*SubscriptionRequest `json:"subscribe"`
 	*DiscoveryRequest    `json:"discover"`
+	TraceContext         *propagation.MapCarrier `json:"trace_context"`
 }
 
 // Validate verifies request is a union.
@@ -44,7 +46,8 @@ func (r *Request) Validate() error {
 // SubscriptionRequest contains a list of log groups to subscribe.
 type SubscriptionRequest struct {
 	// if provided, we can subscribe this set of log group names
-	LogGroups []*LogGroup `json:"logGroups,omitempty"`
+	LogGroups    []*LogGroup `json:"logGroups,omitempty"`
+	TraceContext *propagation.MapCarrier
 }
 
 func NewSubscriptionRequestFromLogGroupsOutput(output *cloudwatchlogs.DescribeLogGroupsOutput) *SubscriptionRequest {

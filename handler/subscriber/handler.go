@@ -12,6 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/observeinc/aws-sam-apps/handler"
 )
@@ -46,6 +49,12 @@ type Handler struct {
 type FilterFunc func(string) bool
 
 func (h *Handler) HandleRequest(ctx context.Context, req *Request) (*Response, error) {
+	if req.TraceContext != nil {
+		propagator := propagation.NewCompositeTextMapPropagator(propagation.Baggage{}, propagation.TraceContext{})
+		ctx = propagator.Extract(ctx, req.TraceContext)
+	}
+	ctx, span := h.Tracer.Start(ctx, "HandleRequest", trace.WithAttributes(attribute.String("key1", "value1")))
+	defer span.End()
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate request: %w", err)
 	}
@@ -105,6 +114,10 @@ func New(cfg *Config) (*Handler, error) {
 
 	if cfg.Logger != nil {
 		h.Logger = *cfg.Logger
+	}
+
+	if cfg.Tracer != nil {
+		h.Tracer = cfg.Tracer
 	}
 
 	if err := h.Mux.Register(h.HandleRequest, h.HandleSQS); err != nil {
