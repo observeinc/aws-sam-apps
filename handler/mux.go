@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -30,6 +31,7 @@ var (
 // via the baseline Invoke method.
 type Mux struct {
 	Logger logr.Logger
+	Tracer trace.Tracer
 
 	handlers map[reflect.Type]reflect.Value
 	sync.Mutex

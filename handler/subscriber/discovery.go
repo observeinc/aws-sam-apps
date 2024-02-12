@@ -7,11 +7,17 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var ErrNoQueue = errors.New("no queue defined")
 
 func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *DiscoveryRequest) (*Response, error) {
+	ctx, span := h.Tracer.Start(ctx, "HandleDiscoveryRequest", trace.WithAttributes(attribute.String("key1", "value1")))
+	defer span.End()
 	resp := &Response{
 		Discovery: new(DiscoveryStats),
 	}
@@ -38,20 +44,28 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 		for paginator.HasMorePages() {
 			page, err := paginator.NextPage(ctx)
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				return resp, fmt.Errorf("failed to describe log groups: %w", err)
 			}
 			resp.Discovery.RequestCount.Add(1)
 			resp.Discovery.LogGroupCount.Add(int64(len(page.LogGroups)))
-
+			propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+			carrier := propagation.MapCarrier{}
+			propagator.Inject(ctx, carrier)
 			subscriptionRequest := NewSubscriptionRequestFromLogGroupsOutput(page)
 
 			if inline {
 				s, err := h.HandleSubscriptionRequest(ctx, subscriptionRequest)
 				if err != nil {
+					span.RecordError(err)
+					span.SetStatus(codes.Error, err.Error())
 					return resp, fmt.Errorf("failed to handle subscription request: %w", err)
 				}
 				resp.Discovery.Subscription.Add(s.Subscription)
-			} else if err := h.Queue.Put(ctx, &Request{SubscriptionRequest: subscriptionRequest}); err != nil {
+			} else if err := h.Queue.Put(ctx, &Request{SubscriptionRequest: subscriptionRequest, TraceContext: &carrier}); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				return resp, fmt.Errorf("failed to write to queue: %w", err)
 			}
 		}
