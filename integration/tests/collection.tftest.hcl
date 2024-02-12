@@ -8,8 +8,13 @@ variables {
         "Action": [
           "cloudformation:CreateChangeSet",
           "cloudformation:CreateStack",
+          "cloudformation:DeleteChangeSet",
           "cloudformation:DeleteStack",
           "cloudformation:DescribeStacks",
+          "cloudwatch:DeleteMetricStream",
+          "cloudwatch:GetMetricStream",
+          "cloudwatch:PutMetricStream",
+          "cloudwatch:TagResource",
           "config:DeleteConfigurationRecorder",
           "config:DeleteDeliveryChannel",
           "config:DescribeConfigurationRecorderStatus",
@@ -42,6 +47,7 @@ variables {
           "iam:ListRolePolicies",
           "iam:PassRole",
           "iam:PutRolePolicy",
+          "iam:TagRole",
           "iam:UpdateRole",
           "kms:CreateGrant",
           "kms:Decrypt",
@@ -107,6 +113,15 @@ variables {
           "sqs:UntagQueue"
         ],
         "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "s3:GetObject"
+        ],
+        "Resource": [
+          "arn:aws:s3:::observeinc/cloudwatchmetrics/filters/*"
+        ]
       }
     ]
   }
@@ -119,7 +134,7 @@ run "setup" {
     version = "2.6.0"
   }
   variables {
-    id_length = 52
+    id_length = 51
   }
 }
 

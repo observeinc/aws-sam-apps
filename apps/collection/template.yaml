@@ -32,6 +32,10 @@ Metadata:
           - LogGroupNamePatterns
           - LogGroupNamePrefixes
       - Label:
+          default: CloudWatch Metrics
+        Parameters:
+          - MetricStreamFilterURI
+      - Label:
           default: Forwarder Options
         Parameters:
           - SourceBucketNames
@@ -67,7 +71,7 @@ Parameters:
       Name of IAM role expected by Filedrop. This role will be created as part
       of this stack, and must therefore be unique within the account.
     Default: ""
-    MaxLength: 52
+    MaxLength: 51
   IncludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
@@ -94,6 +98,12 @@ Parameters:
       Comma separated list of prefixes. If not empty, the lambda function will
       only apply to log groups that start with a provided string.
     Default: ''
+  MetricStreamFilterURI:
+    Type: String
+    Description: >-
+      S3 URI containing filters for metrics to be collected by CloudWatch
+      Metrics Stream. If empty, no metrics will be collected.
+    Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
 
 Conditions:
   EnableConfig: !Not
@@ -108,6 +118,11 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ""
+  EnableMetricStream: !Not
+    - !Equals
+      - !Ref MetricStreamFilterURI
+      - ""
+
 Resources:
   Topic:
     Type: "AWS::SNS::Topic"
@@ -228,6 +243,22 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-LogWriter"
           - !Sub "${NameOverride}-LogWriter"
+  MetricStream:
+    Type: AWS::Serverless::Application
+    Condition: EnableMetricStream
+    Properties:
+      Location: ../metricstream/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        BucketARN: !GetAtt Bucket.Arn
+        Prefix: "cloudwatchmetrics/"
+        FilterURI: !Ref MetricStreamFilterURI
+        NameOverride: !If
+          - UseStackName
+          - !Sub "${AWS::StackName}-MetricStream"
+          - !Sub "${NameOverride}-MetricStream"
+
 Outputs:
   Bucket:
     Description: "S3 Bucket Name"
