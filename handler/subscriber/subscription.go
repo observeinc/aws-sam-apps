@@ -10,15 +10,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/go-logr/logr"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
 func (h *Handler) HandleSubscriptionRequest(ctx context.Context, subReq *SubscriptionRequest) (*Response, error) {
 	ctx, span := h.Tracer.Start(ctx, "HandleSubscriptionRequest")
-	defer span.End()
+	var err error
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
 	var stats SubscriptionStats
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -30,8 +35,6 @@ func (h *Handler) HandleSubscriptionRequest(ctx context.Context, subReq *Subscri
 		logGroup := logGroup
 		g.Go(func() error {
 			if err := h.SubscribeLogGroup(ctx, logGroup, &stats); err != nil {
-				span.RecordError(err, trace.WithAttributes(attribute.String("LogGroupName", logGroup.LogGroupName)))
-				span.SetStatus(codes.Error, err.Error())
 				return fmt.Errorf("failed to subscribe log group %q: %w", logGroup.LogGroupName, err)
 			}
 			return nil
@@ -39,8 +42,6 @@ func (h *Handler) HandleSubscriptionRequest(ctx context.Context, subReq *Subscri
 	}
 
 	if err := g.Wait(); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("failed to subscribe log groups: %w", err)
 	}
 
@@ -48,15 +49,15 @@ func (h *Handler) HandleSubscriptionRequest(ctx context.Context, subReq *Subscri
 }
 
 func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, stats *SubscriptionStats) error {
-	ctx, span := h.Tracer.Start(ctx, "SubscribeLogGroup", trace.WithAttributes(attribute.String("key1", "value1")))
-	defer span.End()
+	// ctx, span := h.Tracer.Start(ctx, "SubscribeLogGroup", trace.WithAttributes(attribute.String("key1", "value1")))
+	// defer span.End()
 	logger := logr.FromContextOrDiscard(ctx).WithValues("logGroup", logGroup.LogGroupName)
 
 	logger.V(6).Info("describing subscription filters")
 	stats.Processed.Add(1)
 
 	if h.logGroupNameFilter != nil && !h.logGroupNameFilter(logGroup.LogGroupName) {
-		span.AddEvent("SkippedLogGroup", trace.WithAttributes(attribute.String("LogGroupName", logGroup.LogGroupName)))
+		// span.AddEvent("SkippedLogGroup", trace.WithAttributes(attribute.String("LogGroupName", logGroup.LogGroupName)))
 		logger.V(6).Info("log group does not match filter")
 		stats.Skipped.Add(1)
 		return nil
@@ -68,13 +69,13 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 	if err != nil {
 		var exc *types.ResourceNotFoundException
 		if errors.As(err, &exc) {
-			span.AddEvent("LogGroupNotFound", trace.WithAttributes(attribute.String("LogGroupName", logGroup.LogGroupName)))
+			// span.AddEvent("LogGroupNotFound", trace.WithAttributes(attribute.String("LogGroupName", logGroup.LogGroupName)))
 			logger.Info("log group does not exist")
 			stats.Skipped.Add(1)
 			return nil
 		}
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		// span.RecordError(err)
+		// span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("failed to retrieve subscription filters: %w", err)
 	}
 
@@ -84,8 +85,8 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 			v.LogGroupName = &logGroup.LogGroupName
 			logger.V(3).Info("deleting subscription filter", "filterName", aws.ToString(v.FilterName))
 			if _, err := h.Client.DeleteSubscriptionFilter(ctx, v); err != nil {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, err.Error())
+				// span.RecordError(err)
+				// span.SetStatus(codes.Error, err.Error())
 				return fmt.Errorf("failed to delete subscription filter: %w", err)
 			}
 			stats.Deleted.Add(1)
@@ -93,8 +94,8 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 			v.LogGroupName = &logGroup.LogGroupName
 			logger.V(3).Info("updating subscription filter")
 			if _, err := h.Client.PutSubscriptionFilter(ctx, v); err != nil {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, err.Error())
+				// span.RecordError(err)
+				// span.SetStatus(codes.Error, err.Error())
 				return fmt.Errorf("failed to put subscription filter: %w", err)
 			}
 			stats.Updated.Add(1)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type SQSClient interface {
@@ -14,12 +15,17 @@ type SQSClient interface {
 }
 
 type queueWrapper struct {
-	Client SQSClient
-	URL    string
+	Client     SQSClient
+	URL        string
+	Propagator propagation.TextMapPropagator
 }
 
-func (q *queueWrapper) Put(ctx context.Context, items ...any) error {
+func (q *queueWrapper) Put(ctx context.Context, items ...*Request) error {
 	for i, item := range items {
+		carrier := propagation.MapCarrier{}
+		q.Propagator.Inject(ctx, carrier)
+		item.TraceContext = &carrier
+
 		data, err := json.Marshal(item)
 		if err != nil {
 			return fmt.Errorf("failed to marshal item %d: %w", i, err)
@@ -37,9 +43,11 @@ func (q *queueWrapper) Put(ctx context.Context, items ...any) error {
 }
 
 func NewQueue(client SQSClient, queueURL string) (Queue, error) {
+	propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
 	q := &queueWrapper{
-		Client: client,
-		URL:    queueURL,
+		Client:     client,
+		URL:        queueURL,
+		Propagator: propagator,
 	}
 
 	return q, nil
