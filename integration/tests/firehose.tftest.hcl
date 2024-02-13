@@ -25,6 +25,7 @@ variables {
           "iam:ListRolePolicies",
           "iam:PassRole",
           "iam:PutRolePolicy",
+          "iam:TagRole",
           "iam:UpdateRole",
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
