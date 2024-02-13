@@ -89,6 +89,7 @@ variables {
           "s3:GetObject",
           "s3:ListBucket",
           "s3:PutBucketNotification",
+          "s3:PutBucketTagging",
           "s3:PutLifecycleConfiguration",
           "scheduler:CreateSchedule",
           "scheduler:DeleteSchedule",

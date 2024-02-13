@@ -32,6 +32,7 @@ variables {
           "iam:ListRolePolicies",
           "iam:PassRole",
           "iam:PutRolePolicy",
+          "iam:TagRole",
           "iam:UpdateRole",
           "kms:CreateGrant",
           "kms:Decrypt",
