@@ -17,8 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/go-logr/logr"
-
-	"github.com/observeinc/aws-sam-apps/handler"
 )
 
 var errNoLambdaContext = fmt.Errorf("no lambda context found")
@@ -29,7 +27,7 @@ type S3Client interface {
 }
 
 type Handler struct {
-	handler.Mux
+	Logger              logr.Logger
 	MaxFileSize         int64
 	DestinationURI      *url.URL
 	LogPrefix           string
@@ -166,6 +164,7 @@ func New(cfg *Config) (h *Handler, err error) {
 	m, _ := NewContentTypeOverrides(cfg.ContentTypeOverrides, defaultDelimiter)
 
 	h = &Handler{
+		Logger:              logr.Discard(),
 		DestinationURI:      u,
 		LogPrefix:           cfg.LogPrefix,
 		S3Client:            cfg.S3Client,
@@ -175,11 +174,7 @@ func New(cfg *Config) (h *Handler, err error) {
 	}
 
 	if cfg.Logger != nil {
-		h.Mux.Logger = *cfg.Logger
-	}
-
-	if err := h.Mux.Register(h.Handle); err != nil {
-		return nil, fmt.Errorf("failed to register functions: %w", err)
+		h.Logger = *cfg.Logger
 	}
 
 	return h, nil

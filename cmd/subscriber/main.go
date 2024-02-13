@@ -11,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-envconfig"
 
+	"github.com/observeinc/aws-sam-apps/handler"
 	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 	"github.com/observeinc/aws-sam-apps/logging"
 )
@@ -27,8 +28,8 @@ var env struct {
 }
 
 var (
-	logger  logr.Logger
-	handler lambda.Handler
+	logger     logr.Logger
+	entrypoint handler.Mux
 )
 
 func init() {
@@ -61,7 +62,7 @@ func realInit() error {
 		return fmt.Errorf("failed to load queue: %w", err)
 	}
 
-	handler, err = subscriber.New(&subscriber.Config{
+	s, err := subscriber.New(&subscriber.Config{
 		FilterName:           env.FilterName,
 		FilterPattern:        env.FilterPattern,
 		DestinationARN:       env.DestinationARN,
@@ -75,9 +76,14 @@ func realInit() error {
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
+
+	entrypoint.Logger = logger
+	if err := entrypoint.Register(s.HandleRequest, s.HandleSQS); err != nil {
+		return fmt.Errorf("failed to register functions: %w", err)
+	}
 	return nil
 }
 
 func main() {
-	lambda.Start(handler)
+	lambda.Start(&entrypoint)
 }

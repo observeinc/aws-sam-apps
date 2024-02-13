@@ -12,8 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/go-logr/logr"
-
-	"github.com/observeinc/aws-sam-apps/handler"
 )
 
 var (
@@ -33,11 +31,10 @@ type Queue interface {
 }
 
 type Handler struct {
-	handler.Mux
-
 	Queue      Queue
 	Client     CloudWatchLogsClient
 	NumWorkers int
+	Logger     logr.Logger
 
 	subscriptionFilter types.SubscriptionFilter
 	logGroupNameFilter FilterFunc
@@ -87,6 +84,7 @@ func New(cfg *Config) (*Handler, error) {
 	}
 
 	h := &Handler{
+		Logger:     logr.Discard(),
 		Client:     cfg.CloudWatchLogsClient,
 		Queue:      cfg.Queue,
 		NumWorkers: cfg.NumWorkers,
@@ -105,10 +103,6 @@ func New(cfg *Config) (*Handler, error) {
 
 	if cfg.Logger != nil {
 		h.Logger = *cfg.Logger
-	}
-
-	if err := h.Mux.Register(h.HandleRequest, h.HandleSQS); err != nil {
-		return nil, fmt.Errorf("failed to register handler: %w", err)
 	}
 
 	return h, nil

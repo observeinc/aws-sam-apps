@@ -10,6 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-envconfig"
 
+	"github.com/observeinc/aws-sam-apps/handler"
 	"github.com/observeinc/aws-sam-apps/handler/forwarder"
 	"github.com/observeinc/aws-sam-apps/logging"
 )
@@ -24,8 +25,8 @@ var env struct {
 }
 
 var (
-	logger  logr.Logger
-	handler *forwarder.Handler
+	logger     logr.Logger
+	entrypoint handler.Mux
 )
 
 func init() {
@@ -55,7 +56,7 @@ func realInit() error {
 
 	s3client := s3.NewFromConfig(awsCfg)
 
-	handler, err = forwarder.New(&forwarder.Config{
+	f, err := forwarder.New(&forwarder.Config{
 		DestinationURI:       env.DestinationURI,
 		LogPrefix:            env.LogPrefix,
 		MaxFileSize:          env.MaxFileSize,
@@ -68,7 +69,7 @@ func realInit() error {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
 
-	region, err := handler.GetDestinationRegion(ctx, s3client)
+	region, err := f.GetDestinationRegion(ctx, s3client)
 	if err != nil {
 		return fmt.Errorf("failed to get destination region: %w", err)
 	}
@@ -77,12 +78,16 @@ func realInit() error {
 		logger.V(4).Info("modifying s3 client region", "region", region)
 		regionCfg := awsCfg.Copy()
 		regionCfg.Region = region
-		handler.S3Client = s3.NewFromConfig(regionCfg)
+		f.S3Client = s3.NewFromConfig(regionCfg)
 	}
 
+	entrypoint.Logger = logger
+	if err := entrypoint.Register(f.Handle); err != nil {
+		return fmt.Errorf("failed to register functions: %w", err)
+	}
 	return nil
 }
 
 func main() {
-	lambda.Start(handler.Handle)
+	lambda.Start(&entrypoint)
 }
