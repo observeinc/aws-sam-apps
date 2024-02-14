@@ -13,6 +13,7 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 
@@ -95,13 +96,12 @@ func realInit() error {
 		return fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
 
-	// otelaws.AppendMiddlewares(&awsCfg.APIOptions)
+	otelaws.AppendMiddlewares(&awsCfg.APIOptions)
 
 	queue, err := subscriber.NewQueue(sqs.NewFromConfig(awsCfg), env.QueueURL)
 	if err != nil {
 		return fmt.Errorf("failed to load queue: %w", err)
 	}
-
 	s, err := subscriber.New(&subscriber.Config{
 		FilterName:           env.FilterName,
 		FilterPattern:        env.FilterPattern,
@@ -130,7 +130,7 @@ func realInit() error {
 
 func main() {
 	ctx := context.Background()
-	lambda.StartWithOptions(entrypoint, lambda.WithEnableSIGTERM(func() {
+	lambda.StartWithOptions(&entrypoint, lambda.WithEnableSIGTERM(func() {
 		log.Printf("SIGTERM received, running shutdown")
 		tracerProvider.Shutdown(ctx)
 		log.Printf("Shutdown done running")

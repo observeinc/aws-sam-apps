@@ -5,16 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/go-logr/logr"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/observeinc/aws-sam-apps/handler"
 )
@@ -44,10 +39,6 @@ type Handler struct {
 
 	subscriptionFilter types.SubscriptionFilter
 	logGroupNameFilter FilterFunc
-}
-
-type InstrumentedHandler struct {
-	Handler
 }
 
 type FilterFunc func(string) bool
@@ -86,54 +77,4 @@ func (h *Handler) HandleSQS(ctx context.Context, request events.SQSEvent) (respo
 		}
 	}
 	return response, nil
-}
-
-func (h *InstrumentedHandler) HandleRequest(ctx context.Context, req *Request) (*Response, error) {
-	if req.TraceContext != nil {
-		propagator := propagation.NewCompositeTextMapPropagator(propagation.Baggage{}, propagation.TraceContext{})
-		ctx = propagator.Extract(ctx, req.TraceContext)
-	}
-	ctx, span := h.Tracer.Start(ctx, "HandleRequest", trace.WithAttributes(attribute.String("key1", "value1")))
-	defer span.End()
-	return h.Handler.HandleRequest(ctx, req)
-}
-
-func InstrumentHandler(h *Handler) *InstrumentedHandler {
-	ih := InstrumentedHandler{*h}
-	instrumentedQueue := InstrumentQueue(h.Queue)
-	ih.Queue = instrumentedQueue
-	return &ih
-}
-
-func New(cfg *Config) (*Handler, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	h := &Handler{
-		Client:     cfg.CloudWatchLogsClient,
-		Queue:      cfg.Queue,
-		NumWorkers: cfg.NumWorkers,
-		subscriptionFilter: types.SubscriptionFilter{
-			FilterName:     aws.String(cfg.FilterName),
-			FilterPattern:  aws.String(cfg.FilterPattern),
-			DestinationArn: aws.String(cfg.DestinationARN),
-			RoleArn:        cfg.RoleARN,
-		},
-		logGroupNameFilter: cfg.LogGroupFilter(),
-	}
-
-	if h.NumWorkers <= 0 {
-		h.NumWorkers = runtime.NumCPU()
-	}
-
-	if cfg.Logger != nil {
-		h.Logger = *cfg.Logger
-	}
-
-	if cfg.Tracer != nil {
-		h.Tracer = cfg.Tracer
-	}
-
-	return h, nil
 }

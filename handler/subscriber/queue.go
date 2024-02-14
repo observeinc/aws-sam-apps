@@ -7,7 +7,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"go.opentelemetry.io/otel/propagation"
 )
 
 type SQSClient interface {
@@ -17,11 +16,6 @@ type SQSClient interface {
 type queueWrapper struct {
 	Client SQSClient
 	URL    string
-}
-
-type instrumentedQueueWrapper struct {
-	queue      Queue
-	Propagator propagation.TextMapPropagator
 }
 
 func (q *queueWrapper) Put(ctx context.Context, items ...*Request) error {
@@ -40,24 +34,6 @@ func (q *queueWrapper) Put(ctx context.Context, items ...*Request) error {
 		}
 	}
 	return nil
-}
-
-func (q *instrumentedQueueWrapper) Put(ctx context.Context, items ...*Request) error {
-	for _, item := range items {
-		carrier := propagation.MapCarrier{}
-		q.Propagator.Inject(ctx, carrier)
-		item.TraceContext = &carrier
-	}
-	return q.queue.Put(ctx, items...)
-}
-
-func InstrumentQueue(q Queue) Queue {
-	propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
-	instrumentedQueue := &instrumentedQueueWrapper{
-		queue:      q,
-		Propagator: propagator,
-	}
-	return instrumentedQueue
 }
 
 func NewQueue(client SQSClient, queueURL string) (Queue, error) {

@@ -7,24 +7,11 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/go-logr/logr"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var ErrNoQueue = errors.New("no queue defined")
 
 func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *DiscoveryRequest) (*Response, error) {
-	ctx, span := h.Tracer.Start(ctx, "HandleDiscoveryRequest", trace.WithAttributes(attribute.String("key1", "value1")))
-	var err error
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
-	}()
-
 	resp := &Response{
 		Discovery: new(DiscoveryStats),
 	}
