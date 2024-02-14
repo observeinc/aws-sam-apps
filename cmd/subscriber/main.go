@@ -13,7 +13,6 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 
@@ -22,6 +21,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/observeinc/aws-sam-apps/handler"
 	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 	"github.com/observeinc/aws-sam-apps/logging"
 )
@@ -49,7 +49,7 @@ var env struct {
 
 var (
 	logger         logr.Logger
-	handler        lambda.Handler
+	entrypoint     handler.Mux
 	tracerProvider *sdktrace.TracerProvider
 )
 
@@ -95,14 +95,14 @@ func realInit() error {
 		return fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
 
-	otelaws.AppendMiddlewares(&awsCfg.APIOptions)
+	// otelaws.AppendMiddlewares(&awsCfg.APIOptions)
 
 	queue, err := subscriber.NewQueue(sqs.NewFromConfig(awsCfg), env.QueueURL)
 	if err != nil {
 		return fmt.Errorf("failed to load queue: %w", err)
 	}
 
-	handler, err = subscriber.New(&subscriber.Config{
+	s, err := subscriber.New(&subscriber.Config{
 		FilterName:           env.FilterName,
 		FilterPattern:        env.FilterPattern,
 		DestinationARN:       env.DestinationARN,
@@ -117,12 +117,20 @@ func realInit() error {
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
+	entrypoint.Logger = logger
+
+	is := subscriber.InstrumentHandler(s)
+
+	if err := entrypoint.Register(is.HandleRequest, is.HandleSQS); err != nil {
+		return fmt.Errorf("failed to register functions: %w", err)
+	}
+
 	return nil
 }
 
 func main() {
 	ctx := context.Background()
-	lambda.StartWithOptions(handler, lambda.WithEnableSIGTERM(func() {
+	lambda.StartWithOptions(entrypoint, lambda.WithEnableSIGTERM(func() {
 		log.Printf("SIGTERM received, running shutdown")
 		tracerProvider.Shutdown(ctx)
 		log.Printf("Shutdown done running")

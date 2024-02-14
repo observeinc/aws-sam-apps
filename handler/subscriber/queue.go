@@ -15,17 +15,17 @@ type SQSClient interface {
 }
 
 type queueWrapper struct {
-	Client     SQSClient
-	URL        string
+	Client SQSClient
+	URL    string
+}
+
+type instrumentedQueueWrapper struct {
+	queue      Queue
 	Propagator propagation.TextMapPropagator
 }
 
 func (q *queueWrapper) Put(ctx context.Context, items ...*Request) error {
 	for i, item := range items {
-		carrier := propagation.MapCarrier{}
-		q.Propagator.Inject(ctx, carrier)
-		item.TraceContext = &carrier
-
 		data, err := json.Marshal(item)
 		if err != nil {
 			return fmt.Errorf("failed to marshal item %d: %w", i, err)
@@ -42,12 +42,28 @@ func (q *queueWrapper) Put(ctx context.Context, items ...*Request) error {
 	return nil
 }
 
-func NewQueue(client SQSClient, queueURL string) (Queue, error) {
+func (q *instrumentedQueueWrapper) Put(ctx context.Context, items ...*Request) error {
+	for _, item := range items {
+		carrier := propagation.MapCarrier{}
+		q.Propagator.Inject(ctx, carrier)
+		item.TraceContext = &carrier
+	}
+	return q.queue.Put(ctx, items...)
+}
+
+func InstrumentQueue(q Queue) Queue {
 	propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
-	q := &queueWrapper{
-		Client:     client,
-		URL:        queueURL,
+	instrumentedQueue := &instrumentedQueueWrapper{
+		queue:      q,
 		Propagator: propagator,
+	}
+	return instrumentedQueue
+}
+
+func NewQueue(client SQSClient, queueURL string) (Queue, error) {
+	q := &queueWrapper{
+		Client: client,
+		URL:    queueURL,
 	}
 
 	return q, nil

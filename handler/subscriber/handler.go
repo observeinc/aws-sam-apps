@@ -32,7 +32,7 @@ type CloudWatchLogsClient interface {
 }
 
 type Queue interface {
-	Put(context.Context, ...any) error
+	Put(context.Context, ...*Request) error
 }
 
 type Handler struct {
@@ -46,15 +46,13 @@ type Handler struct {
 	logGroupNameFilter FilterFunc
 }
 
+type InstrumentedHandler struct {
+	Handler
+}
+
 type FilterFunc func(string) bool
 
 func (h *Handler) HandleRequest(ctx context.Context, req *Request) (*Response, error) {
-	if req.TraceContext != nil {
-		propagator := propagation.NewCompositeTextMapPropagator(propagation.Baggage{}, propagation.TraceContext{})
-		ctx = propagator.Extract(ctx, req.TraceContext)
-	}
-	ctx, span := h.Tracer.Start(ctx, "HandleRequest", trace.WithAttributes(attribute.String("key1", "value1")))
-	defer span.End()
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate request: %w", err)
 	}
@@ -90,6 +88,23 @@ func (h *Handler) HandleSQS(ctx context.Context, request events.SQSEvent) (respo
 	return response, nil
 }
 
+func (h *InstrumentedHandler) HandleRequest(ctx context.Context, req *Request) (*Response, error) {
+	if req.TraceContext != nil {
+		propagator := propagation.NewCompositeTextMapPropagator(propagation.Baggage{}, propagation.TraceContext{})
+		ctx = propagator.Extract(ctx, req.TraceContext)
+	}
+	ctx, span := h.Tracer.Start(ctx, "HandleRequest", trace.WithAttributes(attribute.String("key1", "value1")))
+	defer span.End()
+	return h.Handler.HandleRequest(ctx, req)
+}
+
+func InstrumentHandler(h *Handler) *InstrumentedHandler {
+	ih := InstrumentedHandler{*h}
+	instrumentedQueue := InstrumentQueue(h.Queue)
+	ih.Queue = instrumentedQueue
+	return &ih
+}
+
 func New(cfg *Config) (*Handler, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -118,10 +133,6 @@ func New(cfg *Config) (*Handler, error) {
 
 	if cfg.Tracer != nil {
 		h.Tracer = cfg.Tracer
-	}
-
-	if err := h.Mux.Register(h.HandleRequest, h.HandleSQS); err != nil {
-		return nil, fmt.Errorf("failed to register handler: %w", err)
 	}
 
 	return h, nil
