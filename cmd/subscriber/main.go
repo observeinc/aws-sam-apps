@@ -10,7 +10,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-envconfig"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 
+	"github.com/observeinc/aws-sam-apps/handler"
 	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 	"github.com/observeinc/aws-sam-apps/logging"
 )
@@ -24,11 +26,13 @@ var env struct {
 	LogGroupNamePrefixes []string `env:"LOG_GROUP_NAME_PREFIXES"`
 	QueueURL             string   `env:"QUEUE_URL,required"`
 	Verbosity            int      `env:"VERBOSITY,default=1"`
+	ServiceName          string   `env:"OTEL_SERVICE_NAME,default=subscriber"`
 }
 
 var (
-	logger  logr.Logger
-	handler lambda.Handler
+	logger     logr.Logger
+	entrypoint handler.Mux
+	options    []lambda.Option
 )
 
 func init() {
@@ -39,7 +43,6 @@ func init() {
 
 func realInit() error {
 	ctx := context.Background()
-
 	err := envconfig.Process(ctx, &env)
 	if err != nil {
 		return fmt.Errorf("failed to load environment variables: %w", err)
@@ -56,12 +59,27 @@ func realInit() error {
 		return fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
 
+	tracer, tracerShutdownFn := subscriber.InitTracing(ctx, env.ServiceName)
+	if tracer == nil {
+		err := tracerShutdownFn(ctx)
+		return fmt.Errorf("failed to initialize tracing: %w", err)
+	}
+	options = append(options, lambda.WithEnableSIGTERM(func() {
+		logger.V(4).Info("SIGTERM received, running shutdown")
+		err := tracerShutdownFn(ctx)
+		if err != nil {
+			logger.V(4).Error(err, "tracer shutdown failed")
+		}
+		logger.V(4).Info("shutdown done running")
+	}))
+	otelaws.AppendMiddlewares(&awsCfg.APIOptions)
+
 	queue, err := subscriber.NewQueue(sqs.NewFromConfig(awsCfg), env.QueueURL)
+	iq := subscriber.InstrumentQueue(*queue)
 	if err != nil {
 		return fmt.Errorf("failed to load queue: %w", err)
 	}
-
-	handler, err = subscriber.New(&subscriber.Config{
+	s, err := subscriber.New(&subscriber.Config{
 		FilterName:           env.FilterName,
 		FilterPattern:        env.FilterPattern,
 		DestinationARN:       env.DestinationARN,
@@ -70,14 +88,23 @@ func realInit() error {
 		LogGroupNamePatterns: env.LogGroupNamePatterns,
 		Logger:               &logger,
 		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(awsCfg),
-		Queue:                queue,
+		Queue:                &iq,
+		Tracer:               tracer,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
+	entrypoint.Logger = logger
+
+	is := subscriber.InstrumentHandler(s)
+
+	if err := entrypoint.Register(is.HandleRequest, is.HandleSQS); err != nil {
+		return fmt.Errorf("failed to register functions: %w", err)
+	}
+
 	return nil
 }
 
 func main() {
-	lambda.Start(handler)
+	lambda.StartWithOptions(&entrypoint, options...)
 }

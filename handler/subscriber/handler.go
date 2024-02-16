@@ -107,8 +107,8 @@ func New(cfg *Config) (*Handler, error) {
 		h.Logger = *cfg.Logger
 	}
 
-	if err := h.Mux.Register(h.HandleRequest, h.HandleSQS); err != nil {
-		return nil, fmt.Errorf("failed to register handler: %w", err)
+	if cfg.Tracer != nil {
+		h.Tracer = cfg.Tracer
 	}
 
 	return h, nil

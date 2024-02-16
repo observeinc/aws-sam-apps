@@ -13,8 +13,10 @@ require (
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
 	github.com/sethvargo/go-envconfig v1.0.0
+	go.opentelemetry.io/contrib/detectors/aws/lambda v0.48.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.47.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.48.0
+	go.opentelemetry.io/contrib/propagators/b3 v1.23.0
 	go.opentelemetry.io/otel v1.23.1
 	go.opentelemetry.io/otel/sdk v1.23.1
 	go.opentelemetry.io/otel/trace v1.23.1

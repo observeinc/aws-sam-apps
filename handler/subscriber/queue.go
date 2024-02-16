@@ -13,12 +13,12 @@ type SQSClient interface {
 	SendMessage(context.Context, *sqs.SendMessageInput, ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
 }
 
-type queueWrapper struct {
+type QueueWrapper struct {
 	Client SQSClient
 	URL    string
 }
 
-func (q *queueWrapper) Put(ctx context.Context, items ...any) error {
+func (q *QueueWrapper) Put(ctx context.Context, items ...any) error {
 	for i, item := range items {
 		data, err := json.Marshal(item)
 		if err != nil {
@@ -36,8 +36,8 @@ func (q *queueWrapper) Put(ctx context.Context, items ...any) error {
 	return nil
 }
 
-func NewQueue(client SQSClient, queueURL string) (Queue, error) {
-	q := &queueWrapper{
+func NewQueue(client SQSClient, queueURL string) (*QueueWrapper, error) {
+	q := &QueueWrapper{
 		Client: client,
 		URL:    queueURL,
 	}
