@@ -1,3 +1,12 @@
+# v1.33.1 (2024-02-15)
+
+* **Bug Fix**: Correct failure to determine the error type in awsJson services that could occur when errors were modeled with a non-string `code` field.
+
+# v1.33.0 (2024-02-13)
+
+* **Feature**: Bump minimum Go version to 1.20 per our language support policy.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.32.0 (2024-02-06)
 
 * **Feature**: This release adds a new field, logGroupArn, to the response of the logs:DescribeLogGroups action.
