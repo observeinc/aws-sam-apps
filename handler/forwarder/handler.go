@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/go-logr/logr"
 
 	"github.com/observeinc/aws-sam-apps/handler"
@@ -28,14 +27,18 @@ type S3Client interface {
 	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
 
+type Override interface {
+	Apply(context.Context, *s3.CopyObjectInput) bool
+}
+
 type Handler struct {
 	handler.Mux
-	MaxFileSize         int64
-	DestinationURI      *url.URL
-	LogPrefix           string
-	S3Client            S3Client
-	ContentTypeOverride Matcher
-	SourceBucketNames   []string
+	MaxFileSize       int64
+	DestinationURI    *url.URL
+	LogPrefix         string
+	S3Client          S3Client
+	Override          Override
+	SourceBucketNames []string
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -122,10 +125,11 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 
 			copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
 
-			if contentType := h.ContentTypeOverride.Match(sourceURL.String()); contentType != "" {
-				logger.V(6).Info("detected content type override", "content-type", contentType)
-				copyInput.ContentType = aws.String(contentType)
-				copyInput.MetadataDirective = types.MetadataDirectiveReplace
+			if h.Override != nil {
+				if h.Override.Apply(ctx, copyInput) && copyInput.Key == nil {
+					logger.V(6).Info("ignoring object")
+					continue
+				}
 			}
 
 			if _, cerr := h.S3Client.CopyObject(ctx, copyInput); cerr != nil {
@@ -163,15 +167,13 @@ func New(cfg *Config) (h *Handler, err error) {
 
 	u, _ := url.ParseRequestURI(cfg.DestinationURI)
 
-	m, _ := NewContentTypeOverrides(cfg.ContentTypeOverrides, defaultDelimiter)
-
 	h = &Handler{
-		DestinationURI:      u,
-		LogPrefix:           cfg.LogPrefix,
-		S3Client:            cfg.S3Client,
-		MaxFileSize:         cfg.MaxFileSize,
-		ContentTypeOverride: m,
-		SourceBucketNames:   cfg.SourceBucketNames,
+		DestinationURI:    u,
+		LogPrefix:         cfg.LogPrefix,
+		S3Client:          cfg.S3Client,
+		MaxFileSize:       cfg.MaxFileSize,
+		Override:          cfg.Override,
+		SourceBucketNames: cfg.SourceBucketNames,
 	}
 
 	if cfg.Logger != nil {

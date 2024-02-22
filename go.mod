@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.31.1
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sethvargo/go-envconfig v1.0.0
 	go.opentelemetry.io/contrib/detectors/aws/lambda v0.48.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.48.0
@@ -21,6 +22,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.23.1
 	go.opentelemetry.io/otel/trace v1.24.0
 	golang.org/x/sync v0.6.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
