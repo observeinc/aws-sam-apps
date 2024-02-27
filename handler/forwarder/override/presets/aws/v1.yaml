@@ -1,0 +1,17 @@
+- id: configSnapshot
+  match:
+    source: '\d{12}_Config_[a-z\d-]+_ConfigSnapshot_\d{8}T\d{6}Z_[a-f\d-]+\.json\.gz$'
+  override:
+    content-type: 'application/x-aws-config'
+
+- id: configHistory
+  match:
+    source: '\d{12}_Config_[a-z\d-]+_ConfigHistory_[^\.]+.json\.gz$'
+  override:
+    content-type: 'application/x-aws-config'
+
+- id: configChangeNotification
+  match:
+    source: '\d{12}_Config_[a-z\d-]+_ChangeNotification_AWS\S+_\d{8}T\d{6}Z_[a-f\d-]+\.json\.gz$'
+  override:
+    content-type: 'application/x-aws-change'

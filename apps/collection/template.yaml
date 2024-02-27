@@ -60,9 +60,10 @@ Parameters:
     Type: CommaDelimitedList
     Description: >-
       A list of key value pairs. The key is a regular expression which is
-      applied to the S3 URI of forwarded files. The value is the content type
-      to set for matching files. For example, `\.json$=application/x-ndjson`
-      would forward all files aending in `.json` as newline delimited JSON
+      applied to the S3 source (<bucket>/<key>) of forwarded files. The value
+      is the content type to set for matching files. For example,
+      `\.json$=application/x-ndjson` would forward all files ending in `.json`
+      as newline delimited JSON
       files.
     Default: ''
   NameOverride:
@@ -197,7 +198,7 @@ Resources:
         SourceTopicArns: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*"
         ContentTypeOverrides: !Join
             - ","
-            - - !Sub "s3://${Bucket}/cloudwatchlogs/=application/x-aws-cloudwatchlogs"
+            - - !Sub "${Bucket}/cloudwatchlogs/=application/x-aws-cloudwatchlogs"
               - !Join
                 - ","
                 - !Ref ContentTypeOverrides

@@ -35,16 +35,6 @@ func TestConfig(t *testing.T) {
 			},
 			ExpectError: forwarder.ErrInvalidDestination,
 		},
-		{
-			Config: forwarder.Config{
-				DestinationURI: "s3://test",
-				S3Client:       &handlertest.S3Client{},
-				ContentTypeOverrides: []string{
-					"hoho",
-				},
-			},
-			ExpectError: forwarder.ErrInvalidContentTypeOverrides,
-		},
 	}
 
 	for i, tc := range testcases {

@@ -101,9 +101,9 @@ The Forwarder logs all messages it processes to Filedrop. Logs are stored in the
 
 ## Content Type Overrides
 
-Filedrop relies on the object content type in order to determine how to parse a file. You may encounter situations where the object content type does not accurately reflect the object contents. In such cases, you can provide a `ContentTypeOverrides` parameter which adjusts content types based on the object URI being processed.
+Filedrop relies on the object content type in order to determine how to parse a file. You may encounter situations where the object content type does not accurately reflect the object contents. In such cases, you can provide a `ContentTypeOverrides` parameter which adjusts content types based on the object being processed.
 
-The format for `ContentTypeOverrides` is a comma-delimited list of key value pairs. Each pair is composed of a regular expression and a content type, separated by `=`. Upon processing an object, the forwarder will match each regular expression against the object URI. Once a match is found, we will use the associated content type.
+The format for `ContentTypeOverrides` is a comma-delimited list of key value pairs. Each pair is composed of a regular expression and a content type, separated by `=`. Upon processing an object, the forwarder will match each regular expression against the object source (i.e. `<bucket>/<key>`), . Once a match is found, we will use the associated content type.
 
 The following table lists some example uses of the `ContentTypeOverrides` parameter:
 
@@ -111,4 +111,8 @@ The following table lists some example uses of the `ContentTypeOverrides` parame
 |---------------------------------------|------------------------------------------------------------------------------------------------------------|
 | `.*=application/json`                 | Set `application/json` for all copied files                                                                |
 | `\.csv$=text/csv,txt=text/plain`      | Set `text/csv` for all files ending in `.csv`. Otherwise, set `text/plain` for all files containing `txt`. |
-| `^s3://example/=application/x-ndjson` | Set `application/x-ndjson` for all objects sourced from the `example` bucket.                              |
+| `^example/=application/x-ndjson`      | Set `application/x-ndjson` for all objects sourced from the `example` bucket.                              |
+
+## Preset Overrides
+
+The forwarder lambda includes preconfigured sets of overrides for common filename patterns. These files are packaged under the [presets](https://github.com/observeinc/aws-sam-apps/tree/main/handler/forwarder/override/presets) directory. You can configure what presets are loaded by configuring the `PRESET_OVERRIDES` environment variable.
