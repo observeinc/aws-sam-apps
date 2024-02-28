@@ -197,11 +197,8 @@ Resources:
                   - !Join [",", !Ref SourceBucketNames]
         SourceTopicArns: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*"
         ContentTypeOverrides: !Join
-            - ","
-            - - !Sub "${Bucket}/cloudwatchlogs/=application/x-aws-cloudwatchlogs"
-              - !Join
-                - ","
-                - !Ref ContentTypeOverrides
+          - ","
+          - !Ref ContentTypeOverrides
         NameOverride: !If
           - UseStackName
           - !Ref AWS::StackName
