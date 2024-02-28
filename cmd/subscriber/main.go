@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -27,6 +28,8 @@ var env struct {
 	QueueURL             string   `env:"QUEUE_URL,required"`
 	Verbosity            int      `env:"VERBOSITY,default=1"`
 	ServiceName          string   `env:"OTEL_SERVICE_NAME,default=subscriber"`
+	AWSMaxAttempts       string   `env:"AWS_MAX_ATTEMPTS,default=7"`
+	AWSRetryMode         string   `env:"AWS_RETRY_MODE,default=adaptive"`
 }
 
 var (
@@ -53,6 +56,13 @@ func realInit() error {
 	})
 
 	logger.V(4).Info("initialized", "config", env)
+
+	// If user has not provided an override, we must reapply these environment
+	// variables for our defaults to take hold.
+	// Sadly, this approach is simpler than attempting to adjust the
+	// aws.Config struct ourselves.
+	os.Setenv("AWS_MAX_ATTEMPTS", env.AWSMaxAttempts)
+	os.Setenv("AWS_RETRY_MODE", env.AWSRetryMode)
 
 	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {

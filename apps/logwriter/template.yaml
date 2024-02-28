@@ -17,7 +17,7 @@ Metadata:
 
 Globals:
   Function:
-    Timeout: 20
+    Timeout: 120
     MemorySize: 128
 
 Parameters:
@@ -241,7 +241,7 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt DeadLetter.Arn
         maxReceiveCount: 4
-      VisibilityTimeout: 20
+      VisibilityTimeout: 120
   QueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Condition: EnableSubscription
@@ -351,6 +351,8 @@ Resources:
             FunctionResponseTypes:
               - ReportBatchItemFailures
             Queue: !GetAtt Queue.Arn
+            ScalingConfig:
+              MaximumConcurrency: 2
       Environment:
         Variables:
           FILTER_NAME: !If

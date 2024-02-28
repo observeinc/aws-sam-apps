@@ -36,7 +36,8 @@ done
 
 [[ ! -z "${LOG_EVENTS}" ]] || DIE "subscriber lambda not invoked by eventbridge rule"
 
-[[ -z $(jq -r 'select(.level == "ERROR")' <<< ${LOG_EVENTS}) ]] || DIE "errors detected in lambda logs"
+ERR=$(jq -r 'select(.level == "ERROR")' <<< ${LOG_EVENTS})
+[[ -z ${ERR} ]] || DIE "errors detected in lambda logs ${ERR}"
 
 # this requires verbosity to be set to at least 3
 [[ ! -z $(jq -r 'select(.msg == "handling discovery request")' <<< ${LOG_EVENTS}) ]] || DIE "no discovery request detected"
