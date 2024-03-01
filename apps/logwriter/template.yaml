@@ -183,8 +183,8 @@ Resources:
       S3DestinationConfiguration:
         BucketARN: !Ref BucketARN
         RoleARN: !GetAtt FirehoseRole.Arn
-        Prefix: !Ref Prefix
-        ErrorOutputPrefix: !Ref Prefix
+        Prefix: !Sub '${Prefix}cloudwatchlogs/'
+        ErrorOutputPrefix: !Sub '${Prefix}cloudwatchlogs/errors'
         BufferingHints:
           IntervalInSeconds: !Ref BufferingInterval
           SizeInMBs: !Ref BufferingSize

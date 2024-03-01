@@ -1,10 +1,10 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Stream Firehose Records to S3.'
+Description: 'Stream CloudWatch Metrics to S3.'
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: observe-metric-stream
-    Description: Stream CloudWatch Metric Stream to S3.
+    Description: Stream CloudWatch Metrics to S3.
     Author: Observe Inc
     SpdxLicenseId: Apache-2.0
     ReadmeUrl: README.md
@@ -20,7 +20,7 @@ Parameters:
   Prefix:
     Type: String
     Description: >-
-      Optional prefix to write log records to.
+      Optional prefix to write metrics to.
     Default: ''
   FilterURI:
     Type: String
@@ -131,8 +131,8 @@ Resources:
       S3DestinationConfiguration:
         BucketARN: !Ref BucketARN
         RoleARN: !GetAtt DeliveryStreamRole.Arn
-        Prefix: !Ref Prefix
-        ErrorOutputPrefix: !Ref Prefix
+        Prefix: !Sub '${Prefix}cloudwatchmetrics/${OutputFormat}/'
+        ErrorOutputPrefix: !Sub '${Prefix}cloudwatchmetrics/errors/'
         BufferingHints:
           IntervalInSeconds: !Ref BufferingInterval
           SizeInMBs: !Ref BufferingSize
