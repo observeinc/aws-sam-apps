@@ -46,8 +46,19 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/run"
-    version = "2.6.0"
+    source  = "observeinc/collection/aws//modules/testing/setup"
+    version = "2.9.0"
+  }
+}
+
+run "create_bucket" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/s3_bucket"
+    version = "2.9.0"
+  }
+
+  variables {
+    setup = run.setup
   }
 }
 
@@ -57,7 +68,7 @@ run "install" {
     app   = "firehose"
     parameters = {
       NameOverride = run.setup.id
-      BucketARN    = "arn:aws:s3:::${run.setup.access_point.bucket}"
+      BucketARN    = run.create_bucket.arn
     }
     capabilities = [
       "CAPABILITY_IAM",
@@ -68,14 +79,14 @@ run "install" {
 run "check_firehose" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_firehose"
     env_vars = {
       FIREHOSE_ARN = run.install.stack.outputs["Firehose"]
-      DESTINATION  = "s3://${run.setup.access_point.bucket}/"
+      DESTINATION  = "s3://${run.create_bucket.id}/"
     }
   }
 
@@ -91,7 +102,7 @@ run "set_prefix" {
     app   = "firehose"
     parameters = {
       NameOverride      = run.setup.id
-      BucketARN         = "arn:aws:s3:::${run.setup.access_point.bucket}"
+      BucketARN         = run.create_bucket.arn
       Prefix            = "${run.setup.id}/"
       WriterRoleService = "logs.amazonaws.com"
     }
@@ -104,14 +115,14 @@ run "set_prefix" {
 run "check_firehose_prefix" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_firehose"
     env_vars = {
       FIREHOSE_ARN = run.install.stack.outputs["Firehose"]
-      DESTINATION  = "s3://${run.setup.access_point.bucket}/${run.setup.id}/"
+      DESTINATION  = "s3://${run.create_bucket.id}/${run.setup.id}/"
     }
   }
 
