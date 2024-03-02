@@ -48,6 +48,7 @@ Additionally, you may configure the following optional parameters:
 - **SourceBucketNames**: Comma-delimited list of S3 Bucket names for read permissions. The wildcard pattern `*` is supported. This parameter only grants the forwarder read permissions from the provided buckets. In order to copy objects, you must trigger the lambda on object creation through a [supported subscription method](#s3-bucket-subscription).
 - **SourceTopicArns**: Comma-delimited list of SNS Topic ARNs to receive messages from. The wildcard pattern `*` is supported. This parameter grants the topics the ability to publish to the Forwarder stack's SQS Queue.
 - **ContentTypeOverrides**: Comma-delimited list of [content type overrides](#content-type-overrides).
+- **SourceKMSKeyArns**: Comma-delimited list of [KMS keys](#kms-decryption) to use when reading from source buckets.
 
 ## S3 Bucket Subscription
 
@@ -116,3 +117,16 @@ The following table lists some example uses of the `ContentTypeOverrides` parame
 ## Preset Overrides
 
 The forwarder lambda includes preconfigured sets of overrides for common filename patterns. These files are packaged under the [presets](https://github.com/observeinc/aws-sam-apps/tree/main/handler/forwarder/override/presets) directory. You can configure what presets are loaded by configuring the `PRESET_OVERRIDES` environment variable.
+
+## KMS Decryption
+
+The forwarder can be used to copy data out of a KMS encrypted S3 bucket. In the absence of configuration, the Forwarder lambda will log an error in the following form when attempting to read encrypted files:
+
+```
+AccessDenied: User: arn:aws:sts::<accountId>:assumed-role/<roleName>/<sessionName> is not authorized to perform: kms:Decrypt on resource: arn:aws:kms:<region>:<accountId>:key/<keyId>
+```
+
+In order to grant the Forwarder lambda function permission to use the KMS key for decryption, you must perform the following steps:
+
+1. **Update your Forwarder stack**: include your KMS Key ARN in `SourceKMSKeyArns` in your forwarder stack.
+2. **Update your KMS key policy**: your key policy must grant the Forwarder Lambda function permission to call `kms:Decrypt`. The [default KMS key policy](https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html) is sufficient to satisfy this constraint, since it will delegate access to the KMS key to IAM.

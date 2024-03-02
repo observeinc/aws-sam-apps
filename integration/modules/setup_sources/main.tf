@@ -1,5 +1,5 @@
 locals {
-  sources = toset(["sns", "sqs", "eventbridge"])
+  sources = toset(["sns", "sqs", "eventbridge", "kms"])
 }
 
 module "buckets" {
@@ -8,6 +8,7 @@ module "buckets" {
   version             = "2.9.0"
   setup               = var.setup
   enable_access_point = false
+  kms_key_policy_json = each.key == "kms" ? var.kms_key_policy_json : null
 }
 
 resource "aws_sns_topic" "this" {
