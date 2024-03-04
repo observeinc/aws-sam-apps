@@ -43,8 +43,18 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/run"
-    version = "2.6.0"
+    source  = "observeinc/collection/aws//modules/testing/setup"
+    version = "2.9.0"
+  }
+}
+
+run "create_bucket" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/s3_bucket"
+    version = "2.9.0"
+  }
+  variables {
+    setup = run.setup
   }
 }
 
@@ -53,7 +63,7 @@ run "install_config" {
     setup = run.setup
     app   = "config"
     parameters = {
-      BucketName   = run.setup.access_point.bucket
+      BucketName = run.create_bucket.id
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",
@@ -65,7 +75,7 @@ run "install_config" {
 run "check" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   # TODO: this check is a bit weak, since it only verifies
@@ -76,7 +86,7 @@ run "check" {
   variables {
     command = "./scripts/check_bucket_not_empty"
     env_vars = {
-      SOURCE = run.setup.access_point.bucket
+      SOURCE = run.create_bucket.id
     }
   }
 
@@ -91,7 +101,7 @@ run "install_include" {
     setup = run.setup
     app   = "config"
     parameters = {
-      BucketName           = run.setup.access_point.bucket
+      BucketName           = run.create_bucket.id
       IncludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
     }
     capabilities = [
@@ -104,9 +114,9 @@ run "install_include" {
 run "install_exclude" {
   variables {
     setup = run.setup
-    app  = "config"
+    app   = "config"
     parameters = {
-      BucketName           = run.setup.access_point.bucket
+      BucketName           = run.create_bucket.id
       ExcludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::StreamingDistribution"
     }
     capabilities = [

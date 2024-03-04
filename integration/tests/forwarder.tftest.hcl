@@ -1,5 +1,5 @@
 variables {
-  install_policy_json = <<-EOF
+  install_policy_json   = <<-EOF
   {
     "Version": "2012-10-17",
     "Statement": [
@@ -72,8 +72,29 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/run"
-    version = "2.6.0"
+    source  = "observeinc/collection/aws//modules/testing/setup"
+    version = "2.9.0"
+  }
+}
+
+run "target_bucket" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/s3_bucket"
+    version = "2.9.0"
+  }
+
+  variables {
+    setup = run.setup
+  }
+}
+
+run "sources" {
+  module {
+    source = "./modules/setup_sources"
+  }
+
+  variables {
+    setup = run.setup
   }
 }
 
@@ -82,9 +103,9 @@ run "install_forwarder" {
     setup = run.setup
     app   = "forwarder"
     parameters = {
-      DataAccessPointArn   = run.setup.access_point.arn
-      DestinationUri       = "s3://${run.setup.access_point.alias}"
-      SourceBucketNames    = "${run.setup.short}-sns,${run.setup.short}-sqs,${run.setup.short}-eventbridge"
+      DataAccessPointArn   = run.target_bucket.access_point.arn
+      DestinationUri       = "s3://${run.target_bucket.access_point.alias}"
+      SourceBucketNames    = "${join(",", [for k, v in run.sources.buckets : v.id])}"
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
       NameOverride         = run.setup.id
@@ -96,30 +117,28 @@ run "install_forwarder" {
   }
 }
 
-run "setup_subscriptions" {
+run "subscribe_sources" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/subscriptions"
-    version = "2.6.0"
+    source = "./modules/subscribe_sources"
   }
 
   variables {
-    run_id             = run.setup.short
-    queue_arn          = run.install_forwarder.stack.outputs["Queue"]
-    sources            = ["sqs", "eventbridge", "sns"]
+    sources   = run.sources
+    queue_arn = run.install_forwarder.stack.outputs["Queue"]
   }
 }
 
 run "check_sqs" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.setup_subscriptions.buckets["sqs"].bucket
-      DESTINATION = run.setup.access_point.bucket
+      SOURCE      = run.sources.buckets["sqs"].id
+      DESTINATION = run.target_bucket.id
     }
   }
 
@@ -132,14 +151,14 @@ run "check_sqs" {
 run "check_eventbridge" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.setup_subscriptions.buckets["eventbridge"].bucket
-      DESTINATION = run.setup.access_point.bucket
+      SOURCE      = run.sources.buckets["eventbridge"].id
+      DESTINATION = run.target_bucket.id
       INIT_DELAY  = 2
     }
   }
@@ -153,15 +172,16 @@ run "check_eventbridge" {
 run "check_sns" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.setup_subscriptions.buckets["sns"].bucket
-      DESTINATION = run.setup.access_point.bucket
+      SOURCE      = run.sources.buckets["sns"].id
+      DESTINATION = run.target_bucket.id
       INIT_DELAY  = 2
+
     }
   }
 
@@ -174,17 +194,17 @@ run "check_sns" {
 run "check_content_type_override" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE           = run.setup_subscriptions.buckets["sqs"].bucket
-      DESTINATION      = run.setup.access_point.bucket
+      SOURCE      = run.sources.buckets["sqs"].id
+      DESTINATION = run.target_bucket.id
       # this prefix will match the content type override, so we expect the destination object
       # to have our test content type
-      OBJECT_PREFIX    = var.override_match
+      OBJECT_PREFIX = var.override_match
       # modify the content type of the source to our expected value, after
       # which we should se no diff.
       JQ_PROCESS_SOURCE = ".ContentType = \"${var.override_content_type}\""

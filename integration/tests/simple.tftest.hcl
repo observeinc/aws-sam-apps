@@ -1,20 +1,31 @@
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/run"
-    version = "2.6.0"
+    source  = "observeinc/collection/aws//modules/testing/setup"
+    version = "2.9.0"
+  }
+}
+
+run "create_bucket" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/s3_bucket"
+    version = "2.9.0"
+  }
+
+  variables {
+    setup = run.setup
   }
 }
 
 run "check" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_bucket_not_empty"
     env_vars = {
-      SOURCE = run.setup.access_point.bucket
+      SOURCE = run.create_bucket.id
       OPTS   = "--output json"
     }
   }

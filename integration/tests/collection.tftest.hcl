@@ -131,11 +131,21 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/run"
-    version = "2.6.0"
+    source  = "observeinc/collection/aws//modules/testing/setup"
+    version = "2.9.0"
   }
   variables {
     id_length = 51
+  }
+}
+
+run "create_bucket" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/s3_bucket"
+    version = "2.9.0"
+  }
+  variables {
+    setup = run.setup
   }
 }
 
@@ -143,9 +153,9 @@ run "install_collection" {
   variables {
     setup = run.setup
     app   = "collection"
-    parameters  = {
-      DataAccessPointArn   = run.setup.access_point.arn
-      DestinationUri       = "s3://${run.setup.access_point.alias}"
+    parameters = {
+      DataAccessPointArn   = run.create_bucket.access_point.arn
+      DestinationUri       = "s3://${run.create_bucket.access_point.alias}"
       LogGroupNamePatterns = "*"
       NameOverride         = run.setup.id
     }
@@ -159,14 +169,14 @@ run "install_collection" {
 run "check_sqs" {
   module {
     source  = "observeinc/collection/aws//modules/testing/exec"
-    version = "2.6.0"
+    version = "2.9.0"
   }
 
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
       SOURCE      = run.install_collection.stack.outputs["Bucket"]
-      DESTINATION = run.setup.access_point.bucket
+      DESTINATION = run.create_bucket.id
     }
   }
 
