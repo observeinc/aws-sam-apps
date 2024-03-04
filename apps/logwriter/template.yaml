@@ -88,6 +88,11 @@ Parameters:
       Name of Lambda function.
     Default: ''
     MaxLength: 64
+  DebugEndpoint:
+    Type: String
+    Description: >-
+      Endpoint to send additional debug telemetry to.
+    Default: ''
 
 Conditions:
   SetDefaultFilterName: !Equals
@@ -371,6 +376,7 @@ Resources:
           QUEUE_URL: !Ref Queue
           VERBOSITY: 9
           NUM_WORKERS: !Ref NumWorkers
+          OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
   SubscriptionEvents:
     Type: AWS::Events::Rule
     Condition: HasDiscoveryRate
