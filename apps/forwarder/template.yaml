@@ -77,12 +77,22 @@ Parameters:
       as newline delimited JSON
       files.
     Default: ''
+  SourceKMSKeyArns:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3.
+    Default: ''
 Conditions:
   IsMaxFileSizeEmpty: !Equals [ !Ref MaxFileSize, '' ]
   DisableSourceS3: !Equals
     - !Join
       - ''
       - !Ref SourceBucketNames
+    - ''
+  DisableKMSDecrypt: !Equals
+    - !Join
+      - ''
+      - !Ref SourceKMSKeyArns
     - ''
   UseStackName: !Equals
     - !Ref NameOverride
@@ -251,6 +261,17 @@ Resources:
                   - sqs:DeleteMessage
                   - sqs:GetQueueAttributes
                 Resource: !GetAtt Queue.Arn
+        - !If
+          - DisableKMSDecrypt
+          - !Ref AWS::NoValue
+          - PolicyName: kms
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - kms:Decrypt
+                  Resource: !Ref SourceKMSKeyArns
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:

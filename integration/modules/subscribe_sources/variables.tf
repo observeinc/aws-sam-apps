@@ -1,9 +1,9 @@
 variable "sources" {
   type = object({
     buckets = object({
-      sns         = object({ id = string })
       sqs         = object({ id = string })
       eventbridge = object({ id = string })
+      kms         = object({ id = string })
     })
     sns_topic = object({ arn = string })
   })

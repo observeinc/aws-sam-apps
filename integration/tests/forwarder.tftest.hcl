@@ -95,6 +95,22 @@ run "sources" {
 
   variables {
     setup = run.setup
+    kms_key_policy_json = jsonencode(
+      {
+        Statement = [
+          {
+            Action = "kms:*"
+            Effect = "Allow"
+            Principal = {
+              AWS = "arn:aws:iam::${run.setup.account_id}:root"
+            }
+            Resource = "*"
+            Sid      = "Enable IAM User Permissions"
+          }
+        ]
+        Version = "2012-10-17"
+      }
+    )
   }
 }
 
@@ -108,6 +124,7 @@ run "install_forwarder" {
       SourceBucketNames    = "${join(",", [for k, v in run.sources.buckets : v.id])}"
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
+      SourceKMSKeyArns     = "${join(",", [for k, v in run.sources.buckets : v.kms_key.arn if v.kms_key != null])}"
       NameOverride         = run.setup.id
     }
     capabilities = [
@@ -214,5 +231,29 @@ run "check_content_type_override" {
   assert {
     condition     = output.exitcode == 0
     error_message = "Failed to override content type"
+  }
+}
+
+run "check_kms" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.9.0"
+  }
+
+  variables {
+    command = "./scripts/check_object_diff"
+    env_vars = {
+      SOURCE                 = run.sources.buckets["kms"].id
+      DESTINATION            = run.target_bucket.id
+      # Object ETag will no longer match because object hash changes after decryption
+      JQ_PROCESS_SOURCE      = "del(.ETag)"
+      # Reset the expected source encryption settings when comparing objects
+      JQ_PROCESS_DESTINATION = "del(.ETag) | .ServerSideEncryption = \"aws:kms\" | .SSEKMSKeyId = \"${run.sources.buckets["kms"].kms_key.arn}\""
+    }
+  }
+
+  assert {
+    condition     = output.exitcode == 0
+    error_message = "Failed to copy object using SQS from KMS encrypted bucket"
   }
 }
