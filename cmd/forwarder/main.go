@@ -99,5 +99,5 @@ func realInit() error {
 }
 
 func main() {
-	lambda.Start(handler.Handle)
+	lambda.Start(handler)
 }

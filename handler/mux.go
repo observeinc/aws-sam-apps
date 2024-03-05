@@ -87,8 +87,8 @@ func (m *Mux) Invoke(ctx context.Context, payload []byte) (response []byte, err 
 	logger := m.Logger
 	if lctx, ok := lambdacontext.FromContext(ctx); ok {
 		logger = m.Logger.WithValues("requestId", lctx.AwsRequestID)
-		ctx = logr.NewContext(ctx, logger)
 	}
+	ctx = logr.NewContext(ctx, logger)
 
 	logger.V(3).Info("handling request")
 	defer func() {
