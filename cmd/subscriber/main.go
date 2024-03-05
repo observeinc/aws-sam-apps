@@ -54,7 +54,6 @@ func realInit() error {
 	logger = logging.New(&logging.Config{
 		Verbosity: env.Verbosity,
 	})
-	ctx = logr.NewContext(ctx, logger)
 	logger.V(4).Info("initialized", "config", env)
 
 	// If user has not provided an override, we must reapply these environment
