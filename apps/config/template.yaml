@@ -45,6 +45,7 @@ Parameters:
     Description: >-
       The ARN of the SNS topic that AWS Config delivers notifications to.
     Default: ""
+    AllowedPattern: "^(arn:.*)?$"
   IncludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
@@ -52,12 +53,14 @@ Parameters:
       supported resource types. If set to blank, installing this stack will
       have no effect.
     Default: "*"
+    AllowedPattern: '^([a-zA-Z0-9]+::[a-zA-Z0-9]+::[a-zA-Z0-9]+|\*)?$'
   ExcludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
       Exclude a subset of resource types from configuration collection. This
       parameter can only be set if IncludeResourceTypes is wildcarded.
     Default: ""
+    AllowedPattern: '^([a-zA-Z0-9]+::[a-zA-Z0-9]+::[a-zA-Z0-9]+)?$'
   IncludeGlobalResourceTypes:
     Type: String
     Description: >-

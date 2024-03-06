@@ -37,10 +37,12 @@ Parameters:
     Type: String
     Description: >-
       The access point ARN for your Filedrop.
+    AllowedPattern: "^arn:.*$"
   DestinationUri:
     Type: String
     Description: >-
       The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
+    AllowedPattern: "^s3:\/\/.*"
   NameOverride:
     Type: String
     Description: >-
@@ -62,6 +64,7 @@ Parameters:
     Description: >-
       A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ''
+    AllowedPattern: "^(arn:.*)?$"
   MaxFileSize:
     Type: String
     Description: Max file size for objects to process (in bytes), default is 1GB
@@ -82,6 +85,7 @@ Parameters:
     Description: >-
       A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3.
     Default: ''
+    AllowedPattern: "^(arn:.*)?$"
 Conditions:
   IsMaxFileSizeEmpty: !Equals [ !Ref MaxFileSize, '' ]
   DisableSourceS3: !Equals
