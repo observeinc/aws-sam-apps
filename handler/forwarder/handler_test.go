@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambdacontext"
@@ -20,6 +21,11 @@ import (
 	"github.com/observeinc/aws-sam-apps/handler/forwarder"
 	"github.com/observeinc/aws-sam-apps/handler/handlertest"
 )
+
+var lambdaContext = &lambdacontext.LambdaContext{
+	InvokedFunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:test",
+	AwsRequestID:       "c8ee04d5-5925-541a-b113-5942a0fc5985",
+}
 
 func TestCopy(t *testing.T) {
 	t.Parallel()
@@ -257,7 +263,7 @@ func TestHandler(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ctx := lambdacontext.NewContext(context.Background(), &lambdacontext.LambdaContext{})
+			ctx := lambdacontext.NewContext(context.Background(), lambdaContext)
 
 			response, err := h.Handle(ctx, request)
 
@@ -283,20 +289,20 @@ func TestRecorder(t *testing.T) {
 	t.Parallel()
 
 	testcases := []struct {
-		LambdaContext  *lambdacontext.LambdaContext
 		DestinationURI string
+		Now            func() time.Time
 		Expect         *s3.PutObjectInput
 	}{
 		{
-			LambdaContext: &lambdacontext.LambdaContext{
-				InvokedFunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:test",
-				AwsRequestID:       "c8ee04d5-5925-541a-b113-5942a0fc5985",
-			},
 			DestinationURI: "s3://my-bucket/path/to",
+			Now: func() time.Time {
+				t, _ := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
+				return t
+			},
 			Expect: &s3.PutObjectInput{
 				Bucket:      aws.String("my-bucket"),
-				Key:         aws.String("path/to/arn:aws:lambda:us-east-1:123456789012:function:test/c8ee04d5-5925-541a-b113-5942a0fc5985"),
-				ContentType: aws.String("application/x-ndjson"),
+				Key:         aws.String("path/to/AWSLogs/123456789012/sqs/us-east-1/2009/11/10/23/c8ee04d5-5925-541a-b113-5942a0fc5985"),
+				ContentType: aws.String("application/x-aws-sqs"),
 			},
 		},
 	}
@@ -321,7 +327,9 @@ func TestRecorder(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ctx := lambdacontext.NewContext(context.Background(), tc.LambdaContext)
+			h.Now = tc.Now
+
+			ctx := lambdacontext.NewContext(context.Background(), lambdaContext)
 			if err := h.WriteSQS(ctx, nil); err != nil {
 				t.Fatal(err)
 			}

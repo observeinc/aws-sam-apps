@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/go-logr/logr"
 )
@@ -21,6 +22,7 @@ type Config struct {
 	Override          Override
 	S3Client          S3Client
 	Logger            *logr.Logger
+	GetTime           func() *time.Time
 }
 
 func (c *Config) Validate() error {
