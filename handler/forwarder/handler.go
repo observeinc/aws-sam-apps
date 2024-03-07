@@ -35,7 +35,6 @@ type Handler struct {
 	handler.Mux
 	MaxFileSize       int64
 	DestinationURI    *url.URL
-	LogPrefix         string
 	S3Client          S3Client
 	Override          Override
 	SourceBucketNames []string
@@ -75,7 +74,7 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 		return errNoLambdaContext
 	}
 
-	key := fmt.Sprintf("%s/%s%s/%s", strings.Trim(h.DestinationURI.Path, "/"), h.LogPrefix, lctx.InvokedFunctionArn, lctx.AwsRequestID)
+	key := fmt.Sprintf("%s/%s/%s", strings.Trim(h.DestinationURI.Path, "/"), lctx.InvokedFunctionArn, lctx.AwsRequestID)
 
 	_, err := h.S3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(h.DestinationURI.Host),
@@ -169,7 +168,6 @@ func New(cfg *Config) (h *Handler, err error) {
 
 	h = &Handler{
 		DestinationURI:    u,
-		LogPrefix:         cfg.LogPrefix,
 		S3Client:          cfg.S3Client,
 		MaxFileSize:       cfg.MaxFileSize,
 		Override:          cfg.Override,

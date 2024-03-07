@@ -284,7 +284,6 @@ func TestRecorder(t *testing.T) {
 
 	testcases := []struct {
 		LambdaContext  *lambdacontext.LambdaContext
-		LogPrefix      string
 		DestinationURI string
 		Expect         *s3.PutObjectInput
 	}{
@@ -293,11 +292,10 @@ func TestRecorder(t *testing.T) {
 				InvokedFunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:test",
 				AwsRequestID:       "c8ee04d5-5925-541a-b113-5942a0fc5985",
 			},
-			LogPrefix:      "test/",
 			DestinationURI: "s3://my-bucket/path/to",
 			Expect: &s3.PutObjectInput{
 				Bucket:      aws.String("my-bucket"),
-				Key:         aws.String("path/to/test/arn:aws:lambda:us-east-1:123456789012:function:test/c8ee04d5-5925-541a-b113-5942a0fc5985"),
+				Key:         aws.String("path/to/arn:aws:lambda:us-east-1:123456789012:function:test/c8ee04d5-5925-541a-b113-5942a0fc5985"),
 				ContentType: aws.String("application/x-ndjson"),
 			},
 		},
@@ -312,7 +310,6 @@ func TestRecorder(t *testing.T) {
 
 			h, err := forwarder.New(&forwarder.Config{
 				DestinationURI: tc.DestinationURI,
-				LogPrefix:      tc.LogPrefix,
 				S3Client: &handlertest.S3Client{
 					PutObjectFunc: func(_ context.Context, i *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 						got = i
