@@ -39,10 +39,10 @@ func TestPresets(t *testing.T) {
 				},
 				{
 					Input: &s3.CopyObjectInput{
-						CopySource: aws.String("test-bucket/cloudwatchlogs/2024/02/27/22/quality-bird-logwriter-1-2024-02-27-22-16-04-7828720f-2bd1-4b15-9f4c-b33f06f4a9c0"),
+						CopySource: aws.String("test-bucket/cloudwatchlogs/us-west-2/2024/02/27/22/quality-bird-logwriter-1-2024-02-27-22-16-04-7828720f-2bd1-4b15-9f4c-b33f06f4a9c0"),
 					},
 					Expect: &s3.CopyObjectInput{
-						CopySource:        aws.String("test-bucket/cloudwatchlogs/2024/02/27/22/quality-bird-logwriter-1-2024-02-27-22-16-04-7828720f-2bd1-4b15-9f4c-b33f06f4a9c0"),
+						CopySource:        aws.String("test-bucket/cloudwatchlogs/us-west-2/2024/02/27/22/quality-bird-logwriter-1-2024-02-27-22-16-04-7828720f-2bd1-4b15-9f4c-b33f06f4a9c0"),
 						ContentType:       aws.String("application/x-aws-cloudwatchlogs"),
 						ContentEncoding:   aws.String("gzip"),
 						MetadataDirective: types.MetadataDirectiveReplace,

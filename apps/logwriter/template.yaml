@@ -188,8 +188,8 @@ Resources:
       S3DestinationConfiguration:
         BucketARN: !Ref BucketARN
         RoleARN: !GetAtt FirehoseRole.Arn
-        Prefix: !Sub '${Prefix}cloudwatchlogs/'
-        ErrorOutputPrefix: !Sub '${Prefix}cloudwatchlogs/errors'
+        Prefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchlogs/${AWS::Region}/'
+        ErrorOutputPrefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchlogs/${AWS::Region}/errors'
         BufferingHints:
           IntervalInSeconds: !Ref BufferingInterval
           SizeInMBs: !Ref BufferingSize

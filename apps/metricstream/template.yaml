@@ -131,8 +131,8 @@ Resources:
       S3DestinationConfiguration:
         BucketARN: !Ref BucketARN
         RoleARN: !GetAtt DeliveryStreamRole.Arn
-        Prefix: !Sub '${Prefix}cloudwatchmetrics/${OutputFormat}/'
-        ErrorOutputPrefix: !Sub '${Prefix}cloudwatchmetrics/errors/'
+        Prefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchmetrics/${AWS::Region}/${OutputFormat}/'
+        ErrorOutputPrefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchmetrics/${AWS::Region}/errors/'
         BufferingHints:
           IntervalInSeconds: !Ref BufferingInterval
           SizeInMBs: !Ref BufferingSize
