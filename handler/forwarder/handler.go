@@ -61,21 +61,6 @@ func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 	}
 }
 
-func GetLogInput(lctx *lambdacontext.LambdaContext, prefix string, destination *url.URL, r io.Reader) *s3.PutObjectInput {
-	if lctx == nil || destination == nil {
-		return nil
-	}
-
-	key := strings.TrimLeft(fmt.Sprintf("%s/%s%s/%s", strings.Trim(destination.Path, "/"), prefix, lctx.InvokedFunctionArn, lctx.AwsRequestID), "/")
-
-	return &s3.PutObjectInput{
-		Bucket:      &destination.Host,
-		Key:         &key,
-		Body:        r,
-		ContentType: aws.String("application/x-ndjson"),
-	}
-}
-
 func (h *Handler) GetDestinationRegion(ctx context.Context, client s3.HeadBucketAPIClient) (string, error) {
 	region, err := manager.GetBucketRegion(ctx, client, h.DestinationURI.Host)
 	if err != nil {
@@ -84,19 +69,34 @@ func (h *Handler) GetDestinationRegion(ctx context.Context, client s3.HeadBucket
 	return region, nil
 }
 
-func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
+func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 	lctx, ok := lambdacontext.FromContext(ctx)
 	if !ok {
-		return response, errNoLambdaContext
+		return errNoLambdaContext
 	}
 
+	key := fmt.Sprintf("%s/%s%s/%s", strings.Trim(h.DestinationURI.Path, "/"), h.LogPrefix, lctx.InvokedFunctionArn, lctx.AwsRequestID)
+
+	_, err := h.S3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(h.DestinationURI.Host),
+		Key:         aws.String(strings.TrimLeft(key, "/")),
+		Body:        r,
+		ContentType: aws.String("application/x-ndjson"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to write messages: %w", err)
+	}
+	return nil
+}
+
+func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	var messages bytes.Buffer
 	defer func() {
 		if err == nil {
 			logger.V(3).Info("logging messages")
-			_, err = h.S3Client.PutObject(ctx, GetLogInput(lctx, h.LogPrefix, h.DestinationURI, &messages))
+			err = h.WriteSQS(ctx, &messages)
 		}
 	}()
 
