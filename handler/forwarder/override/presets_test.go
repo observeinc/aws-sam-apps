@@ -48,6 +48,18 @@ func TestPresets(t *testing.T) {
 						MetadataDirective: types.MetadataDirectiveReplace,
 					},
 				},
+				{
+					Input: &s3.CopyObjectInput{
+						CopySource:      aws.String("test-bucket/AWSLogs/123456789012/CloudTrail/us-west-2/2024/03/07/123456789012_CloudTrail_us-west-2_20240307T1735Z_avVctZJaEJudp7oI.json.gz"),
+						ContentEncoding: aws.String("gzip"),
+					},
+					Expect: &s3.CopyObjectInput{
+						CopySource:        aws.String("test-bucket/AWSLogs/123456789012/CloudTrail/us-west-2/2024/03/07/123456789012_CloudTrail_us-west-2_20240307T1735Z_avVctZJaEJudp7oI.json.gz"),
+						ContentType:       aws.String("application/x-aws-cloudtrail"),
+						ContentEncoding:   aws.String("gzip"),
+						MetadataDirective: types.MetadataDirectiveReplace,
+					},
+				},
 			},
 		},
 	}
