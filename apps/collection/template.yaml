@@ -47,10 +47,12 @@ Parameters:
     Type: String
     Description: >-
       The access point ARN for your Filedrop.
+    AllowedPattern: "^arn:.*$"
   DestinationUri:
     Type: String
     Description: >-
       The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
+    AllowedPattern: "^s3:\/\/.*$"
   SourceBucketNames:
     Type: CommaDelimitedList
     Description: >-
@@ -80,12 +82,14 @@ Parameters:
       supported resource types. Do not set this parameter if AWS Config is
       already installed for this region.
     Default: ""
+    AllowedPattern: '^([a-zA-Z0-9]+::[a-zA-Z0-9]+::[a-zA-Z0-9]+|\*)?$'
   ExcludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
       Exclude a subset of resource types from configuration collection. This
       parameter can only be set if IncludeResourceTypes is wildcarded.
     Default: ""
+    AllowedPattern: '^([a-zA-Z0-9]+::[a-zA-Z0-9]+::[a-zA-Z0-9]+)?$'
   LogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
@@ -105,6 +109,7 @@ Parameters:
       S3 URI containing filters for metrics to be collected by CloudWatch
       Metrics Stream. If empty, no metrics will be collected.
     Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
+    AllowedPattern: "^s3:\/\/.*$"
 
 Conditions:
   EnableConfig: !Not

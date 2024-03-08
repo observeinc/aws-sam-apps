@@ -17,6 +17,7 @@ Parameters:
     Type: String
     Description: >-
       S3 Bucket ARN to write log records to.
+    AllowedPattern: "^arn:.*$"
   Prefix:
     Type: String
     Description: >-

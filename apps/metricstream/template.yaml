@@ -17,6 +17,7 @@ Parameters:
     Type: String
     Description: >-
       S3 Bucket ARN to write log records to.
+    AllowedPattern: "^arn:.*$"
   Prefix:
     Type: String
     Description: >-
@@ -27,6 +28,7 @@ Parameters:
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
     Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
+    AllowedPattern: "^s3:\/\/.*"
   OutputFormat:
     Type: String
     Description: >-
