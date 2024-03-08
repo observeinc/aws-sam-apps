@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"testing"
@@ -284,17 +283,17 @@ func TestRecorder(t *testing.T) {
 	t.Parallel()
 
 	testcases := []struct {
-		Context        *lambdacontext.LambdaContext
-		Prefix         string
+		LambdaContext  *lambdacontext.LambdaContext
+		LogPrefix      string
 		DestinationURI string
 		Expect         *s3.PutObjectInput
 	}{
 		{
-			Context: &lambdacontext.LambdaContext{
+			LambdaContext: &lambdacontext.LambdaContext{
 				InvokedFunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:test",
 				AwsRequestID:       "c8ee04d5-5925-541a-b113-5942a0fc5985",
 			},
-			Prefix:         "test/",
+			LogPrefix:      "test/",
 			DestinationURI: "s3://my-bucket/path/to",
 			Expect: &s3.PutObjectInput{
 				Bucket:      aws.String("my-bucket"),
@@ -308,15 +307,27 @@ func TestRecorder(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
-			u, err := url.ParseRequestURI(tc.DestinationURI)
+
+			var got *s3.PutObjectInput
+
+			h, err := forwarder.New(&forwarder.Config{
+				DestinationURI: tc.DestinationURI,
+				LogPrefix:      tc.LogPrefix,
+				S3Client: &handlertest.S3Client{
+					PutObjectFunc: func(_ context.Context, i *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+						got = i
+						return nil, nil
+					},
+				},
+			})
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			var body io.Reader
-
-			tc.Expect.Body = body
-			got := forwarder.GetLogInput(tc.Context, tc.Prefix, u, body)
+			ctx := lambdacontext.NewContext(context.Background(), tc.LambdaContext)
+			if err := h.WriteSQS(ctx, nil); err != nil {
+				t.Fatal(err)
+			}
 
 			if diff := cmp.Diff(got, tc.Expect, cmpopts.IgnoreUnexported(s3.PutObjectInput{})); diff != "" {
 				t.Fatal(diff)
