@@ -1,13 +1,13 @@
 - id: cloudwatchLogs
   match:
-    source: '/cloudwatchlogs/\d{4}/\d{2}/\d{2}/\d{2}'
+    source: '/cloudwatchlogs/[a-z\d-]+/\d{4}/\d{2}/\d{2}/\d{2}'
   override:
     content-type: 'application/x-aws-cloudwatchlogs'
     content-encoding: 'gzip'
 
 - id: cloudwatchMetrics
   match:
-    source: '/cloudwatchmetrics/json/\d{4}/\d{2}/\d{2}/\d{2}'
+    source: '/cloudwatchmetrics/[a-z\d-]+/json/\d{4}/\d{2}/\d{2}/\d{2}'
   override:
     content-type: 'application/x-aws-cloudwatchmetrics'
 
