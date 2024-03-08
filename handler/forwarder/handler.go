@@ -9,10 +9,12 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
@@ -38,6 +40,7 @@ type Handler struct {
 	S3Client          S3Client
 	Override          Override
 	SourceBucketNames []string
+	Now               func() time.Time
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -74,13 +77,27 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 		return errNoLambdaContext
 	}
 
-	key := fmt.Sprintf("%s/%s/%s", strings.Trim(h.DestinationURI.Path, "/"), lctx.InvokedFunctionArn, lctx.AwsRequestID)
+	functionArn, err := arn.Parse(lctx.InvokedFunctionArn)
+	if err != nil {
+		return fmt.Errorf("failed to parse function ARN: %w", err)
+	}
 
-	_, err := h.S3Client.PutObject(ctx, &s3.PutObjectInput{
+	now := h.Now()
+	key := strings.Join([]string{
+		strings.Trim(h.DestinationURI.Path, "/"),
+		"AWSLogs",
+		functionArn.AccountID,
+		"sqs",
+		functionArn.Region,
+		now.Format("2006/01/02/15"), // use yyyy/mm/dd/hh format
+		lctx.AwsRequestID,
+	}, "/")
+
+	_, err = h.S3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(h.DestinationURI.Host),
-		Key:         aws.String(strings.TrimLeft(key, "/")),
+		Key:         &key,
 		Body:        r,
-		ContentType: aws.String("application/x-ndjson"),
+		ContentType: aws.String("application/x-aws-sqs"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to write messages: %w", err)
@@ -172,6 +189,7 @@ func New(cfg *Config) (h *Handler, err error) {
 		MaxFileSize:       cfg.MaxFileSize,
 		Override:          cfg.Override,
 		SourceBucketNames: cfg.SourceBucketNames,
+		Now:               time.Now,
 	}
 
 	if cfg.Logger != nil {
