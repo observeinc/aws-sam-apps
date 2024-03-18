@@ -7,9 +7,9 @@ require (
 	github.com/aws/aws-lambda-go v1.46.0
 	github.com/aws/aws-sdk-go-v2 v1.25.3
 	github.com/aws/aws-sdk-go-v2/config v1.27.7
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.16.9
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.16.11
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.34.3
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.51.4
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.52.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.31.2
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
