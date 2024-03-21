@@ -41,6 +41,10 @@ Metadata:
           - SourceBucketNames
           - ContentTypeOverrides
           - NameOverride
+      - Label:
+          default: Debugging Options
+        Parameters:
+          - DebugEndpoint
 
 Parameters:
   DataAccessPointArn:
@@ -110,6 +114,12 @@ Parameters:
       Metrics Stream. If empty, no metrics will be collected.
     Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
     AllowedPattern: "^s3:\/\/.*$"
+  DebugEndpoint:
+    Type: String
+    Description: >-
+      OpenTelemetry endpoint to send additional telemetry to.
+    Default: ''
+    AllowedPattern: "^(http(s)?:\/\/.*)?$"
 
 Conditions:
   EnableConfig: !Not
@@ -237,6 +247,7 @@ Resources:
         - !Ref Topic
       Parameters:
         BucketARN: !GetAtt Bucket.Arn
+        DebugEndpoint: !Ref DebugEndpoint
         LogGroupNamePrefixes: !Join [",", !Ref LogGroupNamePrefixes]
         LogGroupNamePatterns: !Join [",", !Ref LogGroupNamePatterns]
         FilterName: 'observe-logs-subscription'
