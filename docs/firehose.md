@@ -8,14 +8,14 @@ The Observe Firehose application creates an Amazon Kinesis Firehose delivery str
 
 ## Configuration Parameters
 
-The application is configurable through several parameters that determine how data is buffered and delivered:
-
-- **BucketARN**: The ARN of the S3 bucket where Firehose will deliver records.
-- **Prefix**: An optional prefix path within the S3 bucket where records will be stored.
-- **NameOverride**: If specified, sets the name of the Firehose Delivery Stream; otherwise, the stack name is used.
-- **BufferingInterval**: The amount of time Firehose buffers incoming data before delivering it (minimum 60 seconds, maximum 900 seconds).
-- **BufferingSize**: The size of the buffer, in MiBs, that Firehose accumulates before delivering data (minimum 1 MiB, maximum 64 MiBs).
-- **WriterRoleService**: An optional service name to create a writer role for; if not specified, no writer role is created.
+| Parameter       | Type    | Description |
+|-----------------|---------|-------------|
+| **`BucketARN`** | String | S3 Bucket ARN to write log records to. |
+| `Prefix` | String | Optional prefix to write log records to. |
+| `NameOverride` | String | Set Firehose Delivery Stream name. In the absence of a value, the stack name will be used. |
+| `BufferingInterval` | Number | Buffer incoming data for the specified period of time, in seconds, before delivering it to the destination.  |
+| `BufferingSize` | Number | Buffer incoming data to the specified size, in MiBs, before delivering it to the destination.  |
+| `WriterRoleService` | String | Optional service to create writer role for.  |
 
 ## Resources Created
 

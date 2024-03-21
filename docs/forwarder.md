@@ -2,22 +2,48 @@
 
 The Observe Forwarder is an AWS Serverless Application Model (SAM) application designed to route data to an Observe Filedrop. It can be configured to handle files from S3 buckets and ingest event streams from SQS queues, including SNS or EventBridge events.
 
-## Overview
+## How it works
 
-The Forwarder stack provisions a set of AWS resources that work together to capture data events and forward them to the specified Filedrop destination in Observe.
-
-![Forwarder Architecture](images/forwarder.png)
-
-## Key Components
-
-The Forwarder stack includes:
+The Forwarder stack provisions a set of AWS resources that work together to capture data events and forward them to the specified Filedrop destination in Observe. The Forwarder stack provisions:
 
 - **SQS Queue**: Receives events from S3 buckets or SNS topics.
 - **Lambda Function**: Processes messages from the SQS queue and forwards them to Filedrop.
 - **IAM Role**: Grants the Lambda function permissions to write to Filedrop.
 - **CloudWatch Log Group**: Captures logs from the Lambda function.
 - **Dead Letter Queue**: Receives messages that fail to be processed after several attempts.
-- **EventBridge Rule**: Triggers the SQS queue for `s3:ObjectCreated` events.
+- **EventBridge Rule**: Triggers the SQS queue for `s3:ObjectCreated` events that are emitted to the default EventBridge bus.
+
+![Forwarder Architecture](images/forwarder.png)
+
+The flow for copying objects from a _source bucket_ into Observe is as follows:
+
+1. An S3 event notification of object creation must be delivered to the SQS queue provisioned as part of the Forwarder stack. There are three supported methods for notification delivery:
+    - a) directly to SQS
+    - b) via SNS
+    - c) via EventBridge
+
+2. The Forwarder lambda function batches tasks from the Queue for processing.
+
+3. All tasks are written to Filedrop with content-type `application/x-aws-sqs`. Any S3 event notification the Lambda receives from a _source bucket_ will trigger an S3 CopyObject action for the source object towards Filedrop.
+
+4. Any failed tasks will be returned to the SQS queue. Repeated failures will causes tasks to be moved to a dead letter queue.
+
+5. Logs are written the Lambda function's CloudWatch Log Group. This is the best place to start debugging task failures.
+
+## Configuration Parameters
+
+The forwarder stack can be configured with the following parameters:
+
+| Parameter       | Type    | Description |
+|-----------------|---------|-------------|
+| **`DataAccessPointArn`** | String | The access point ARN for your Filedrop. |
+| **`DestinationUri`** | String | The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/` |
+| `NameOverride` | String | Name of IAM role expected by Filedrop. This name will also be applied to the SQS Queue and Lambda Function processing events. In the absence of a value, the stack name will be used. |
+| `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from.  This list only affects permissions, and supports wildcards. In order to have files copied to Filedrop, you must also subscribe S3 Bucket Notifications to the forwarder. |
+| `SourceTopicArns` | CommaDelimitedList | A list of SNS topics the forwarder is allowed to be subscribed to. |
+| `MaxFileSize` | String | Max file size for objects to process (in bytes), default is 1GB |
+| `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
+| `SourceKMSKeyArns` | CommaDelimitedList | A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3. |
 
 ## Installation
 
@@ -42,13 +68,6 @@ These parameters must be used to configure the Forwarder stack:
 1. **Stack Name**: Use the IAM Role name from the Filedrop setup. If different, provide the Role name in the `NameOverride` parameter.
 2. **DataAccessPointArn**: Grants the Lambda function permission to write to the Filedrop.
 3. **DestinationUri**: Specifies where the Lambda function will write data.
-
-Additionally, you may configure the following optional parameters:
-
-- **SourceBucketNames**: Comma-delimited list of S3 Bucket names for read permissions. The wildcard pattern `*` is supported. This parameter only grants the forwarder read permissions from the provided buckets. In order to copy objects, you must trigger the lambda on object creation through a [supported subscription method](#s3-bucket-subscription).
-- **SourceTopicArns**: Comma-delimited list of SNS Topic ARNs to receive messages from. The wildcard pattern `*` is supported. This parameter grants the topics the ability to publish to the Forwarder stack's SQS Queue.
-- **ContentTypeOverrides**: Comma-delimited list of [content type overrides](#content-type-overrides).
-- **SourceKMSKeyArns**: Comma-delimited list of [KMS keys](#kms-decryption) to use when reading from source buckets.
 
 ## S3 Bucket Subscription
 
@@ -98,7 +117,7 @@ In this case you would:
 
 ## Message Logs
 
-The Forwarder logs all messages it processes to Filedrop. Logs are stored in the format: `forwarder/{lambda_arn}/{request_id}`. These logs help with introspection and can forward events from AWS sources that can send messages via SQS.
+The Forwarder logs all SQS tasks it processes to Filedrop. Records are written with content-type `application/x-aws-sqs`. These logs help with introspection and can forward events from AWS sources that can send messages via SQS.
 
 ## Content Type Overrides
 
