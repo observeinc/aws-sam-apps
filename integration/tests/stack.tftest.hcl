@@ -149,10 +149,10 @@ run "create_bucket" {
   }
 }
 
-run "install_collection" {
+run "install" {
   variables {
     setup = run.setup
-    app   = "collection"
+    app   = "stack"
     parameters = {
       DataAccessPointArn   = run.create_bucket.access_point.arn
       DestinationUri       = "s3://${run.create_bucket.access_point.alias}"
@@ -175,7 +175,7 @@ run "check_sqs" {
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.install_collection.stack.outputs["Bucket"]
+      SOURCE      = run.install.stack.outputs["Bucket"]
       DESTINATION = run.create_bucket.id
     }
   }

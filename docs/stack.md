@@ -1,6 +1,6 @@
-# Observe AWS Data Collection
+# Observe AWS Stack
 
-The Observe AWS Collection stack is designed to aggregate and forward a wide range of AWS resource data, logs, and metrics to Observe, facilitating comprehensive observability of your AWS environment.
+The Observe AWS stack is designed to aggregate and forward a wide range of AWS resource data, logs, and metrics to Observe, facilitating comprehensive observability of your AWS environment.
 
 ## Overview
 
@@ -39,7 +39,7 @@ The stack provisions a range of AWS resources, including an SNS topic for notifi
 
 ## Deployment
 
-To deploy the Observe AWS Collection stack, provide the necessary parameters such as `DataAccessPointArn` and `DestinationUri`. Use the AWS SAM CLI or CloudFormation for deployment.
+To deploy the Observe Stack, provide the necessary parameters such as `DataAccessPointArn` and `DestinationUri`. Use the AWS SAM CLI or CloudFormation for deployment.
 
 ## Usage
 
