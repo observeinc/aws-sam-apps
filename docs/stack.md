@@ -6,7 +6,7 @@ The Observe AWS stack is designed to aggregate and forward a wide range of AWS r
 
 This stack centralizes the collection process by deploying necessary AWS services and linking them to ensure seamless data flow towards your Observe Filedrop.
 
-![Config](images/config.png)
+![Stack](images/stack.png)
 
 The Observe stack provisions the following components:
 
