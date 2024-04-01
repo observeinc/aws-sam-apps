@@ -1,3 +1,15 @@
+# v1.35.1 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.0 (2024-03-19)
+
+* **Feature**: Update LogSamples field in Anomaly model to be a list of LogEvent
+
+# v1.34.4 (2024-03-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.34.3 (2024-03-07)
 
 * **Bug Fix**: Remove dependency on go-cmp.
