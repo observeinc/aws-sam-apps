@@ -91,8 +91,8 @@ github.com/sethvargo/go-envconfig v1.0.1/go.mod h1:OKZ02xFaD3MvWBBmEW45fQr08sJEs
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-go.opentelemetry.io/contrib/detectors/aws/lambda v0.49.0 h1:dlp8ebpUln/WxZzzCdD/JA8NkERdETOHFcje4HQGbV8=
-go.opentelemetry.io/contrib/detectors/aws/lambda v0.49.0/go.mod h1:MdPrLDXSisRByayaI4rI1f4+t5tGk6OsjDpdGZNNOZo=
+go.opentelemetry.io/contrib/detectors/aws/lambda v0.50.0 h1:oQ6efIH7uVEFjMD8dc3Nvf9iVgRiDeKNuBOXwpFkWFI=
+go.opentelemetry.io/contrib/detectors/aws/lambda v0.50.0/go.mod h1:STy//KhfG8W+us6VG0itPeQWVUR6ODaGOwvfBdY1WVM=
 go.opentelemetry.io/contrib/exporters/autoexport v0.50.0 h1:1s7IQX8U74fRaZ5NwZPUlEVt9/RPNk+rGGoVcRZ3VR4=
 go.opentelemetry.io/contrib/exporters/autoexport v0.50.0/go.mod h1:f2RaTqHsQ4kC+NshKWWxlPP88QcIjDDpWso6m8VUTl8=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.50.0 h1:0zXBsTKPsly2MlyLYyra1GuL23fsY5RMsi6E2ZOe988=
