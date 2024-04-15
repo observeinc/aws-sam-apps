@@ -3,14 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-logr/logr"
-	"github.com/sethvargo/go-envconfig"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 
 	"github.com/observeinc/aws-sam-apps/handler"
@@ -46,22 +44,15 @@ func init() {
 
 func realInit() error {
 	ctx := context.Background()
-	err := envconfig.Process(ctx, &env)
+	err := handler.ProcessEnv(ctx, &env)
 	if err != nil {
-		return fmt.Errorf("failed to load environment variables: %w", err)
+		return fmt.Errorf("failed to init: %w", err)
 	}
 
 	logger = logging.New(&logging.Config{
 		Verbosity: env.Verbosity,
 	})
 	logger.V(4).Info("initialized", "config", env)
-
-	// If user has not provided an override, we must reapply these environment
-	// variables for our defaults to take hold.
-	// Sadly, this approach is simpler than attempting to adjust the
-	// aws.Config struct ourselves.
-	os.Setenv("AWS_MAX_ATTEMPTS", env.AWSMaxAttempts)
-	os.Setenv("AWS_RETRY_MODE", env.AWSRetryMode)
 
 	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
