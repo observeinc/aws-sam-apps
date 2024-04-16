@@ -5,14 +5,21 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/observeinc/aws-sam-apps/handler"
 	"github.com/observeinc/aws-sam-apps/handler/forwarder"
 	"github.com/observeinc/aws-sam-apps/handler/forwarder/override"
 	"github.com/observeinc/aws-sam-apps/logging"
+	"github.com/observeinc/aws-sam-apps/tracing"
+)
+
+const (
+	instrumentationName    = "github.com/observeinc/aws-sam-apps/cmd/forwarder"
+	instrumentationVersion = "0.1.0"
 )
 
 var env struct {
@@ -22,11 +29,16 @@ var env struct {
 	ContentTypeOverrides []*override.Rule `env:"CONTENT_TYPE_OVERRIDES"`
 	PresetOverrides      []string         `env:"PRESET_OVERRIDES,default=aws/v1"`
 	SourceBucketNames    []string         `env:"SOURCE_BUCKET_NAMES"`
+
+	OTELServiceName          string `env:"OTEL_SERVICE_NAME,default=forwarder"`
+	OTELTracesExporter       string `env:"OTEL_TRACES_EXPORTER,default=none"`
+	OTELExporterOTLPEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 }
 
 var (
-	logger logr.Logger
-	h      *forwarder.Handler
+	logger     logr.Logger
+	entrypoint lambda.Handler
+	options    []lambda.Option
 )
 
 func init() {
@@ -35,10 +47,10 @@ func init() {
 	}
 }
 
-func realInit() error {
+func realInit() (err error) {
 	ctx := context.Background()
 
-	err := handler.ProcessEnv(ctx, &env)
+	err = handler.ProcessEnv(ctx, &env)
 	if err != nil {
 		return fmt.Errorf("failed to init: %w", err)
 	}
@@ -49,7 +61,34 @@ func realInit() error {
 
 	logger.V(4).Info("initialized", "config", env)
 
-	awsCfg, err := config.LoadDefaultConfig(ctx)
+	tracerProvider, err := tracing.NewTracerProvider(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to initialize tracing: %w", err)
+	}
+
+	options = append(options, lambda.WithEnableSIGTERM(func() {
+		logger.V(4).Info("SIGTERM received, running shutdown")
+		if err := tracerProvider.Shutdown(ctx); err != nil {
+			logger.V(4).Error(err, "tracer shutdown failed")
+		}
+		logger.V(4).Info("shutdown done running")
+	}))
+
+	tracer := tracerProvider.Tracer(
+		instrumentationName,
+		trace.WithInstrumentationVersion(instrumentationVersion),
+	)
+
+	ctx, span := tracer.Start(ctx, "realInit")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
+	awsCfg, err := tracing.AWSLoadDefaultConfig(ctx, tracerProvider)
 	if err != nil {
 		return fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
@@ -69,11 +108,10 @@ func realInit() error {
 
 	s3client := s3.NewFromConfig(awsCfg)
 
-	h, err = forwarder.New(&forwarder.Config{
+	f, err := forwarder.New(&forwarder.Config{
 		DestinationURI:    env.DestinationURI,
 		MaxFileSize:       env.MaxFileSize,
 		S3Client:          s3client,
-		Logger:            &logger,
 		Override:          append(override.Sets{customOverrides}, presets...),
 		SourceBucketNames: env.SourceBucketNames,
 	})
@@ -81,7 +119,7 @@ func realInit() error {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
 
-	region, err := h.GetDestinationRegion(ctx, s3client)
+	region, err := f.GetDestinationRegion(ctx, s3client)
 	if err != nil {
 		return fmt.Errorf("failed to get destination region: %w", err)
 	}
@@ -90,12 +128,24 @@ func realInit() error {
 		logger.V(4).Info("modifying s3 client region", "region", region)
 		regionCfg := awsCfg.Copy()
 		regionCfg.Region = region
-		h.S3Client = s3.NewFromConfig(regionCfg)
+		f.S3Client = s3.NewFromConfig(regionCfg)
 	}
 
+	mux := &handler.Mux{
+		Logger: logger,
+	}
+
+	if err := mux.Register(f.Handle); err != nil {
+		return fmt.Errorf("failed to register functions: %w", err)
+	}
+
+	entrypoint = &tracing.LambdaHandler{
+		Handler: mux,
+		Tracer:  tracer,
+	}
 	return nil
 }
 
 func main() {
-	lambda.Start(h)
+	lambda.StartWithOptions(entrypoint, options...)
 }

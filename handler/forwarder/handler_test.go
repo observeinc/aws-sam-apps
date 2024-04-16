@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/go-logr/logr/testr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
@@ -251,11 +250,6 @@ func TestHandler(t *testing.T) {
 			var request events.SQSEvent
 			if err := json.Unmarshal(data, &request); err != nil {
 				t.Fatal(err)
-			}
-
-			if tc.Config.Logger != nil {
-				logger := testr.New(t)
-				tc.Config.Logger = &logger
 			}
 
 			h, err := forwarder.New(&tc.Config)
