@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"time"
-
-	"github.com/go-logr/logr"
 )
 
 var (
@@ -21,7 +19,6 @@ type Config struct {
 	SourceBucketNames []string
 	Override          Override
 	S3Client          S3Client
-	Logger            *logr.Logger
 	GetTime           func() *time.Time
 }
 

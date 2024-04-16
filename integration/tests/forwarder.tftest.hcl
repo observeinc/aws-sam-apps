@@ -59,7 +59,8 @@ variables {
           "sqs:GetQueueAttributes",
           "sqs:GetQueueUrl",
           "sqs:PurgeQueue",
-          "sqs:SetQueueAttributes"
+          "sqs:SetQueueAttributes",
+          "sqs:TagQueue"
         ],
         "Resource": "*"
       }
@@ -243,10 +244,10 @@ run "check_kms" {
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE                 = run.sources.buckets["kms"].id
-      DESTINATION            = run.target_bucket.id
+      SOURCE      = run.sources.buckets["kms"].id
+      DESTINATION = run.target_bucket.id
       # Object ETag will no longer match because object hash changes after decryption
-      JQ_PROCESS_SOURCE      = "del(.ETag)"
+      JQ_PROCESS_SOURCE = "del(.ETag)"
       # Reset the expected source encryption settings when comparing objects
       JQ_PROCESS_DESTINATION = "del(.ETag) | .ServerSideEncryption = \"aws:kms\" | .SSEKMSKeyId = \"${run.sources.buckets["kms"].kms_key.arn}\""
     }

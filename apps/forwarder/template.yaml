@@ -26,6 +26,13 @@ Metadata:
         Parameters:
           - SourceBucketNames
           - SourceTopicArns
+      - Label:
+          default: Miscellaneous
+        Parameters:
+          - MaxFileSize
+          - ContentTypeOverrides
+          - SourceKMSKeyArns
+          - DebugEndpoint
 
 Globals:
   Function:
@@ -86,6 +93,12 @@ Parameters:
       A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3.
     Default: ''
     AllowedPattern: "^(arn:.*)?$"
+  DebugEndpoint:
+    Type: String
+    Description: >-
+      Endpoint to send additional debug telemetry to.
+    Default: ''
+    AllowedPattern: "^(http(s)?:\/\/.*)?$"
 Conditions:
   IsMaxFileSizeEmpty: !Equals [ !Ref MaxFileSize, '' ]
   DisableSourceS3: !Equals
@@ -100,6 +113,9 @@ Conditions:
     - ''
   UseStackName: !Equals
     - !Ref NameOverride
+    - ''
+  DisableOTEL: !Equals
+    - !Ref DebugEndpoint
     - ''
 
 Resources:
@@ -323,6 +339,8 @@ Resources:
           SOURCE_BUCKET_NAMES: !Join
             - ','
             - !Ref SourceBucketNames
+          OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
+          OTEL_TRACES_EXPORTER: !If [ DisableOTEL, "none", "otlp" ]
 Outputs:
   Function:
     Description: "Lambda Function ARN"

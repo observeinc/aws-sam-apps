@@ -192,13 +192,5 @@ func New(cfg *Config) (h *Handler, err error) {
 		Now:               time.Now,
 	}
 
-	if cfg.Logger != nil {
-		h.Mux.Logger = *cfg.Logger
-	}
-
-	if err := h.Mux.Register(h.Handle); err != nil {
-		return nil, fmt.Errorf("failed to register functions: %w", err)
-	}
-
 	return h, nil
 }
