@@ -10,6 +10,7 @@ AWS_REGION ?= $(shell aws configure get region)
 SAM_BUILD_DIR ?= .aws-sam/build
 SAM_CONFIG_FILE ?= $(shell pwd)/samconfig.yaml
 SAM_CONFIG_ENV ?= default
+BUILD_MAKEFILE_ENV_VARS = .make.env
 
 DEBUG ?= 0
 
@@ -77,6 +78,7 @@ sam-build-all:
 ## sam-build: Builds assets for a specific SAM application, specified by APP variable
 sam-build:
 	$(call check_var,APP)
+	echo "VERSION=${VERSION}" > ${BUILD_MAKEFILE_ENV_VARS}
 	sam build \
 		--template-file apps/$(APP)/template.yaml \
 		--build-dir $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION) \
@@ -166,7 +168,7 @@ sam-publish-all:
 build-App:
 	$(call check_var,APP)
 	$(call check_var,ARTIFACTS_DIR)
-	GOARCH=arm64 GOOS=linux go build -tags lambda.norpc -o ./bootstrap cmd/$(APP)/main.go
+	GOARCH=arm64 GOOS=linux go build -tags lambda.norpc -ldflags "-X $(shell go list -m)/version.Version=${VERSION}" -o ./bootstrap cmd/$(APP)/main.go
 	cp ./bootstrap $(ARTIFACTS_DIR)/.
 
 build-Forwarder:
