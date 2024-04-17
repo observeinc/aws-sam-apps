@@ -15,11 +15,11 @@ import (
 	"github.com/observeinc/aws-sam-apps/handler/forwarder/override"
 	"github.com/observeinc/aws-sam-apps/logging"
 	"github.com/observeinc/aws-sam-apps/tracing"
+	"github.com/observeinc/aws-sam-apps/version"
 )
 
 const (
-	instrumentationName    = "github.com/observeinc/aws-sam-apps/cmd/forwarder"
-	instrumentationVersion = "0.1.0"
+	instrumentationName = "github.com/observeinc/aws-sam-apps/cmd/forwarder"
 )
 
 var env struct {
@@ -76,7 +76,7 @@ func realInit() (err error) {
 
 	tracer := tracerProvider.Tracer(
 		instrumentationName,
-		trace.WithInstrumentationVersion(instrumentationVersion),
+		trace.WithInstrumentationVersion(version.Version),
 	)
 
 	ctx, span := tracer.Start(ctx, "realInit")
