@@ -65,7 +65,8 @@ variables {
           "sqs:CreateQueue",
           "sqs:DeleteQueue",
           "sqs:GetQueueAttributes",
-          "sqs:SetQueueAttributes"
+          "sqs:SetQueueAttributes",
+          "sqs:TagQueue"
         ],
         "Resource": "*"
       }
