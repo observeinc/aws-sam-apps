@@ -12,32 +12,6 @@ import (
 	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 )
 
-func TestInitTracing(t *testing.T) {
-	testcases := []struct {
-		ServiceName string
-		ExpectError error
-	}{
-		{
-			ServiceName: "test",
-			ExpectError: nil,
-		},
-	}
-
-	for i, tt := range testcases {
-		tt := tt
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			t.Setenv("AWS_LAMBDA_FUNCTION_NAME", "test")
-			ctx := context.Background()
-			tracer, shutdownFn := subscriber.InitTracing(ctx, tt.ServiceName)
-			tracer.Start(ctx, "test")
-			err := shutdownFn(ctx)
-			if diff := cmp.Diff(tt.ExpectError, err, cmpopts.EquateErrors()); diff != "" {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
 func TestQueuePut(t *testing.T) {
 	t.Parallel()
 

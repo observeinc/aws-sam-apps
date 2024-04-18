@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
-	"github.com/go-logr/logr"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -50,9 +48,6 @@ type Config struct {
 
 	// Number of concurrent workers. Defaults to number of CPUs.
 	NumWorkers int
-
-	Logger *logr.Logger
-	Tracer trace.Tracer
 }
 
 func (c *Config) Validate() error {

@@ -124,6 +124,9 @@ Conditions:
       - !Equals
         - !Ref DiscoveryRate
         - ''
+  DisableOTEL: !Equals
+    - !Ref DebugEndpoint
+    - ''
 Resources:
   FirehoseRole:
     Type: 'AWS::IAM::Role'
@@ -379,6 +382,7 @@ Resources:
           VERBOSITY: 9
           NUM_WORKERS: !Ref NumWorkers
           OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
+          OTEL_TRACES_EXPORTER: !If [ DisableOTEL, "none", "otlp" ]
   SubscriptionEvents:
     Type: AWS::Events::Rule
     Condition: HasDiscoveryRate

@@ -4,48 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"os"
-	"sync"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/go-logr/logr"
-	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
-	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/contrib/propagators/b3"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/otel/trace/noop"
-)
-
-const (
-	instrumentationName    = "github.com/observeinc/aws-sam-apps/cmd/subscriber"
-	instrumentationVersion = "0.1.0"
-)
-
-var (
-	tracerProvider *sdktrace.TracerProvider
-	initOnce       sync.Once
-	shutdownFn     func(context.Context) error
-	tracer         = otel.GetTracerProvider().Tracer(
-		instrumentationName,
-		trace.WithInstrumentationVersion(instrumentationVersion),
-	)
-	noopTracer = noop.NewTracerProvider().Tracer(
-		instrumentationName,
-		trace.WithInstrumentationVersion(instrumentationVersion),
-	)
 )
 
 type InstrumentedHandler struct {
 	*Handler
+	trace.Tracer
 }
 
 func (h *InstrumentedHandler) HandleSQS(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
@@ -85,11 +57,6 @@ func (h *InstrumentedHandler) HandleRequest(ctx context.Context, req *Request) (
 	return res, err
 }
 
-func InstrumentHandler(h *Handler) *InstrumentedHandler {
-	ih := InstrumentedHandler{h}
-	return &ih
-}
-
 type InstrumentedSQSClient struct {
 	Client     SQSClient
 	Propagator propagation.TextMapPropagator
@@ -118,80 +85,4 @@ func InstrumentQueue(q QueueWrapper) QueueWrapper {
 	}
 	q.Client = instrumentedClient
 	return q
-}
-
-func HandleOTELEnvVars() error {
-	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		return fmt.Errorf("failed to parse OTEL_EXPORTER_OTLP_ENDPOINT: %w", err)
-	}
-
-	if userinfo := u.User; userinfo != nil {
-		authHeader := "Bearer " + userinfo.String()
-
-		headers := os.Getenv("OTEL_EXPORTER_OTLP_HEADERS")
-		if headers != "" {
-			headers += ","
-		}
-		headers += "Authorization=" + authHeader
-
-		// remove auth from URL
-		u.User = nil
-		os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", u.String())
-		os.Setenv("OTEL_EXPORTER_OTLP_HEADERS", headers)
-	}
-	return nil
-}
-
-func InitTracing(ctx context.Context, sn string) (trace.Tracer, func(context.Context) error) {
-	if OTLPExporterNoEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" && os.Getenv("OTEL_TRACES_EXPORTER") != "console"; OTLPExporterNoEndpoint {
-		return noopTracer, func(_ context.Context) error {
-			return nil
-		}
-	}
-
-	initOnce.Do(func() {
-		var err error
-		if os.Getenv("OTEL_TRACES_EXPORTER") != "console" {
-			err = HandleOTELEnvVars()
-			if err != nil {
-				shutdownFn = func(_ context.Context) error {
-					return fmt.Errorf("failed to parse tracing endpoint: %w", err)
-				}
-				return
-			}
-		}
-
-		detector := lambdadetector.NewResourceDetector()
-		res, err := resource.New(ctx,
-			resource.WithDetectors(detector),
-			resource.WithAttributes(semconv.ServiceName(sn)),
-		)
-		if err != nil {
-			shutdownFn = func(_ context.Context) error {
-				return fmt.Errorf("failed to create new tracing resource: %w", err)
-			}
-			return
-		}
-		exporter, err := autoexport.NewSpanExporter(ctx)
-		if err != nil {
-			shutdownFn = func(_ context.Context) error {
-				return fmt.Errorf("failed to create span exporter: %w", err)
-			}
-			return
-		}
-		tracerProvider = sdktrace.NewTracerProvider(
-			sdktrace.WithBatcher(exporter),
-			sdktrace.WithResource(res),
-		)
-		shutdownFn = func(ctx context.Context) error {
-			if err = tracerProvider.Shutdown(ctx); err != nil {
-				return fmt.Errorf("tracer shutdown failed: %w", err)
-			}
-			return nil
-		}
-		otel.SetTracerProvider(tracerProvider)
-	})
-	return tracer, shutdownFn
 }

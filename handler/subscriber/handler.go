@@ -103,13 +103,5 @@ func New(cfg *Config) (*Handler, error) {
 		h.NumWorkers = runtime.NumCPU()
 	}
 
-	if cfg.Logger != nil {
-		h.Logger = *cfg.Logger
-	}
-
-	if cfg.Tracer != nil {
-		h.Tracer = cfg.Tracer
-	}
-
 	return h, nil
 }

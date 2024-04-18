@@ -5,15 +5,21 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-logr/logr"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/observeinc/aws-sam-apps/handler"
 	"github.com/observeinc/aws-sam-apps/handler/subscriber"
 	"github.com/observeinc/aws-sam-apps/logging"
+	"github.com/observeinc/aws-sam-apps/tracing"
+	"github.com/observeinc/aws-sam-apps/version"
+)
+
+const (
+	instrumentationName = "github.com/observeinc/aws-sam-apps/cmd/subscriber"
 )
 
 var env struct {
@@ -26,13 +32,18 @@ var env struct {
 	QueueURL             string   `env:"QUEUE_URL,required"`
 	Verbosity            int      `env:"VERBOSITY,default=1"`
 	ServiceName          string   `env:"OTEL_SERVICE_NAME,default=subscriber"`
-	AWSMaxAttempts       string   `env:"AWS_MAX_ATTEMPTS,default=7"`
-	AWSRetryMode         string   `env:"AWS_RETRY_MODE,default=adaptive"`
+
+	AWSMaxAttempts string `env:"AWS_MAX_ATTEMPTS,default=7"`
+	AWSRetryMode   string `env:"AWS_RETRY_MODE,default=adaptive"`
+
+	OTELServiceName          string `env:"OTEL_SERVICE_NAME,default=subscriber"`
+	OTELTracesExporter       string `env:"OTEL_TRACES_EXPORTER,default=none"`
+	OTELExporterOTLPEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 }
 
 var (
 	logger     logr.Logger
-	entrypoint handler.Mux
+	entrypoint lambda.Handler
 	options    []lambda.Option
 )
 
@@ -54,31 +65,45 @@ func realInit() error {
 	})
 	logger.V(4).Info("initialized", "config", env)
 
-	awsCfg, err := config.LoadDefaultConfig(ctx)
+	tracerProvider, err := tracing.NewTracerProvider(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to load AWS configuration: %w", err)
-	}
-
-	tracer, tracerShutdownFn := subscriber.InitTracing(ctx, env.ServiceName)
-	if tracer == nil {
-		err := tracerShutdownFn(ctx)
 		return fmt.Errorf("failed to initialize tracing: %w", err)
 	}
+
 	options = append(options, lambda.WithEnableSIGTERM(func() {
 		logger.V(4).Info("SIGTERM received, running shutdown")
-		err := tracerShutdownFn(ctx)
-		if err != nil {
+		if err := tracerProvider.Shutdown(ctx); err != nil {
 			logger.V(4).Error(err, "tracer shutdown failed")
 		}
 		logger.V(4).Info("shutdown done running")
 	}))
-	otelaws.AppendMiddlewares(&awsCfg.APIOptions)
+
+	tracer := tracerProvider.Tracer(
+		instrumentationName,
+		trace.WithInstrumentationVersion(version.Version),
+	)
+
+	ctx, span := tracer.Start(ctx, "realInit")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
+	awsCfg, err := tracing.AWSLoadDefaultConfig(ctx, tracerProvider)
+	if err != nil {
+		return fmt.Errorf("failed to load AWS configuration: %w", err)
+	}
 
 	queue, err := subscriber.NewQueue(sqs.NewFromConfig(awsCfg), env.QueueURL)
-	iq := subscriber.InstrumentQueue(*queue)
 	if err != nil {
 		return fmt.Errorf("failed to load queue: %w", err)
 	}
+
+	iq := subscriber.InstrumentQueue(*queue)
+
 	s, err := subscriber.New(&subscriber.Config{
 		FilterName:           env.FilterName,
 		FilterPattern:        env.FilterPattern,
@@ -86,25 +111,33 @@ func realInit() error {
 		RoleARN:              env.RoleARN,
 		LogGroupNamePrefixes: env.LogGroupNamePrefixes,
 		LogGroupNamePatterns: env.LogGroupNamePatterns,
-		Logger:               &logger,
 		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(awsCfg),
 		Queue:                &iq,
-		Tracer:               tracer,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
-	entrypoint.Logger = logger
 
-	is := subscriber.InstrumentHandler(s)
+	is := &subscriber.InstrumentedHandler{
+		Handler: s,
+		Tracer:  tracer,
+	}
 
-	if err := entrypoint.Register(is.HandleRequest, is.HandleSQS); err != nil {
+	mux := &handler.Mux{
+		Logger: logger,
+	}
+
+	if err := mux.Register(is.HandleRequest, is.HandleSQS); err != nil {
 		return fmt.Errorf("failed to register functions: %w", err)
 	}
 
+	entrypoint = &tracing.LambdaHandler{
+		Handler: mux,
+		Tracer:  tracer,
+	}
 	return nil
 }
 
 func main() {
-	lambda.StartWithOptions(&entrypoint, options...)
+	lambda.StartWithOptions(entrypoint, options...)
 }
