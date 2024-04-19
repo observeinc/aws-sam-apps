@@ -1,0 +1,38 @@
+- id: stripOctetStream
+  match:
+    # these content types don't map to anything, remove them and infer
+    content-type: '(binary/octet-stream|application/octet-stream)'
+  override:
+    content-type: ''
+  continue: true
+- id: gzip
+  match:
+    source: '.gz$'
+    content-encoding: '^$'
+  override:
+    content-encoding: 'gzip'
+  continue: true
+- id: json
+  match:
+    source: 'json'
+    content-type: '^$'
+  override:
+    content-type: 'application/json'
+- id: parquet
+  match:
+    source: 'parquet'
+    content-type: '^$'
+  override:
+    content-type: 'application/vnd.apache.parquet'
+- id: csv
+  match:
+    source: 'csv'
+    content-type: '^$'
+  override:
+    content-type: 'text/csv'
+- id: txt
+  match:
+    source: 'txt'
+    content-type: '^$'
+  override:
+    content-type: 'text/plain'
