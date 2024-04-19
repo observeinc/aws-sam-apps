@@ -135,7 +135,7 @@ func TestObjectCreated(t *testing.T) {
 			}
 
 			// Directly compare the CopyRecords obtained from GetObjectCreated
-			copyRecords := message.GetObjectCreated()
+			copyRecords := forwarder.GetObjectCreated(&message.SQSMessage)
 			if diff := cmp.Diff(copyRecords, tc.Expected); diff != "" {
 				t.Errorf("unexpected result: %s", diff)
 			}

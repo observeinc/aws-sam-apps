@@ -20,6 +20,7 @@ type Config struct {
 	Override          Override
 	S3Client          S3Client
 	GetTime           func() *time.Time
+	MaxConcurrency    int // fan out limit
 }
 
 func (c *Config) Validate() error {

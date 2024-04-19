@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -99,14 +100,12 @@ var errSentinel = errors.New("sentinel error")
 func TestHandler(t *testing.T) {
 	t.Parallel()
 
-	var copyFuncCallCount int
-
 	testcases := []struct {
 		RequestFile       string
 		Config            forwarder.Config
 		ExpectErr         error
 		ExpectResponse    events.SQSEventResponse
-		ExpectedCopyCalls int
+		ExpectedCopyCalls int64
 	}{
 		{
 			// File size does not exceed MaxFileSize limit
@@ -152,7 +151,6 @@ func TestHandler(t *testing.T) {
 				SourceBucketNames: []string{"observeinc*"},
 				S3Client: &handlertest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
-						copyFuncCallCount++
 						return nil, errSentinel
 					},
 				},
@@ -214,6 +212,45 @@ func TestHandler(t *testing.T) {
 				// Expect no batch item failures as the copy should be successful
 			},
 		},
+		{
+			// Successful copy of multiple records
+			RequestFile: "testdata/multiple-records.json",
+			Config: forwarder.Config{
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"observeinc*"},
+				S3Client: &handlertest.S3Client{
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+						return nil, nil // Mock successful copy
+					},
+				},
+			},
+			ExpectedCopyCalls: 3, // Expect one successful call to CopyObjectFunc
+			ExpectResponse:    events.SQSEventResponse{
+				// Expect no batch item failures as the copy should be successful
+			},
+		},
+		{
+			// Unsuccessful copy of multiple records
+			RequestFile: "testdata/multiple-records.json",
+			Config: forwarder.Config{
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"observeinc*"},
+				S3Client: &handlertest.S3Client{
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+						return nil, errSentinel
+					},
+				},
+				MaxConcurrency: 1, // ensure ordering
+			},
+			ExpectedCopyCalls: 3, // Expect three unsuccessful calls to CopyObjectFunc
+			ExpectResponse: events.SQSEventResponse{
+				BatchItemFailures: []events.SQSBatchItemFailure{
+					{ItemIdentifier: "6aa4e980-26f6-46f4-bb73-fa6e82257191"},
+					{ItemIdentifier: "6aa4e980-26f6-46f4-bb73-fa6e82257192"},
+					{ItemIdentifier: "6aa4e980-26f6-46f4-bb73-fa6e82257193"},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -228,21 +265,21 @@ func TestHandler(t *testing.T) {
 			}
 
 			// Initialize the local counter for each test case
-			localCopyFuncCallCount := 0
+			var localCopyFuncCallCount atomic.Int64
 
 			// Save the original CopyObjectFunc
 			originalCopyObjectFunc := mockS3Client.CopyObjectFunc
 
 			// Wrap the CopyObjectFunc to increment the counter
 			mockS3Client.CopyObjectFunc = func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
-				localCopyFuncCallCount++
+				localCopyFuncCallCount.Add(1)
 				if originalCopyObjectFunc != nil {
 					return originalCopyObjectFunc(ctx, params, optFns...)
 				}
 				return nil, nil // Or appropriate default behavior
 			}
 
-			data, err := os.ReadFile("testdata/event.json")
+			data, err := os.ReadFile(tc.RequestFile)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -270,8 +307,8 @@ func TestHandler(t *testing.T) {
 			}
 
 			// Assert the expected number of CopyObjectFunc calls
-			if localCopyFuncCallCount != tc.ExpectedCopyCalls {
-				t.Errorf("Expected CopyObjectFunc to be called %d times, but was called %d times", tc.ExpectedCopyCalls, localCopyFuncCallCount)
+			if v := localCopyFuncCallCount.Load(); v != tc.ExpectedCopyCalls {
+				t.Errorf("Expected CopyObjectFunc to be called %d times, but was called %d times", tc.ExpectedCopyCalls, v)
 			}
 
 			mockS3Client.CopyObjectFunc = originalCopyObjectFunc

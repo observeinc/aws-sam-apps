@@ -22,7 +22,7 @@ type CopyEvent struct {
 	Copy []CopyRecord `json:"copy"`
 }
 
-func (m *SQSMessage) GetObjectCreated() (copyRecords []CopyRecord) {
+func GetObjectCreated(m *events.SQSMessage) (copyRecords []CopyRecord) {
 	message := []byte(m.Body)
 
 	var snsEntity events.SNSEntity

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -41,6 +42,7 @@ type Handler struct {
 	Override          Override
 	SourceBucketNames []string
 	Now               func() time.Time
+	MaxConcurrency    int
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -105,65 +107,91 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 	return nil
 }
 
-func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
+func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	var messages bytes.Buffer
-	defer func() {
-		if err == nil {
-			logger.V(3).Info("logging messages")
-			err = h.WriteSQS(ctx, &messages)
+	copyRecords := GetObjectCreated(record)
+	for _, copyRecord := range copyRecords {
+		sourceURL, err := url.Parse(copyRecord.URI)
+		if err != nil {
+			logger.Error(err, "error parsing source URI", "SourceURI", copyRecord.URI)
+			continue
 		}
-	}()
 
-	encoder := json.NewEncoder(&messages)
+		if !h.isBucketAllowed(sourceURL.Host) {
+			logger.Info("Received event from a bucket not in the allowed list; skipping", "bucket", sourceURL.Host)
+			continue
+		}
+		if copyRecord.Size != nil && h.MaxFileSize > 0 && *copyRecord.Size > h.MaxFileSize {
+			logger.V(1).Info("object size exceeds the maximum file size limit; skipping copy",
+				"max", h.MaxFileSize, "size", *copyRecord.Size, "uri", copyRecord.URI)
+			// Log a warning and skip this object by continuing to the next iteration
+			continue
+		}
+
+		copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
+
+		if h.Override != nil {
+			if h.Override.Apply(ctx, copyInput) && copyInput.Key == nil {
+				logger.V(6).Info("ignoring object")
+				continue
+			}
+		}
+
+		if _, err := h.S3Client.CopyObject(ctx, copyInput); err != nil {
+			return fmt.Errorf("error copying file %q: %w", copyRecord.URI, err)
+		}
+	}
+	return nil
+}
+
+func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
+	resultCh := make(chan *SQSMessage, len(request.Records))
+	defer close(resultCh)
+
+	var (
+		acquireToken = func() {}
+		releaseToken = func() {}
+	)
+
+	if h.MaxConcurrency > 0 {
+		limitCh := make(chan struct{}, h.MaxConcurrency)
+		defer close(limitCh)
+		acquireToken = func() { limitCh <- struct{}{} }
+		releaseToken = func() { <-limitCh }
+	}
 
 	for _, record := range request.Records {
-		m := &SQSMessage{SQSMessage: record}
-		copyRecords := m.GetObjectCreated()
-		for _, copyRecord := range copyRecords {
-			sourceURL, err := url.Parse(copyRecord.URI)
-			if err != nil {
-				logger.Error(err, "error parsing source URI", "SourceURI", copyRecord.URI)
-				continue
+		acquireToken()
+		go func(m events.SQSMessage) {
+			defer releaseToken()
+			result := &SQSMessage{SQSMessage: m}
+			if err := h.ProcessRecord(ctx, &m); err != nil {
+				result.ErrorMessage = err.Error()
 			}
+			resultCh <- result
+		}(record)
+	}
 
-			if !h.isBucketAllowed(sourceURL.Host) {
-				logger.Info("Received event from a bucket not in the allowed list; skipping", "bucket", sourceURL.Host)
-				continue
-			}
-			if copyRecord.Size != nil && h.MaxFileSize > 0 && *copyRecord.Size > h.MaxFileSize {
-				logger.V(1).Info("object size exceeds the maximum file size limit; skipping copy",
-					"max", h.MaxFileSize, "size", *copyRecord.Size, "uri", copyRecord.URI)
-				// Log a warning and skip this object by continuing to the next iteration
-				continue
-			}
-
-			copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
-
-			if h.Override != nil {
-				if h.Override.Apply(ctx, copyInput) && copyInput.Key == nil {
-					logger.V(6).Info("ignoring object")
-					continue
-				}
-			}
-
-			if _, cerr := h.S3Client.CopyObject(ctx, copyInput); cerr != nil {
-				logger.Error(cerr, "error copying file", "SourceURI", copyRecord.URI)
-				m.ErrorMessage = cerr.Error()
-				response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
-					ItemIdentifier: record.MessageId,
-				})
-				break
-			}
+	var messages bytes.Buffer
+	encoder := json.NewEncoder(&messages)
+	for i := 0; i < len(request.Records); i++ {
+		result := <-resultCh
+		if result.ErrorMessage != "" {
+			response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
+				ItemIdentifier: result.SQSMessage.MessageId,
+			})
 		}
-
-		if err := encoder.Encode(m); err != nil {
-			return response, fmt.Errorf("failed to encode message: %w", err)
+		if e := encoder.Encode(result); e != nil {
+			err = errors.Join(err, fmt.Errorf("failed to encode message: %w", e))
 		}
 	}
 
-	return response, nil
+	if err == nil {
+		err = h.WriteSQS(ctx, &messages)
+	}
+
+	return
 }
 
 // isBucketAllowed checks if the given bucket is in the allowed list or matches a pattern.
@@ -190,6 +218,7 @@ func New(cfg *Config) (h *Handler, err error) {
 		Override:          cfg.Override,
 		SourceBucketNames: cfg.SourceBucketNames,
 		Now:               time.Now,
+		MaxConcurrency:    cfg.MaxConcurrency,
 	}
 
 	return h, nil
