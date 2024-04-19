@@ -34,3 +34,10 @@
     source: '\d{12}_CloudTrail_[a-z\d-]+_\d{8}T\d{4}Z_[a-zA-Z0-9-]+\.json\.gz$'
   override:
     content-type: 'application/x-aws-cloudtrail'
+
+- id: vpcFlowLogs
+  match:
+    source: '\d{12}_vpcflowlogs_[a-z\d-]+_[a-zA-Z0-9-]+_\d{8}T\d{4}Z_[a-zA-Z0-9-]+\.log\.gz$'
+  override:
+    content-type: 'application/x-aws-vpcflowlogs'
+

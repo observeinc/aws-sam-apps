@@ -60,6 +60,18 @@ func TestPresets(t *testing.T) {
 						MetadataDirective: types.MetadataDirectiveReplace,
 					},
 				},
+				{
+					Input: &s3.CopyObjectInput{
+						CopySource:      aws.String("test-bucket/AWSLogs/123456789012/vpcflowlogs/eu-central-1/2024/04/18/123456789012_vpcflowlogs_eu-central-1_fl-0d867ec290a114c9d_20240418T2155Z_9b1b75d1.log.gz"),
+						ContentEncoding: aws.String("gzip"),
+					},
+					Expect: &s3.CopyObjectInput{
+						CopySource:        aws.String("test-bucket/AWSLogs/123456789012/vpcflowlogs/eu-central-1/2024/04/18/123456789012_vpcflowlogs_eu-central-1_fl-0d867ec290a114c9d_20240418T2155Z_9b1b75d1.log.gz"),
+						ContentType:       aws.String("application/x-aws-vpcflowlogs"),
+						ContentEncoding:   aws.String("gzip"),
+						MetadataDirective: types.MetadataDirectiveReplace,
+					},
+				},
 			},
 		},
 	}
