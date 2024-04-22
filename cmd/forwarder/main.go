@@ -27,7 +27,7 @@ var env struct {
 	Verbosity            int              `env:"VERBOSITY,default=1"`
 	MaxFileSize          int64            `env:"MAX_FILE_SIZE"`
 	ContentTypeOverrides []*override.Rule `env:"CONTENT_TYPE_OVERRIDES"`
-	PresetOverrides      []string         `env:"PRESET_OVERRIDES,default=aws/v1"`
+	PresetOverrides      []string         `env:"PRESET_OVERRIDES,default=aws/v1,infer/v1"`
 	SourceBucketNames    []string         `env:"SOURCE_BUCKET_NAMES"`
 
 	OTELServiceName          string `env:"OTEL_SERVICE_NAME,default=forwarder"`

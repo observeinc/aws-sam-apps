@@ -74,6 +74,46 @@ func TestPresets(t *testing.T) {
 				},
 			},
 		},
+		{
+			Presets: []string{"aws/v1", "infer/v1"},
+			Expect: []VerifyApply{
+				{
+					Input: &s3.CopyObjectInput{
+						CopySource:  aws.String("test-bucket/hohoho.json.gz"),
+						ContentType: aws.String("binary/octet-stream"),
+					},
+					Expect: &s3.CopyObjectInput{
+						CopySource:        aws.String("test-bucket/hohoho.json.gz"),
+						ContentType:       aws.String("application/json"),
+						ContentEncoding:   aws.String("gzip"),
+						MetadataDirective: types.MetadataDirectiveReplace,
+					},
+				},
+				{
+					Input: &s3.CopyObjectInput{
+						CopySource:  aws.String("test-bucket/hohoho.json.gz"),
+						ContentType: aws.String("text/csv"),
+					},
+					Expect: &s3.CopyObjectInput{
+						CopySource:        aws.String("test-bucket/hohoho.json.gz"),
+						ContentType:       aws.String("text/csv"),
+						ContentEncoding:   aws.String("gzip"),
+						MetadataDirective: types.MetadataDirectiveReplace,
+					},
+				},
+				{
+					Input: &s3.CopyObjectInput{
+						CopySource:  aws.String("test-bucket/hohoho.parquet"),
+						ContentType: aws.String("application/octet-stream"),
+					},
+					Expect: &s3.CopyObjectInput{
+						CopySource:        aws.String("test-bucket/hohoho.parquet"),
+						ContentType:       aws.String("application/vnd.apache.parquet"),
+						MetadataDirective: types.MetadataDirectiveReplace,
+					},
+				},
+			},
+		},
 	}
 
 	for i, tc := range testcases {

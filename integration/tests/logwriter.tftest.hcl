@@ -20,6 +20,7 @@ variables {
           "firehose:DeleteDeliveryStream",
           "firehose:DescribeDeliveryStream",
           "firehose:ListTagsForDeliveryStream",
+          "firehose:TagDeliveryStream",
           "firehose:UpdateDestination",
           "iam:AttachRolePolicy",
           "iam:CreateRole",
