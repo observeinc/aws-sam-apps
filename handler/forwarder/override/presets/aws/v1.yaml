@@ -41,3 +41,8 @@
   override:
     content-type: 'application/x-aws-vpcflowlogs'
 
+- id: awsTestObject
+  match:
+    source: 'aws-programmatic-access-test-object$'
+  override:
+    content-type: 'text/x-ignore'

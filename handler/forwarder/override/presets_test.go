@@ -72,6 +72,17 @@ func TestPresets(t *testing.T) {
 						MetadataDirective: types.MetadataDirectiveReplace,
 					},
 				},
+				{
+					Input: &s3.CopyObjectInput{
+						CopySource: aws.String("test-bucket/aws-programmatic-access-test-object"),
+						Key:        aws.String("ds1011011/aws-programmatic-access-test-object"),
+					},
+					Expect: &s3.CopyObjectInput{
+						CopySource: aws.String("test-bucket/aws-programmatic-access-test-object"),
+						// file will not be copied over
+						Key: nil,
+					},
+				},
 			},
 		},
 		{

@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	reIdentifier = regexp.MustCompile("^([a-zA-Z][a-zA-Z0-9/]+)?$")
-	errIDFormat  = errors.New("malformed id")
+	reIdentifier      = regexp.MustCompile("^([a-zA-Z][a-zA-Z0-9/]+)?$")
+	errIDFormat       = errors.New("malformed id")
+	ignoreContentType = "text/x-ignore"
 )
 
 // Filter input object.
@@ -48,9 +49,14 @@ type Action struct {
 }
 
 func (a *Action) Apply(_ context.Context, input *s3.CopyObjectInput) bool {
-	if a.ContentType != nil {
-		input.ContentType = a.ContentType
-		input.MetadataDirective = types.MetadataDirectiveReplace
+	if ct := a.ContentType; ct != nil {
+		if *ct == ignoreContentType {
+			// drop content
+			input.Key = nil
+		} else {
+			input.ContentType = ct
+			input.MetadataDirective = types.MetadataDirectiveReplace
+		}
 	}
 	if a.ContentEncoding != nil {
 		input.ContentEncoding = a.ContentEncoding
