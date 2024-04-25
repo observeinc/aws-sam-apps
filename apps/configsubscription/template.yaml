@@ -1,0 +1,78 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  A stack to subscribe AWS Config events
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-aws-config-subscription
+    Description: A stack to subscribe AWS Config events
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-apps
+    SemanticVersion: 0.0.4
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
+
+Parameters:
+  TargetARN:
+    Type: String
+    Description: >-
+      Where to forward EventBridge events.
+    AllowedPattern: "^(arn:.*)?$"
+
+Resources:
+  CopyRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Copy AWS Config files"
+      EventPattern:
+        source:
+          - "aws.config"
+        detail-type:
+          - "Config Configuration History Delivery Status"
+          - "Config Configuration Snapshot Delivery Status"
+        detail:
+          messageType:
+            - "ConfigurationHistoryDeliveryCompleted"
+            - "ConfigurationSnapshotDeliveryCompleted"
+      Targets:
+        - Arn: !Ref TargetARN
+          Id: "AWSConfigDelivery"
+          InputTransformer:
+            InputPathsMap:
+              bucketName: "$.detail.s3Bucket"
+              objectKey: "$.detail.s3ObjectKey"
+            InputTemplate: >-
+              {"copy": [{"uri": "s3://<bucketName>/<objectKey>"}]}
+  OverizedCopyRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Copy AWS Config oversized events"
+      EventPattern:
+        source:
+          - "aws.config"
+        detail:
+          messageType:
+            - "OversizedConfigurationItemChangeNotification"
+      Targets:
+        - Arn: !Ref TargetARN
+          Id: "AWSConfigOversizedDelivery"
+          InputTransformer:
+            InputPathsMap:
+              location: "$.detail.s3DeliverySummary.s3BucketLocation"
+            InputTemplate: >-
+              {"copy": [{"uri": "s3://<location>"}]}
+  ChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Forward AWS Config change notifications"
+      EventPattern:
+        source:
+          - "aws.config"
+        detail-type:
+          - "Config Configuration Item Change"
+      Targets:
+        - Arn: !Ref TargetARN
+          Id: "AWSConfigChange"

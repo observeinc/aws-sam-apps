@@ -29,6 +29,7 @@ The Observe stack provisions the following components:
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This role will be created as part of this stack, and must therefore be unique within the account. |
+| `ConfigDeliveryBucketName` | String | If AWS Config is already enabled in this account and region, provide the S3 bucket snapshots are written to. |
 | `IncludeResourceTypes` | CommaDelimitedList | Resources to collect using AWS Config. Use a wildcard to collect all supported resource types. Do not set this parameter if AWS Config is already installed for this region. |
 | `ExcludeResourceTypes` | CommaDelimitedList | Exclude a subset of resource types from configuration collection. This parameter can only be set if IncludeResourceTypes is wildcarded. |
 | `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. If not empty, the lambda function will only apply to log groups that have names that match one of the provided strings based on a case-sensitive substring search. |

@@ -155,10 +155,11 @@ run "install" {
     setup = run.setup
     app   = "stack"
     parameters = {
-      DataAccessPointArn   = run.create_bucket.access_point.arn
-      DestinationUri       = "s3://${run.create_bucket.access_point.alias}"
-      LogGroupNamePatterns = "*"
-      NameOverride         = run.setup.id
+      DataAccessPointArn       = run.create_bucket.access_point.arn
+      DestinationUri           = "s3://${run.create_bucket.access_point.alias}"
+      ConfigDeliveryBucketName = "example-bucket"
+      LogGroupNamePatterns     = "*"
+      NameOverride             = run.setup.id
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",

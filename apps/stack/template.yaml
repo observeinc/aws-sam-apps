@@ -258,6 +258,17 @@ Resources:
         TopicARN: !Ref Topic
         IncludeResourceTypes: !Join [",", !Ref IncludeResourceTypes]
         ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
+  ConfigSubscription:
+    Type: AWS::Serverless::Application
+    Condition: EnableConfigSubscription
+    Properties:
+      Location: ../configsubscription/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        TargetARN: !GetAtt
+          - Forwarder
+          - Outputs.Queue
   LogWriter:
     Type: AWS::Serverless::Application
     Properties:
@@ -289,45 +300,6 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
-  CopyConfigRule:
-    Type: AWS::Events::Rule
-    Condition: EnableConfigSubscription
-    Properties:
-      Description: "Copy AWS Config files"
-      EventPattern:
-        source:
-          - "aws.config"
-        detail-type:
-          - "Config Configuration History Delivery Status"
-          - "Config Configuration Snapshot Delivery Status"
-        detail:
-          messageType:
-            - "ConfigurationHistoryDeliveryCompleted"
-            - "ConfigurationSnapshotDeliveryCompleted"
-      Targets:
-        - Arn: !GetAtt
-          - Forwarder
-          - Outputs.Queue
-          Id: "AWS Config Delivery"
-          InputTransformer:
-            InputPathsMap:
-              bucketName: "$.detail.s3Bucket"
-              objectKey: "$.detail.s3ObjectKey"
-            InputTemplate: >-
-              {"copy": [{"uri": "s3://<bucketName>/<objectKey>"}]}
-  ForwardConfigRule:
-    Type: AWS::Events::Rule
-    Condition: EnableConfigSubscription
-    Properties:
-      Description: "Forward AWS Config events"
-      EventPattern:
-        source:
-          - "aws.config"
-      Targets:
-        - Arn: !GetAtt
-          - Forwarder
-          - Outputs.Queue
-          Id: "AWS Config Events"
 Outputs:
   Bucket:
     Description: "S3 Bucket Name"
