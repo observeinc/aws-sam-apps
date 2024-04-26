@@ -27,7 +27,7 @@ Parameters:
     Type: String
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
-    Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
+    Default: 's3://observeinc/cloudwatchmetrics/filters/full.yaml'
     AllowedPattern: "^s3:\/\/.*"
   OutputFormat:
     Type: String
