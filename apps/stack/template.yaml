@@ -24,6 +24,7 @@ Metadata:
       - Label:
           default: AWS Config
         Parameters:
+          - ConfigDeliveryBucketName
           - IncludeResourceTypes
           - ExcludeResourceTypes
       - Label:
@@ -79,12 +80,18 @@ Parameters:
       of this stack, and must therefore be unique within the account.
     Default: ""
     MaxLength: 51
+  ConfigDeliveryBucketName:
+    Type: String
+    Description: >-
+      If AWS Config is already enabled in this account and region, provide the
+      S3 bucket snapshots are written to.
+    Default: ""
   IncludeResourceTypes:
     Type: CommaDelimitedList
     Description: >-
-      Resources to collect using AWS Config. Use a wildcard to collect all
-      supported resource types. Do not set this parameter if AWS Config is
-      already installed for this region.
+      If AWS Config is not enabled in this account and region, provide a list of
+      resource types to collect. Use a wildcard to collect all
+      supported resource types.
     Default: ""
     AllowedPattern: '^([a-zA-Z0-9]+::[a-zA-Z0-9]+::[a-zA-Z0-9]+|\*)?$'
   ExcludeResourceTypes:
@@ -122,12 +129,20 @@ Parameters:
     AllowedPattern: "^(http(s)?:\/\/.*)?$"
 
 Conditions:
-  EnableConfig: !Not
-    - !Equals
-      - ""
-      - !Join
-        - ","
-        - !Ref IncludeResourceTypes
+  EmptyConfigDeliveryBucketName: !Equals
+    - !Ref ConfigDeliveryBucketName
+    - ""
+  EnableConfigSubscription: !Not
+   - !Condition EmptyConfigDeliveryBucketName
+  EnableConfig: !And
+    - !Not
+      - !Condition EnableConfigSubscription
+    - !Not
+      - !Equals
+        - ""
+        - !Join
+          - ","
+          - !Ref IncludeResourceTypes
   EmptySourceBucketNames: !Equals
     - !Join [",", !Ref SourceBucketNames]
     - ""
@@ -202,14 +217,17 @@ Resources:
       Parameters:
         DataAccessPointArn: !Ref DataAccessPointArn
         DestinationUri: !Ref DestinationUri
-        SourceBucketNames: 
-          !If
-            - EmptySourceBucketNames
-            - !Sub "${Bucket}"
-            - !Join 
-                - ","
-                - - !Ref Bucket
-                  - !Join [",", !Ref SourceBucketNames]
+        SourceBucketNames: !Join
+            - ","
+            - - !Ref Bucket
+              - !If
+                - EmptySourceBucketNames
+                - !Ref AWS::NoValue
+                - !Join [",", !Ref SourceBucketNames]
+              - !If
+                - EmptyConfigDeliveryBucketName
+                - !Ref AWS::NoValue
+                - !Ref ConfigDeliveryBucketName
         SourceTopicArns: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*"
         ContentTypeOverrides: !Join
           - ","
@@ -240,6 +258,17 @@ Resources:
         TopicARN: !Ref Topic
         IncludeResourceTypes: !Join [",", !Ref IncludeResourceTypes]
         ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
+  ConfigSubscription:
+    Type: AWS::Serverless::Application
+    Condition: EnableConfigSubscription
+    Properties:
+      Location: ../configsubscription/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        TargetARN: !GetAtt
+          - Forwarder
+          - Outputs.Queue
   LogWriter:
     Type: AWS::Serverless::Application
     Properties:
@@ -271,7 +300,6 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
-
 Outputs:
   Bucket:
     Description: "S3 Bucket Name"
