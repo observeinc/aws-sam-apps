@@ -7,8 +7,16 @@ import (
 )
 
 type S3Client struct {
+	GetObjectFunc  func(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	CopyObjectFunc func(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
 	PutObjectFunc  func(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+}
+
+func (c *S3Client) GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	if c.GetObjectFunc == nil {
+		return nil, nil
+	}
+	return c.GetObjectFunc(ctx, params, optFns...)
 }
 
 func (c *S3Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {

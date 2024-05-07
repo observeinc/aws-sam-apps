@@ -26,6 +26,7 @@ import (
 var errNoLambdaContext = fmt.Errorf("no lambda context found")
 
 type S3Client interface {
+	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	CopyObject(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
 	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
@@ -66,6 +67,9 @@ func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 }
 
 func (h *Handler) GetDestinationRegion(ctx context.Context, client s3.HeadBucketAPIClient) (string, error) {
+	if h.DestinationURI.Scheme != "s3" {
+		return "", nil
+	}
 	region, err := manager.GetBucketRegion(ctx, client, h.DestinationURI.Host)
 	if err != nil {
 		return "", fmt.Errorf("failed to get region: %w", err)

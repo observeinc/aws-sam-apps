@@ -1,26 +1,19 @@
-package forwarder
+package s3http
 
 import (
 	"errors"
 	"fmt"
 	"net/url"
-	"time"
 )
 
 var (
 	ErrInvalidDestination = errors.New("invalid destination URI")
 	ErrMissingS3Client    = errors.New("missing S3 client")
-	ErrPresetNotFound     = errors.New("not found")
 )
 
 type Config struct {
-	DestinationURI    string // S3 URI to write messages and copy files to
-	MaxFileSize       int64  // maximum file size in bytes for the files to be processed
-	SourceBucketNames []string
-	Override          Override
-	S3Client          S3Client
-	GetTime           func() *time.Time
-	MaxConcurrency    int // fan out limit
+	DestinationURI string // HTTP URI to upload data to
+	GetObjectAPIClient
 }
 
 func (c *Config) Validate() error {
@@ -32,14 +25,13 @@ func (c *Config) Validate() error {
 		switch {
 		case err != nil:
 			errs = append(errs, fmt.Errorf("%w: %w", ErrInvalidDestination, err))
-		case u.Scheme == "s3":
 		case u.Scheme == "https":
 		default:
-			errs = append(errs, fmt.Errorf("%w: scheme must be \"s3\" or \"https\"", ErrInvalidDestination))
+			errs = append(errs, fmt.Errorf("%w: scheme must be \"https\"", ErrInvalidDestination))
 		}
 	}
 
-	if c.S3Client == nil {
+	if c.GetObjectAPIClient == nil {
 		errs = append(errs, ErrMissingS3Client)
 	}
 
