@@ -1,6 +1,8 @@
 package request
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -10,20 +12,40 @@ import (
 
 // Handler processes batches of data towards same URI.
 type Handler struct {
-	URL    string
-	Client Doer
+	URL       string
+	Headers   map[string]string
+	GzipLevel int
+	Client    Doer
 }
 
 // Handle a batch of data.
-func (r *Handler) Handle(ctx context.Context, body io.Reader) error {
-	req, err := http.NewRequestWithContext(ctx, "POST", r.URL, body)
+func (h *Handler) Handle(ctx context.Context, body io.Reader) error {
+	if h.GzipLevel != 0 {
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		if _, err := io.Copy(gw, body); err != nil {
+			return fmt.Errorf("failed to compress body: %w", err)
+		}
+		if err := gw.Close(); err != nil {
+			return fmt.Errorf("failed to close compressed body: %w", err)
+		}
+		body = &buf
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", h.URL, body)
 	if err != nil {
 		return fmt.Errorf("failed to build request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/x-ndjson")
+	if h.GzipLevel != 0 {
+		req.Header.Set("Content-Encoding", "gzip")
+	}
 
-	resp, err := r.Client.Do(req)
+	for k, v := range h.Headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := h.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %w", err)
 	}

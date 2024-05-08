@@ -132,7 +132,10 @@ func (c *Client) PutObject(ctx context.Context, params *s3.PutObjectInput, _ ...
 		Handler: c.RequestBuilder.With(map[string]string{
 			"content-type": aws.ToString(params.ContentType),
 			"key":          aws.ToString(params.Key),
-		}),
+		}, map[string]string{
+			"Content-Type": "application/x-ndjson",
+		},
+		),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to process: %w", err)
@@ -148,8 +151,9 @@ func New(cfg *Config) (*Client, error) {
 	return &Client{
 		GetObjectAPIClient: cfg.GetObjectAPIClient,
 		RequestBuilder: &request.Builder{
-			URL:    cfg.DestinationURI,
-			Client: cfg.HTTPClient,
+			URL:       cfg.DestinationURI,
+			GzipLevel: cfg.RequestGzipLevel,
+			Client:    cfg.HTTPClient,
 		},
 	}, nil
 }
