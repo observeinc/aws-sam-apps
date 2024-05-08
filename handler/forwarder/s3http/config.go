@@ -3,6 +3,7 @@ package s3http
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 )
 
@@ -14,6 +15,7 @@ var (
 type Config struct {
 	DestinationURI string // HTTP URI to upload data to
 	GetObjectAPIClient
+	HTTPClient *http.Client
 }
 
 func (c *Config) Validate() error {

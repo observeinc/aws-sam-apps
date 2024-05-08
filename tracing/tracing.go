@@ -6,11 +6,17 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/go-logr/logr"
 	"go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
+
+func SetLogger(logger logr.Logger) {
+	otel.SetLogger(logger)
+}
 
 // The OTEL SDK does not handle basic auth in OTEL_EXPORTER_OTLP_ENDPOINT
 // Extract username and password and set as OTLP Headers.

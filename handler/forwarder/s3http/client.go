@@ -145,15 +145,11 @@ func New(cfg *Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
-	r, err := request.NewBuilder(&request.BuilderConfig{
-		URL: cfg.DestinationURI,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure request builder: %w", err)
-	}
-
 	return &Client{
 		GetObjectAPIClient: cfg.GetObjectAPIClient,
-		RequestBuilder:     r,
+		RequestBuilder: &request.Builder{
+			URL:    cfg.DestinationURI,
+			Client: cfg.HTTPClient,
+		},
 	}, nil
 }
