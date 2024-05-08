@@ -63,6 +63,8 @@ func realInit() (err error) {
 
 	logger.V(4).Info("initialized", "config", env)
 
+	tracing.SetLogger(logger)
+
 	tracerProvider, err := tracing.NewTracerProvider(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize tracing: %w", err)
@@ -116,6 +118,10 @@ func realInit() (err error) {
 		s3Client, err = s3http.New(&s3http.Config{
 			DestinationURI:     env.DestinationURI,
 			GetObjectAPIClient: awsS3Client,
+			HTTPClient: tracing.NewHTTPClient(&tracing.HTTPClientConfig{
+				TracerProvider: tracerProvider,
+				Logger:         &logger,
+			}),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to load http client: %w", err)
