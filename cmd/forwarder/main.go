@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -13,6 +14,7 @@ import (
 	"github.com/observeinc/aws-sam-apps/handler"
 	"github.com/observeinc/aws-sam-apps/handler/forwarder"
 	"github.com/observeinc/aws-sam-apps/handler/forwarder/override"
+	"github.com/observeinc/aws-sam-apps/handler/forwarder/s3http"
 	"github.com/observeinc/aws-sam-apps/logging"
 	"github.com/observeinc/aws-sam-apps/tracing"
 	"github.com/observeinc/aws-sam-apps/version"
@@ -106,12 +108,24 @@ func realInit() (err error) {
 		return fmt.Errorf("failed to load presets: %w", err)
 	}
 
-	s3client := s3.NewFromConfig(awsCfg)
+	awsS3Client := s3.NewFromConfig(awsCfg)
+
+	var s3Client forwarder.S3Client = awsS3Client
+	if strings.HasPrefix(env.DestinationURI, "https") {
+		logger.V(4).Info("loading http client")
+		s3Client, err = s3http.New(&s3http.Config{
+			DestinationURI:     env.DestinationURI,
+			GetObjectAPIClient: awsS3Client,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to load http client: %w", err)
+		}
+	}
 
 	f, err := forwarder.New(&forwarder.Config{
 		DestinationURI:    env.DestinationURI,
 		MaxFileSize:       env.MaxFileSize,
-		S3Client:          s3client,
+		S3Client:          s3Client,
 		Override:          append(override.Sets{customOverrides}, presets...),
 		SourceBucketNames: env.SourceBucketNames,
 	})
@@ -119,12 +133,12 @@ func realInit() (err error) {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
 
-	region, err := f.GetDestinationRegion(ctx, s3client)
+	region, err := f.GetDestinationRegion(ctx, awsS3Client)
 	if err != nil {
 		return fmt.Errorf("failed to get destination region: %w", err)
 	}
 
-	if awsCfg.Region != region {
+	if region != "" && awsCfg.Region != region {
 		logger.V(4).Info("modifying s3 client region", "region", region)
 		regionCfg := awsCfg.Copy()
 		regionCfg.Region = region

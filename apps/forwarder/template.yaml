@@ -49,7 +49,7 @@ Parameters:
     Type: String
     Description: >-
       The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
-    AllowedPattern: "^s3:\/\/.*"
+    AllowedPattern: "^(s3|https):\/\/.*"
   NameOverride:
     Type: String
     Description: >-
