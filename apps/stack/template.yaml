@@ -17,10 +17,10 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Required parameters
+          default: Destination parameters
         Parameters:
-          - DataAccessPointArn
           - DestinationUri
+          - DataAccessPointArn
       - Label:
           default: AWS Config
         Parameters:
@@ -48,16 +48,18 @@ Metadata:
           - DebugEndpoint
 
 Parameters:
+  DestinationUri:
+    Type: String
+    Description: >-
+      The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must
+      end in a forward slash.
+    AllowedPattern: "^(s3:\/\/.+\/|https:\/\/.+)$"
   DataAccessPointArn:
     Type: String
     Description: >-
       The access point ARN for your Filedrop.
-    AllowedPattern: "^arn:.*$"
-  DestinationUri:
-    Type: String
-    Description: >-
-      The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
-    AllowedPattern: "^s3:\/\/.*$"
+    AllowedPattern: "^(arn:.*)?$"
+    Default: ''
   SourceBucketNames:
     Type: CommaDelimitedList
     Description: >-

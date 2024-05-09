@@ -121,7 +121,7 @@ run "install_forwarder" {
     app   = "forwarder"
     parameters = {
       DataAccessPointArn   = run.target_bucket.access_point.arn
-      DestinationUri       = "s3://${run.target_bucket.access_point.alias}"
+      DestinationUri       = "s3://${run.target_bucket.access_point.alias}/"
       SourceBucketNames    = "${join(",", [for k, v in run.sources.buckets : v.id])}"
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"

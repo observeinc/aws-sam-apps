@@ -36,14 +36,15 @@ The forwarder stack can be configured with the following parameters:
 
 | Parameter       | Type    | Description |
 |-----------------|---------|-------------|
-| **`DataAccessPointArn`** | String | The access point ARN for your Filedrop. |
-| **`DestinationUri`** | String | The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/` |
+| **`DestinationUri`** | String | The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must end in a forward slash. |
+| `DataAccessPointArn` | String | The access point ARN for your Filedrop. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This name will also be applied to the SQS Queue and Lambda Function processing events. In the absence of a value, the stack name will be used. |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from.  This list only affects permissions, and supports wildcards. In order to have files copied to Filedrop, you must also subscribe S3 Bucket Notifications to the forwarder. |
 | `SourceTopicArns` | CommaDelimitedList | A list of SNS topics the forwarder is allowed to be subscribed to. |
 | `MaxFileSize` | String | Max file size for objects to process (in bytes), default is 1GB |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
 | `SourceKMSKeyArns` | CommaDelimitedList | A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3. |
+| `DebugEndpoint` | String | Endpoint to send additional debug telemetry to. |
 
 ## Installation
 

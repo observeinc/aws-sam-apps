@@ -18,8 +18,8 @@ Metadata:
       - Label:
           default: Filedrop Configuration
         Parameters:
-          - DataAccessPointArn
           - DestinationUri
+          - DataAccessPointArn
           - NameOverride
       - Label:
           default: Data Sources
@@ -40,16 +40,18 @@ Globals:
     MemorySize: 128
 
 Parameters:
+  DestinationUri:
+    Type: String
+    Description: >-
+      The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must
+      end in a forward slash.
+    AllowedPattern: "^(s3:\/\/.+\/|https:\/\/.+)$"
   DataAccessPointArn:
     Type: String
     Description: >-
       The access point ARN for your Filedrop.
-    AllowedPattern: "^arn:.*$"
-  DestinationUri:
-    Type: String
-    Description: >-
-      The S3 URI for your Filedrop, e.g.  `s3://bucket-alias/ds101/`
-    AllowedPattern: "^(s3|https):\/\/.*"
+    AllowedPattern: "^(arn:.*)?$"
+    Default: ''
   NameOverride:
     Type: String
     Description: >-
@@ -100,7 +102,18 @@ Parameters:
     Default: ''
     AllowedPattern: "^(http(s)?:\/\/.*)?$"
 Conditions:
-  IsMaxFileSizeEmpty: !Equals [ !Ref MaxFileSize, '' ]
+  NoDataAccessPointArn: !Equals
+    - !Ref DataAccessPointArn
+    - ''
+  HasS3Destination: !Equals
+    - !Select [ 0, !Split [ "://", !Ref DestinationUri ] ]
+    - 's3'
+  HasS3DestinationWithoutAccessPoint: !And
+    - !Condition HasS3Destination
+    - !Condition NoDataAccessPointArn
+  IsMaxFileSizeEmpty: !Equals
+    - !Ref MaxFileSize
+    - ''
   DisableSourceS3: !Equals
     - !Join
       - ''
@@ -230,19 +243,33 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !GetAtt LogGroup.Arn
-        - PolicyName: writer
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:PutObjectTagging
-                Resource: "*"
-                Condition:
-                  StringLike:
-                    s3:DataAccessPointArn:
-                      - !Ref DataAccessPointArn
+        - !If
+          - HasS3Destination
+          - PolicyName: writer
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    - s3:PutObjectTagging
+                  Resource: !If
+                    - HasS3DestinationWithoutAccessPoint
+                    # We enforce DestinationUri ends in a forward slash so as to ensure
+                    # wildcard does not apply more broadly than intended. 
+                    - !Sub
+                      - "arn:${AWS::Partition}:s3:::${Destination}*"
+                      - Destination: !Select [ 1, !Split [ "s3://", !Ref DestinationUri  ] ]
+                    # If data access point is provided, we do not know the actual ARN.
+                    # Restrict using a condition instead
+                    - "*"
+                  Condition: !If
+                    - HasS3DestinationWithoutAccessPoint
+                    - !Ref AWS::NoValue
+                    - StringLike:
+                        s3:DataAccessPointArn:
+                          - !Ref DataAccessPointArn
+          - !Ref AWS::NoValue
         - !If
           - DisableSourceS3
           - !Ref AWS::NoValue

@@ -27,7 +27,7 @@ variable "install_policy_json" {
   type        = string
   default     = null
   validation {
-    condition     = can(jsondecode(var.install_policy_json))
+    condition     = var.install_policy_json == null || can(jsondecode(var.install_policy_json))
     error_message = "must be valid JSON"
   }
 }
