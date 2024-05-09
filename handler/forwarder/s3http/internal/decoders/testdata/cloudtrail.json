@@ -1,0 +1,76 @@
+{
+  "Records": [
+    {
+      "eventVersion": "1.07",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "EXAMPLE",
+        "arn": "arn:aws:iam::123456789012:user/example-user",
+        "accountId": "123456789012",
+        "accessKeyId": "EXAMPLEKEY",
+        "userName": "example-user"
+      },
+      "eventTime": "2024-05-09T12:00:00Z",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "PutObject",
+      "awsRegion": "us-east-1",
+      "sourceIPAddress": "203.0.113.1",
+      "userAgent": "aws-cli/2.2.4 Python/3.8.8 Windows/10 botocore/2.4.5",
+      "requestParameters": {
+        "bucketName": "example-bucket",
+        "key": "example-object.txt"
+      },
+      "responseElements": null,
+      "requestID": "EXAMPLE123456789",
+      "eventID": "EXAMPLEeventID123456789",
+      "readOnly": false,
+      "resources": [
+        {
+          "ARN": "arn:aws:s3:::example-bucket/example-object.txt",
+          "accountId": "123456789012",
+          "type": "AWS::S3::Object"
+        }
+      ],
+      "eventType": "AwsApiCall",
+      "managementEvent": false,
+      "recipientAccountId": "123456789012",
+      "vpcEndpointId": null
+    },
+    {
+      "eventVersion": "1.07",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "EXAMPLE",
+        "arn": "arn:aws:iam::123456789012:user/example-user",
+        "accountId": "123456789012",
+        "accessKeyId": "EXAMPLEKEY",
+        "userName": "example-user"
+      },
+      "eventTime": "2024-05-09T12:10:00Z",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "GetObject",
+      "awsRegion": "us-west-2",
+      "sourceIPAddress": "203.0.113.2",
+      "userAgent": "aws-cli/2.2.4 Python/3.8.8 Linux/5.4.0 botocore/2.4.5",
+      "requestParameters": {
+        "bucketName": "example-bucket",
+        "key": "example-object.txt"
+      },
+      "responseElements": null,
+      "requestID": "EXAMPLE987654321",
+      "eventID": "EXAMPLEeventID987654321",
+      "readOnly": true,
+      "resources": [
+        {
+          "ARN": "arn:aws:s3:::example-bucket/example-object.txt",
+          "accountId": "123456789012",
+          "type": "AWS::S3::Object"
+        }
+      ],
+      "eventType": "AwsApiCall",
+      "managementEvent": false,
+      "recipientAccountId": "123456789012",
+      "vpcEndpointId": null
+    }
+  ]
+}
