@@ -177,7 +177,7 @@ build-Forwarder:
 build-Subscriber:
 	APP=subscriber $(MAKE) build-App
 
-# parameters: generate doc table for cloudformation parameters
+## parameters: generate doc table for cloudformation parameters
 parameters:
 	$(call check_var,APP)
 	@echo "| Parameter       | Type    | Description |"
