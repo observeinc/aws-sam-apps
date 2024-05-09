@@ -15,7 +15,8 @@ var (
 type Config struct {
 	DestinationURI string // HTTP URI to upload data to
 	GetObjectAPIClient
-	HTTPClient *http.Client
+	HTTPClient       *http.Client
+	RequestGzipLevel *int
 }
 
 func (c *Config) Validate() error {
