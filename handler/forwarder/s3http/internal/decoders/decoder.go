@@ -12,12 +12,12 @@ var (
 )
 
 var decoders = map[string]DecoderFactory{
-	"":                 JSONDecoderFactory,
-	"application/json": JSONDecoderFactory,
-	// "application/x-csv":             CSVDecoderFactory,
+	"":                     JSONDecoderFactory,
+	"application/json":     JSONDecoderFactory,
+	"application/x-csv":    CSVDecoderFactory,
 	"application/x-ndjson": JSONDecoderFactory,
 	// "text/plain":             TextDecoderFactory,
-	// "text/csv":             CSVDecoderFactory,
+	"text/csv": CSVDecoderFactory,
 	// "application/x-aws-cloudwatchlogs":    NestedJSONDecoderFactory,
 	"application/x-aws-cloudwatchmetrics": JSONDecoderFactory,
 	"application/x-aws-config":            NestedJSONDecoderFactory,
