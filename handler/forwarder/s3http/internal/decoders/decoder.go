@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 )
 
 var (
@@ -11,7 +12,7 @@ var (
 	ErrUnsupportedContentType     = errors.New("content type not supported: %w")
 )
 
-var decoders = map[string]DecoderFactory{
+var decoders = map[string]ParameterizedDecoderFactory{
 	"":                     JSONDecoderFactory,
 	"application/json":     JSONDecoderFactory,
 	"application/x-csv":    CSVDecoderFactory,
@@ -24,7 +25,7 @@ var decoders = map[string]DecoderFactory{
 	"application/x-aws-change":            JSONDecoderFactory,
 	"application/x-aws-cloudtrail":        NestedJSONDecoderFactory,
 	"application/x-aws-sqs":               JSONDecoderFactory,
-	// "application/x-aws-vpcflowlogs":       CSVDecoderFactory,
+	"application/x-aws-vpcflowlogs":       VPCFlowLogDecoderFactory,
 }
 
 type Decoder interface {
@@ -32,7 +33,10 @@ type Decoder interface {
 	Decode(any) error
 }
 
-type DecoderFactory func(io.Reader) Decoder
+type (
+	ParameterizedDecoderFactory func(params map[string]string) DecoderFactory
+	DecoderFactory              func(io.Reader) Decoder
+)
 
 func Get(contentEncoding, contentType string) (DecoderFactory, error) {
 	wrapper, ok := wrappers[contentEncoding]
@@ -40,10 +44,15 @@ func Get(contentEncoding, contentType string) (DecoderFactory, error) {
 		return nil, fmt.Errorf("%w: %q", ErrUnsupportedContentEncoding, contentEncoding)
 	}
 
-	decoder, ok := decoders[contentType]
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse content type: %w", err)
+	}
+
+	decoder, ok := decoders[mediaType]
 	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrUnsupportedContentType, contentType)
 	}
 
-	return wrapper(decoder), nil
+	return wrapper(decoder(params)), nil
 }

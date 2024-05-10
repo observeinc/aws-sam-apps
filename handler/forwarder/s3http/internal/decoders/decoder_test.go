@@ -43,6 +43,11 @@ func TestDecoders(t *testing.T) {
 			ContentType: "text/csv",
 			InputFile:   "testdata/example.csv",
 		},
+		{
+			ContentType:     "application/x-aws-vpcflowlogs",
+			ContentEncoding: "gzip",
+			InputFile:       "testdata/vpcflowlogs.log.gz",
+		},
 	}
 
 	for _, tt := range testcases {
