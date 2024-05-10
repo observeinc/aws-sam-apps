@@ -52,6 +52,10 @@ func TestDecoders(t *testing.T) {
 			ContentType: "text/plain",
 			InputFile:   "testdata/example.txt",
 		},
+		{
+			ContentType: "application/x-aws-cloudwatchlogs",
+			InputFile:   "testdata/cloudwatchlogs.json",
+		},
 	}
 
 	for _, tt := range testcases {
