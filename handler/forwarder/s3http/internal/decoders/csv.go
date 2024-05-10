@@ -10,14 +10,28 @@ import (
 	"sync"
 )
 
-func CSVDecoderFactory(r io.Reader) Decoder {
-	buffered := bufio.NewReader(r)
-	csvDecoder := &CSVDecoder{
-		Reader:   csv.NewReader(buffered),
-		buffered: buffered,
+func CSVDecoderFactory(params map[string]string) DecoderFactory {
+	return func(r io.Reader) Decoder {
+		buffered := bufio.NewReader(r)
+		csvDecoder := &CSVDecoder{
+			Reader:   csv.NewReader(buffered),
+			buffered: buffered,
+		}
+		csvDecoder.Reader.FieldsPerRecord = -1
+
+		comma := ','
+		if params["delimiter"] == "space" {
+			comma = ' '
+		}
+		csvDecoder.Reader.Comma = comma
+		return csvDecoder
 	}
-	csvDecoder.Reader.FieldsPerRecord = -1
-	return csvDecoder
+}
+
+func VPCFlowLogDecoderFactory(_ map[string]string) DecoderFactory {
+	return CSVDecoderFactory(map[string]string{
+		"delimiter": "space",
+	})
 }
 
 type CSVDecoder struct {
