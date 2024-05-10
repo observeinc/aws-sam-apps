@@ -5,10 +5,14 @@ import (
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"sync"
 )
+
+var ErrUnsupportedDelimiter = errors.New("unsupported delimiter")
 
 func CSVDecoderFactory(params map[string]string) DecoderFactory {
 	return func(r io.Reader) Decoder {
@@ -19,11 +23,19 @@ func CSVDecoderFactory(params map[string]string) DecoderFactory {
 		}
 		csvDecoder.Reader.FieldsPerRecord = -1
 
-		comma := ','
-		if params["delimiter"] == "space" {
-			comma = ' '
+		var delimiter rune
+		switch params["delimiter"] {
+		case "space":
+			delimiter = ' '
+		case "tab":
+			delimiter = '\t'
+		case "comma", "":
+			delimiter = ','
+		default:
+			err := fmt.Errorf("%w: %q", ErrUnsupportedDelimiter, params["delimiter"])
+			return &errorDecoder{err}
 		}
-		csvDecoder.Reader.Comma = comma
+		csvDecoder.Reader.Comma = delimiter
 		return csvDecoder
 	}
 }
@@ -45,6 +57,9 @@ func (dec *CSVDecoder) Decode(v any) error {
 	var err error
 	dec.Once.Do(func() {
 		dec.header, err = dec.Read()
+		for i, h := range dec.header {
+			dec.header[i] = strconv.Quote(h)
+		}
 		// After the header is determined, we can allow the csv.Reader to reuse
 		// a []string for every subsequent record.
 		dec.Reader.ReuseRecord = true
@@ -60,18 +75,16 @@ func (dec *CSVDecoder) Decode(v any) error {
 
 	var buf bytes.Buffer
 
-	buf.WriteString("{")
+	buf.WriteString(`{`)
 	for i, colName := range dec.header {
 		if i < len(record) && record[i] != "" {
 			if buf.Len() != 1 {
-				buf.WriteString(", ")
+				buf.WriteString(`,`)
 			}
-			if _, err := buf.WriteString(`"` + colName + `": "` + record[i] + `"`); err != nil {
-				return fmt.Errorf("failed to write to buffer: %w", err)
-			}
+			buf.WriteString(colName + `:` + strconv.Quote(record[i]))
 		}
 	}
-	buf.WriteString("}")
+	buf.WriteString(`}`)
 
 	if err := json.Unmarshal(buf.Bytes(), v); err != nil {
 		return fmt.Errorf("failed to decode CSV: %w", err)

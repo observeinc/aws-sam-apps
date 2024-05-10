@@ -48,6 +48,10 @@ func TestDecoders(t *testing.T) {
 			ContentEncoding: "gzip",
 			InputFile:       "testdata/vpcflowlogs.log.gz",
 		},
+		{
+			ContentType: "text/plain",
+			InputFile:   "testdata/example.txt",
+		},
 	}
 
 	for _, tt := range testcases {
@@ -111,8 +115,6 @@ func compareFile(t *testing.T, filename string, contents io.Reader) {
 		t.Fatal("failed to read file:", err)
 	}
 
-	t.Log(a)
-	t.Log(b)
 	if diff := cmp.Diff(a.String(), b.String()); diff != "" {
 		t.Fatal(diff)
 	}
