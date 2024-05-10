@@ -13,13 +13,13 @@ var (
 )
 
 var decoders = map[string]ParameterizedDecoderFactory{
-	"":                     JSONDecoderFactory,
-	"application/json":     JSONDecoderFactory,
-	"application/x-csv":    CSVDecoderFactory,
-	"application/x-ndjson": JSONDecoderFactory,
-	"text/plain":           TextDecoderFactory,
-	"text/csv":             CSVDecoderFactory,
-	// "application/x-aws-cloudwatchlogs":    NestedJSONDecoderFactory,
+	"":                                    JSONDecoderFactory,
+	"application/json":                    JSONDecoderFactory,
+	"application/x-csv":                   CSVDecoderFactory,
+	"application/x-ndjson":                JSONDecoderFactory,
+	"text/plain":                          TextDecoderFactory,
+	"text/csv":                            CSVDecoderFactory,
+	"application/x-aws-cloudwatchlogs":    CloudWatchLogsDecoderFactory,
 	"application/x-aws-cloudwatchmetrics": JSONDecoderFactory,
 	"application/x-aws-config":            NestedJSONDecoderFactory,
 	"application/x-aws-change":            JSONDecoderFactory,
