@@ -39,6 +39,10 @@ func TestDecoders(t *testing.T) {
 			ContentType: "application/x-aws-cloudtrail",
 			InputFile:   "testdata/cloudtrail.json",
 		},
+		{
+			ContentType: "text/csv",
+			InputFile:   "testdata/example.csv",
+		},
 	}
 
 	for _, tt := range testcases {
