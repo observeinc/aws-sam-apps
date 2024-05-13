@@ -122,7 +122,7 @@ Parameters:
       S3 URI containing filters for metrics to be collected by CloudWatch
       Metrics Stream. If empty, no metrics will be collected.
     Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
-    AllowedPattern: "^s3:\/\/.*$"
+    AllowedPattern: "^(s3:\/\/.*)?$"
   DebugEndpoint:
     Type: String
     Description: >-
