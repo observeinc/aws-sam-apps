@@ -86,7 +86,7 @@ func toPutInput(copyInput *s3.CopyObjectInput, getOutput *s3.GetObjectOutput) *s
 		in.ContentType = ct
 	}
 	if ce := copyInput.ContentEncoding; ce != nil {
-		in.ContentType = ce
+		in.ContentEncoding = ce
 	}
 	return in
 }
