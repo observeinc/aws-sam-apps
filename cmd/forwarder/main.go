@@ -114,6 +114,7 @@ func realInit() (err error) {
 
 	var s3Client forwarder.S3Client = awsS3Client
 	if strings.HasPrefix(env.DestinationURI, "https") {
+		userAgent := fmt.Sprintf("forwarder/%s", version.Version)
 		logger.V(4).Info("loading http client")
 		s3Client, err = s3http.New(&s3http.Config{
 			DestinationURI:     env.DestinationURI,
@@ -121,6 +122,7 @@ func realInit() (err error) {
 			HTTPClient: tracing.NewHTTPClient(&tracing.HTTPClientConfig{
 				TracerProvider: tracerProvider,
 				Logger:         &logger,
+				UserAgent:      &userAgent,
 			}),
 		})
 		if err != nil {

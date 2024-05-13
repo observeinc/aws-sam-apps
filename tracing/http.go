@@ -36,6 +36,7 @@ type HTTPClientConfig struct {
 	RetryWaitMax   *time.Duration // Maximumum time to wait on retry
 	RetryMax       *int           // Maximum number of retries
 	HTTPClient     *http.Client
+	UserAgent      *string
 	Logger         *logr.Logger
 	TracerProvider *trace.TracerProvider
 }
@@ -70,8 +71,25 @@ func NewHTTPClient(cfg *HTTPClientConfig) *http.Client {
 
 	client.Logger = &leveledLogger{logger}
 
-	transport := &retryablehttp.RoundTripper{Client: client}
+	var transport http.RoundTripper = &retryablehttp.RoundTripper{Client: client}
+	if cfg.UserAgent != nil {
+		transport = &addUserAgent{
+			RoundTripper: transport,
+			UserAgent:    *cfg.UserAgent,
+		}
+	}
 	return &http.Client{
 		Transport: otelhttp.NewTransport(transport, otelhttp.WithTracerProvider(cfg.TracerProvider)),
 	}
+}
+
+type addUserAgent struct {
+	UserAgent string
+	http.RoundTripper
+}
+
+func (rt *addUserAgent) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("User-Agent", rt.UserAgent)
+	//nolint:wrapcheck
+	return rt.RoundTripper.RoundTrip(req)
 }
