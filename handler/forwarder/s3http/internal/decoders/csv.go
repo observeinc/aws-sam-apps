@@ -14,36 +14,36 @@ import (
 
 var ErrUnsupportedDelimiter = errors.New("unsupported delimiter")
 
-func CSVDecoderFactory(params map[string]string) DecoderFactory {
-	return func(r io.Reader) Decoder {
-		buffered := bufio.NewReader(r)
-		csvDecoder := &CSVDecoder{
-			Reader:   csv.NewReader(buffered),
-			buffered: buffered,
-		}
-		csvDecoder.Reader.FieldsPerRecord = -1
-
-		var delimiter rune
-		switch params["delimiter"] {
-		case "space":
-			delimiter = ' '
-		case "tab":
-			delimiter = '\t'
-		case "comma", "":
-			delimiter = ','
-		default:
-			err := fmt.Errorf("%w: %q", ErrUnsupportedDelimiter, params["delimiter"])
-			return &errorDecoder{err}
-		}
-		csvDecoder.Reader.Comma = delimiter
-		return csvDecoder
+func CSVDecoderFactory(r io.Reader, params map[string]string) Decoder {
+	buffered := bufio.NewReader(r)
+	csvDecoder := &CSVDecoder{
+		Reader:   csv.NewReader(buffered),
+		buffered: buffered,
 	}
+	csvDecoder.Reader.FieldsPerRecord = -1
+
+	var delimiter rune
+	switch params["delimiter"] {
+	case "space":
+		delimiter = ' '
+	case "tab":
+		delimiter = '\t'
+	case "comma", "":
+		delimiter = ','
+	default:
+		err := fmt.Errorf("%w: %q", ErrUnsupportedDelimiter, params["delimiter"])
+		return &errorDecoder{err}
+	}
+	csvDecoder.Reader.Comma = delimiter
+	return csvDecoder
 }
 
-func VPCFlowLogDecoderFactory(_ map[string]string) DecoderFactory {
-	return CSVDecoderFactory(map[string]string{
-		"delimiter": "space",
-	})
+func VPCFlowLogDecoderFactory(r io.Reader, params map[string]string) Decoder {
+	if _, ok := params["delimiter"]; !ok {
+		params["delimiter"] = "space"
+	}
+
+	return CSVDecoderFactory(r, params)
 }
 
 type CSVDecoder struct {

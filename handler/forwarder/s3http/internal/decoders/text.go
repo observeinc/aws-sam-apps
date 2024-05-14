@@ -9,11 +9,9 @@ import (
 	"strconv"
 )
 
-func TextDecoderFactory(map[string]string) DecoderFactory {
-	return func(r io.Reader) Decoder {
-		return &TextDecoder{
-			Reader: bufio.NewReader(r),
-		}
+func TextDecoderFactory(r io.Reader, _ map[string]string) Decoder {
+	return &TextDecoder{
+		Reader: bufio.NewReader(r),
 	}
 }
 

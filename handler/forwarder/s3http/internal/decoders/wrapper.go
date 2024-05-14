@@ -16,12 +16,12 @@ var wrappers = map[string]Wrapper{
 type Wrapper func(DecoderFactory) DecoderFactory
 
 func GzipWrapper(fn DecoderFactory) DecoderFactory {
-	return func(r io.Reader) Decoder {
+	return func(r io.Reader, params map[string]string) Decoder {
 		gr, err := gzip.NewReader(r)
 		if err != nil {
 			return &errorDecoder{fmt.Errorf("failed to read gzip: %w", err)}
 		}
 		defer gr.Close()
-		return fn(gr)
+		return fn(gr, params)
 	}
 }

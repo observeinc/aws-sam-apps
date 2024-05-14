@@ -6,27 +6,23 @@ import (
 	"io"
 )
 
-func JSONDecoderFactory(map[string]string) DecoderFactory {
-	return func(r io.Reader) Decoder {
-		return json.NewDecoder(r)
-	}
+func JSONDecoderFactory(r io.Reader, _ map[string]string) Decoder {
+	return json.NewDecoder(r)
 }
 
-func NestedJSONDecoderFactory(map[string]string) DecoderFactory {
-	return func(r io.Reader) Decoder {
-		dec := json.NewDecoder(r)
-		tok, err := dec.Token()
-		for err == nil {
-			if v, ok := tok.(json.Delim); ok {
-				if v == '[' {
-					break
-				}
+func NestedJSONDecoderFactory(r io.Reader, _ map[string]string) Decoder {
+	dec := json.NewDecoder(r)
+	tok, err := dec.Token()
+	for err == nil {
+		if v, ok := tok.(json.Delim); ok {
+			if v == '[' {
+				break
 			}
-			tok, err = dec.Token()
 		}
-		if err != nil {
-			return &errorDecoder{fmt.Errorf("unexpected token: %w", err)}
-		}
-		return dec
+		tok, err = dec.Token()
 	}
+	if err != nil {
+		return &errorDecoder{fmt.Errorf("unexpected token: %w", err)}
+	}
+	return dec
 }

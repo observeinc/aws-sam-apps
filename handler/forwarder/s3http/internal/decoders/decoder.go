@@ -12,7 +12,7 @@ var (
 	ErrUnsupportedContentType     = errors.New("content type not supported: %w")
 )
 
-var decoders = map[string]ParameterizedDecoderFactory{
+var decoders = map[string]DecoderFactory{
 	"":                                    JSONDecoderFactory,
 	"application/json":                    JSONDecoderFactory,
 	"application/x-csv":                   CSVDecoderFactory,
@@ -34,11 +34,10 @@ type Decoder interface {
 }
 
 type (
-	ParameterizedDecoderFactory func(params map[string]string) DecoderFactory
-	DecoderFactory              func(io.Reader) Decoder
+	DecoderFactory func(io.Reader, map[string]string) Decoder
 )
 
-func Get(contentEncoding, contentType string) (DecoderFactory, error) {
+func Get(contentEncoding, contentType string, r io.Reader) (Decoder, error) {
 	wrapper, ok := wrappers[contentEncoding]
 	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrUnsupportedContentEncoding, contentEncoding)
@@ -54,5 +53,5 @@ func Get(contentEncoding, contentType string) (DecoderFactory, error) {
 		return nil, fmt.Errorf("%w: %q", ErrUnsupportedContentType, contentType)
 	}
 
-	return wrapper(decoder(params)), nil
+	return wrapper(decoder)(r, params), nil
 }
