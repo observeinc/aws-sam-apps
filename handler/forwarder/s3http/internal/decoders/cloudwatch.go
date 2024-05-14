@@ -9,13 +9,11 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-func CloudWatchLogsDecoderFactory(map[string]string) DecoderFactory {
-	return func(r io.Reader) Decoder {
-		buffered := bufio.NewReader(r)
-		return &CloudWatchLogsDecoder{
-			buffered: buffered,
-			decoder:  json.NewDecoder(buffered),
-		}
+func CloudWatchLogsDecoderFactory(r io.Reader, _ map[string]string) Decoder {
+	buffered := bufio.NewReader(r)
+	return &CloudWatchLogsDecoder{
+		buffered: buffered,
+		decoder:  json.NewDecoder(buffered),
 	}
 }
 

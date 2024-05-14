@@ -122,13 +122,13 @@ func (c *Client) PutObject(ctx context.Context, params *s3.PutObjectInput, _ ...
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.V(6).Info("processing PutObject", "putObjectInput", params)
 
-	dec, err := decoders.Get(aws.ToString(params.ContentEncoding), aws.ToString(params.ContentType))
+	dec, err := decoders.Get(aws.ToString(params.ContentEncoding), aws.ToString(params.ContentType), params.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
 
 	err = batch.Run(ctx, &batch.RunInput{
-		Decoder: dec(params.Body),
+		Decoder: dec,
 		Handler: c.RequestBuilder.With(map[string]string{
 			"content-type": aws.ToString(params.ContentType),
 			"key":          aws.ToString(params.Key),

@@ -62,7 +62,7 @@ func TestDecoders(t *testing.T) {
 		t.Run(tt.InputFile, func(t *testing.T) {
 			t.Parallel()
 
-			fn, err := decoders.Get(tt.ContentEncoding, tt.ContentType)
+			dec, err := decoders.Get(tt.ContentEncoding, tt.ContentType, readFile(t, tt.InputFile))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -70,7 +70,7 @@ func TestDecoders(t *testing.T) {
 			var buf bytes.Buffer
 
 			enc := json.NewEncoder(&buf)
-			for dec := fn(readFile(t, tt.InputFile)); dec.More(); {
+			for dec.More() {
 				var v json.RawMessage
 				if err := dec.Decode(&v); err != nil {
 					t.Fatal(err)
