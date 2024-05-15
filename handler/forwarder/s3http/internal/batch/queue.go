@@ -82,7 +82,7 @@ func (q *Queue) Process(ctx context.Context, c Handler) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("cancelled consume: %w", ctx.Err())
+			return fmt.Errorf("cancelled process: %w", ctx.Err())
 		case buf, ok := <-q.ch:
 			if !ok {
 				return nil
@@ -90,7 +90,8 @@ func (q *Queue) Process(ctx context.Context, c Handler) error {
 			err := c.Handle(ctx, buf)
 			bufPool.Put(buf)
 			if err != nil {
-				return fmt.Errorf("failed to consume: %w", err)
+				// nolint:wrapcheck
+				return err
 			}
 		}
 	}

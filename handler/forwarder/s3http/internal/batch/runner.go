@@ -102,8 +102,6 @@ func Run(ctx context.Context, r *RunInput) error {
 		return nil
 	})
 
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("failed to stream data: %w", err)
-	}
-	return nil
+	// nolint:wrapcheck
+	return g.Wait()
 }
