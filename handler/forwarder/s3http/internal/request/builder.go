@@ -25,13 +25,13 @@ type Builder struct {
 }
 
 func (b *Builder) With(params map[string]string, headers map[string]string) *Handler {
-	values := make(url.Values, len(params))
-	for k, v := range params {
-		values.Add(k, v)
-	}
-
 	u, _ := url.Parse(b.URL)
-	u.RawQuery = values.Encode()
+
+	query := u.Query()
+	for k, v := range params {
+		query.Add(k, v)
+	}
+	u.RawQuery = query.Encode()
 
 	client := b.Client
 	if client == nil {
