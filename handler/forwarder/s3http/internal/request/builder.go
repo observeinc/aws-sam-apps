@@ -10,7 +10,7 @@ import (
 var (
 	ErrNoConfig   = errors.New("missing config")
 	ErrMissingURL = errors.New("missing URL")
-	ErrStatus     = errors.New("failed to upload: %w")
+	ErrStatus     = errors.New("failed to upload")
 )
 
 type Doer interface {
