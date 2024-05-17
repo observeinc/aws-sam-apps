@@ -110,6 +110,12 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 		return nil, fmt.Errorf("failed to get object: %w", err)
 	}
 	defer getResp.Body.Close()
+
+	if getResp.ContentLength != nil && *getResp.ContentLength == 0 {
+		logger.V(6).Info("skipping empty file")
+		return toCopyOutput(nil), nil
+	}
+
 	putResp, err := c.PutObject(ctx, toPutInput(params, getResp), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to put object: %w", err)
