@@ -33,9 +33,9 @@ KEY=${SOURCE}/${OBJECT_PREFIX}${TMPFILE}
 
 aws s3 cp ${TMPFILE} s3://${SOURCE}/${KEY} --content-type application/json 1>&2 || DIE "failed to copy file to source"
 
-sleep ${INIT_DELAY:-0}
+sleep ${INIT_DELAY:-1}
 ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${KEY} | jq "del(.LastModified, .Expiration) | ${JQ_PROCESS_SOURCE}" || DIE "failed to read file from source")
-sleep ${COPY_DELAY:-0}
+sleep ${COPY_DELAY:-10}
 COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${KEY} | jq "del(.LastModified, .Expiration) | ${JQ_PROCESS_DESTINATION}" || DIE "failed to read file from destination")
 
 [ "$ORIGINAL" = "$COPY" ] || DIE "object differs"

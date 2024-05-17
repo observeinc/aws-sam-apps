@@ -188,11 +188,14 @@ Resources:
         - !Ref AWS::StackName
         - !Ref NameOverride
       DelaySeconds: 0
-      MessageRetentionPeriod: 1209600
+      MessageRetentionPeriod: 345600
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt DeadLetter.Arn
         maxReceiveCount: 4
-      VisibilityTimeout: 300
+      VisibilityTimeout: !If
+        - UseDefaultTimeout
+        - "300"
+        - !Ref Timeout
   QueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
@@ -405,8 +408,9 @@ Resources:
         Items:
           Type: SQS
           Properties:
-            BatchSize: 10
             Enabled: true
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 1
             FunctionResponseTypes:
               - ReportBatchItemFailures
             Queue: !GetAtt Queue.Arn

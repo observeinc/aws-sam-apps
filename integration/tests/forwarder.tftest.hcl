@@ -177,7 +177,6 @@ run "check_eventbridge" {
     env_vars = {
       SOURCE      = run.sources.buckets["eventbridge"].id
       DESTINATION = run.target_bucket.id
-      INIT_DELAY  = 2
     }
   }
 
@@ -198,8 +197,6 @@ run "check_sns" {
     env_vars = {
       SOURCE      = run.sources.buckets["sns"].id
       DESTINATION = run.target_bucket.id
-      INIT_DELAY  = 2
-
     }
   }
 
