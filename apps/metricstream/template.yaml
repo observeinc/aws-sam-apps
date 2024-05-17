@@ -117,9 +117,9 @@ Resources:
             - !Ref AWS::StackName
             - !Ref NameOverride
       RetentionInDays: 365
-  LogStream:      
+  LogStream:
     Type: 'AWS::Logs::LogStream'
-    Properties: 
+    Properties:
       LogStreamName: s3logs
       LogGroupName: !Ref LogGroup
   DeliveryStream:
@@ -133,7 +133,9 @@ Resources:
       S3DestinationConfiguration:
         BucketARN: !Ref BucketARN
         RoleARN: !GetAtt DeliveryStreamRole.Arn
+        # yamllint disable-line rule:line-length
         Prefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchmetrics/${AWS::Region}/${OutputFormat}/'
+        # yamllint disable-line rule:line-length
         ErrorOutputPrefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchmetrics/${AWS::Region}/errors/'
         BufferingHints:
           IntervalInSeconds: !Ref BufferingInterval
