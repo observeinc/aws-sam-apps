@@ -56,6 +56,7 @@ integration-test:
 ## sam-validate: Validates a specific CloudFormation template specified by APP variable
 sam-validate:
 	$(call check_var,APP)
+	yamllint apps/$(APP)/template.yaml && \
 	sam validate \
 		--template apps/$(APP)/template.yaml \
 		--config-file $(SAM_CONFIG_FILE) \

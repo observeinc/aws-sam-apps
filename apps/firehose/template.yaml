@@ -111,9 +111,9 @@ Resources:
             - !Ref AWS::StackName
             - !Ref NameOverride
       RetentionInDays: 365
-  LogStream:      
+  LogStream:
     Type: 'AWS::Logs::LogStream'
-    Properties: 
+    Properties:
       LogStreamName: s3logs
       LogGroupName: !Ref LogGroup
   DeliveryStream:

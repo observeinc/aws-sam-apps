@@ -43,8 +43,8 @@ Parameters:
   DestinationUri:
     Type: String
     Description: >-
-      The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must
-      end in a forward slash.
+      The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs
+      must end in a forward slash.
     AllowedPattern: "^(s3:\/\/.+\/|https:\/\/.+)$"
   DataAccessPointArn:
     Type: String
@@ -77,7 +77,8 @@ Parameters:
   SourceKMSKeyArns:
     Type: CommaDelimitedList
     Description: >-
-      A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3.
+      A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects
+      in S3.
     Default: ''
     AllowedPattern: "^(arn:.*)?$"
   ContentTypeOverrides:
@@ -135,7 +136,7 @@ Conditions:
     - !Ref DataAccessPointArn
     - ''
   HasS3Destination: !Equals
-    - !Select [ 0, !Split [ "://", !Ref DestinationUri ] ]
+    - !Select [0, !Split ["://", !Ref DestinationUri]]
     - 's3'
   HasS3DestinationWithoutAccessPoint: !And
     - !Condition HasS3Destination
@@ -251,8 +252,10 @@ Resources:
               bucketName: "$.detail.bucket.name"
               objectKey: "$.detail.object.key"
               objectSize: "$.detail.object.size"  # Added object size
+            # yamllint disable rule:line-length
             InputTemplate: >-
-              {"copy": [{"uri": "s3://<bucketName>/<objectKey>", "size": <objectSize>}]}
+              {"copy": [{"uri":"s3://<bucketName>/<objectKey>","size":<objectSize>}]}
+            # yamllint enable rule:line-length
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -293,13 +296,16 @@ Resources:
                     - s3:PutObjectTagging
                   Resource: !If
                     - HasS3DestinationWithoutAccessPoint
-                    # We enforce DestinationUri ends in a forward slash so as to ensure
-                    # wildcard does not apply more broadly than intended. 
+                    # We enforce DestinationUri ends in a forward slash so as
+                    # to ensure wildcard does not apply more broadly than
+                    # intended.
                     - !Sub
                       - "arn:${AWS::Partition}:s3:::${Destination}*"
-                      - Destination: !Select [ 1, !Split [ "s3://", !Ref DestinationUri  ] ]
-                    # If data access point is provided, we do not know the actual ARN.
-                    # Restrict using a condition instead
+                      - Destination: !Select
+                          - 1
+                          - !Split ["s3://", !Ref DestinationUri]
+                    # If data access point is provided, we do not know the
+                    # actual ARN. Restrict using a condition instead
                     - "*"
                   Condition: !If
                     - HasS3DestinationWithoutAccessPoint
@@ -422,7 +428,7 @@ Resources:
             - ','
             - !Ref SourceBucketNames
           OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
-          OTEL_TRACES_EXPORTER: !If [ DisableOTEL, "none", "otlp" ]
+          OTEL_TRACES_EXPORTER: !If [DisableOTEL, "none", "otlp"]
 Outputs:
   Function:
     Description: "Lambda Function ARN"
