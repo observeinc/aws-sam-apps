@@ -26,16 +26,19 @@ Metadata:
         Parameters:
           - SourceBucketNames
           - SourceTopicArns
+          - SourceKMSKeyArns
+          - ContentTypeOverrides
       - Label:
-          default: Miscellaneous
+          default: Sizing
         Parameters:
           - MaxFileSize
-          - ContentTypeOverrides
-          - SourceKMSKeyArns
-          - DebugEndpoint
           - MemorySize
           - Timeout
-
+      - Label:
+          default: Debugging
+        Parameters:
+          - DebugEndpoint
+          - Verbosity
 Parameters:
   DestinationUri:
     Type: String
@@ -71,11 +74,12 @@ Parameters:
       A list of SNS topics the forwarder is allowed to be subscribed to.
     Default: ''
     AllowedPattern: "^(arn:.*)?$"
-  MaxFileSize:
-    Type: String
-    Description: Max file size for objects to process (in bytes), default is 1GB
+  SourceKMSKeyArns:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3.
     Default: ''
-    AllowedPattern: '^[0-9]*$'
+    AllowedPattern: "^(arn:.*)?$"
   ContentTypeOverrides:
     Type: CommaDelimitedList
     Description: >-
@@ -86,18 +90,11 @@ Parameters:
       as newline delimited JSON
       files.
     Default: ''
-  SourceKMSKeyArns:
-    Type: CommaDelimitedList
-    Description: >-
-      A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3.
-    Default: ''
-    AllowedPattern: "^(arn:.*)?$"
-  DebugEndpoint:
+  MaxFileSize:
     Type: String
-    Description: >-
-      Endpoint to send additional debug telemetry to.
+    Description: Max file size for objects to process (in bytes), default is 1GB
     Default: ''
-    AllowedPattern: "^(http(s)?:\/\/.*)?$"
+    AllowedPattern: '^[0-9]*$'
   MemorySize:
     Type: String
     Description: >-
@@ -121,6 +118,18 @@ Parameters:
       it. The maximum allowed value is 900 seconds.
     Default: ''
     AllowedPattern: "^[0-9]*$"
+  DebugEndpoint:
+    Type: String
+    Description: >-
+      Endpoint to send additional debug telemetry to.
+    Default: ''
+    AllowedPattern: "^(http(s)?:\/\/.*)?$"
+  Verbosity:
+    Type: String
+    Default: ''
+    Description: >-
+      Logging verbosity for Lambda. Highest log verbosity is 9.
+    AllowedPattern: "^[0-9]?$"
 Conditions:
   NoDataAccessPointArn: !Equals
     - !Ref DataAccessPointArn
@@ -139,6 +148,9 @@ Conditions:
     - ''
   UseDefaultTimeout: !Equals
     - !Ref Timeout
+    - ''
+  UseDefaultVerbosity: !Equals
+    - !Ref Verbosity
     - ''
   DisableSourceS3: !Equals
     - !Join
@@ -395,7 +407,10 @@ Resources:
       Environment:
         Variables:
           DESTINATION_URI: !Ref DestinationUri
-          VERBOSITY: 9
+          VERBOSITY: !If
+            - UseDefaultVerbosity
+            - 1
+            - !Ref Verbosity
           MAX_FILE_SIZE: !If
             - UseDefaultMaxFileSize
             - "1073741824"
