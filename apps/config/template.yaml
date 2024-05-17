@@ -104,10 +104,10 @@ Conditions:
       - ''
       - !Ref Prefix
   IncludeAllResources: !Equals
-      - '*'
-      - !Join
-        - ','
-        - !Ref IncludeResourceTypes
+    - '*'
+    - !Join
+      - ','
+      - !Ref IncludeResourceTypes
   IncludeResources: !And
     - !Not
       - !Condition IncludeAllResources
@@ -193,12 +193,12 @@ Resources:
           - !Ref 'AWS::NoValue'
         RecordingStrategy:
           UseOnly: !If
-           - IncludeResources
-           - "INCLUSION_BY_RESOURCE_TYPES"
-           - !If
-            - ExcludeResources
-            - "EXCLUSION_BY_RESOURCE_TYPES"
-            - "ALL_SUPPORTED_RESOURCE_TYPES"
+            - IncludeResources
+            - "INCLUSION_BY_RESOURCE_TYPES"
+            - !If
+              - ExcludeResources
+              - "EXCLUSION_BY_RESOURCE_TYPES"
+              - "ALL_SUPPORTED_RESOURCE_TYPES"
       RoleARN: !GetAtt ConfigurationRecorderRole.Arn
   ConfigurationDeliveryChannel:
     Type: AWS::Config::DeliveryChannel

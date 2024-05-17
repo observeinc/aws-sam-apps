@@ -35,7 +35,7 @@ Metadata:
       - Label:
           default: CloudWatch Metrics
         Parameters:
-          - MetricStreamFilterURI
+          - MetricStreamFilterUri
       - Label:
           default: Forwarder Options
         Parameters:
@@ -51,8 +51,8 @@ Parameters:
   DestinationUri:
     Type: String
     Description: >-
-      The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must
-      end in a forward slash.
+      The URI for your destination, e.g. `s3://bucket-alias/ds101/`. S3 URIs
+      must end in a forward slash.
     AllowedPattern: "^(s3:\/\/.+\/|https:\/\/.+)$"
   DataAccessPointArn:
     Type: String
@@ -60,28 +60,6 @@ Parameters:
       The access point ARN for your Filedrop.
     AllowedPattern: "^(arn:.*)?$"
     Default: ''
-  SourceBucketNames:
-    Type: CommaDelimitedList
-    Description: >-
-      A list of bucket names which the forwarder is allowed to read from.
-    Default: ""
-  ContentTypeOverrides:
-    Type: CommaDelimitedList
-    Description: >-
-      A list of key value pairs. The key is a regular expression which is
-      applied to the S3 source (<bucket>/<key>) of forwarded files. The value
-      is the content type to set for matching files. For example,
-      `\.json$=application/x-ndjson` would forward all files ending in `.json`
-      as newline delimited JSON
-      files.
-    Default: ''
-  NameOverride:
-    Type: String
-    Description: >-
-      Name of IAM role expected by Filedrop. This role will be created as part
-      of this stack, and must therefore be unique within the account.
-    Default: ""
-    MaxLength: 51
   ConfigDeliveryBucketName:
     Type: String
     Description: >-
@@ -116,13 +94,35 @@ Parameters:
       Comma separated list of prefixes. If not empty, the lambda function will
       only apply to log groups that start with a provided string.
     Default: ''
-  MetricStreamFilterURI:
+  MetricStreamFilterUri:
     Type: String
     Description: >-
       S3 URI containing filters for metrics to be collected by CloudWatch
       Metrics Stream. If empty, no metrics will be collected.
     Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
     AllowedPattern: "^(s3:\/\/.*)?$"
+  SourceBucketNames:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of bucket names which the forwarder is allowed to read from.
+    Default: ""
+  ContentTypeOverrides:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of key value pairs. The key is a regular expression which is
+      applied to the S3 source (<bucket>/<key>) of forwarded files. The value
+      is the content type to set for matching files. For example,
+      `\.json$=application/x-ndjson` would forward all files ending in `.json`
+      as newline delimited JSON
+      files.
+    Default: ''
+  NameOverride:
+    Type: String
+    Description: >-
+      Name of IAM role expected by Filedrop. This role will be created as part
+      of this stack, and must therefore be unique within the account.
+    Default: ""
+    MaxLength: 51
   DebugEndpoint:
     Type: String
     Description: >-
@@ -135,7 +135,7 @@ Conditions:
     - !Ref ConfigDeliveryBucketName
     - ""
   EnableConfigSubscription: !Not
-   - !Condition EmptyConfigDeliveryBucketName
+    - !Condition EmptyConfigDeliveryBucketName
   EnableConfig: !And
     - !Not
       - !Condition EnableConfigSubscription
@@ -153,7 +153,7 @@ Conditions:
     - ""
   EnableMetricStream: !Not
     - !Equals
-      - !Ref MetricStreamFilterURI
+      - !Ref MetricStreamFilterUri
       - ""
 
 Resources:
@@ -220,16 +220,16 @@ Resources:
         DataAccessPointArn: !Ref DataAccessPointArn
         DestinationUri: !Ref DestinationUri
         SourceBucketNames: !Join
-            - ","
-            - - !Ref Bucket
-              - !If
-                - EmptySourceBucketNames
-                - !Ref AWS::NoValue
-                - !Join [",", !Ref SourceBucketNames]
-              - !If
-                - EmptyConfigDeliveryBucketName
-                - !Ref AWS::NoValue
-                - !Ref ConfigDeliveryBucketName
+          - ","
+          - - !Ref Bucket
+            - !If
+              - EmptySourceBucketNames
+              - !Ref AWS::NoValue
+              - !Join [",", !Ref SourceBucketNames]
+            - !If
+              - EmptyConfigDeliveryBucketName
+              - !Ref AWS::NoValue
+              - !Ref ConfigDeliveryBucketName
         SourceTopicArns: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*"
         ContentTypeOverrides: !Join
           - ","
@@ -297,7 +297,7 @@ Resources:
         - !Ref Topic
       Parameters:
         BucketARN: !GetAtt Bucket.Arn
-        FilterURI: !Ref MetricStreamFilterURI
+        FilterURI: !Ref MetricStreamFilterUri
         NameOverride: !If
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
