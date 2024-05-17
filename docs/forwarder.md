@@ -153,3 +153,9 @@ In order to grant the Forwarder lambda function permission to use the KMS key fo
 
 1. **Update your Forwarder stack**: include your KMS Key ARN in `SourceKMSKeyArns` in your forwarder stack.
 2. **Update your KMS key policy**: your key policy must grant the Forwarder Lambda function permission to call `kms:Decrypt`. The [default KMS key policy](https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html) is sufficient to satisfy this constraint, since it will delegate access to the KMS key to IAM.
+
+## HTTP destination
+
+For backward compatability, the forwarder supports sending data to an HTTPS endpoint. Every `s3:CopyObject` triggers an `s3:GetObject` from the source. The source file is converted into newline delimited JSON and submitted over one or more HTTP POST requests. By default, a request body will not exceed 10MB when uncompressed.
+
+Submitting to an HTTP endpoint has multiple limitations when compared to using Filedrop. The forwarder must read, process and transmit the source file, which consumes both memory and time. The lambda function must therefore be sized according to the maximum file size it is expected to handle. Overall, HTTP mode supports smaller file sizes and less content types, and is provided only as a bridge towards Filedrop adoption.

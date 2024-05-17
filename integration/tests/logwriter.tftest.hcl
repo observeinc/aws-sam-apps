@@ -103,6 +103,7 @@ run "install" {
       LogGroupNamePatterns = "*"
       DiscoveryRate        = "24 hours"
       NameOverride         = run.setup.id
+      Verbosity            = 3
     }
     capabilities = [
       "CAPABILITY_IAM",
