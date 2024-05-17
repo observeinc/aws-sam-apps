@@ -12,14 +12,17 @@ Additionally, the stack is capable of subscribing log groups and provides a meth
 | `Prefix` | String | Optional prefix to write log records to. |
 | `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. We will only subscribe to log groups that have names matching one of the provided strings based on strings based on a case-sensitive substring search. To subscribe to all log groups, use the wildcard operator *. |
 | `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. The lambda function will only apply to log groups that start with a provided string. To subscribe to all log groups, use the wildcard operator *. |
+| `DiscoveryRate` | String | EventBridge rate expression for periodically triggering discovery. If not set, no eventbridge rules are configured. |
 | `FilterName` | String | Subscription filter name. Existing filters that have this name as a prefix will be removed. |
 | `FilterPattern` | String | Subscription filter pattern. |
+| `NameOverride` | String | Name of Lambda function. |
 | `BufferingInterval` | Number | Buffer incoming data for the specified period of time, in seconds, before delivering it to S3.  |
 | `BufferingSize` | Number | Buffer incoming data to the specified size, in MiBs, before delivering it to S3.  |
 | `NumWorkers` | String | Maximum number of concurrent workers when processing log groups. |
-| `DiscoveryRate` | String | EventBridge rate expression for periodically triggering discovery. If not set, no eventbridge rules are configured. |
-| `NameOverride` | String | Name of Lambda function. |
+| `MemorySize` | String | The amount of memory, in megabytes, that your function has access to. |
+| `Timeout` | String | The amount of time that Lambda allows a function to run before stopping it. The maximum allowed value is 900 seconds. |
 | `DebugEndpoint` | String | Endpoint to send additional debug telemetry to. |
+| `Verbosity` | String | Logging verbosity for Lambda. Highest log verbosity is 9. |
 
 **Note**: If neither `LogGroupNamePatterns` nor `LogGroupNamePrefixes` are provided, the Lambda function will not operate on any log groups. It requires explicit patterns or prefixes to define its scope of operation.
 

@@ -15,11 +15,35 @@ Metadata:
     SemanticVersion: '0.0.1'
     SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
 
-Globals:
-  Function:
-    Timeout: 120
-    MemorySize: 128
-
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Destination settings
+        Parameters:
+          - BucketARN
+          - Prefix
+      - Label:
+          default: Subscription settings
+        Parameters:
+          - LogGroupNamePatterns
+          - LogGroupNamePrefixes
+          - DiscoveryRate
+          - FilterName
+          - FilterPattern
+          - NameOverride
+      - Label:
+          default: Sizing
+        Parameters:
+          - BufferingInterval
+          - BufferingSize
+          - NumWorkers
+          - MemorySize
+          - Timeout
+      - Label:
+          default: Debugging
+        Parameters:
+          - DebugEndpoint
+          - Verbosity
 Parameters:
   BucketARN:
     Type: String
@@ -46,6 +70,12 @@ Parameters:
       log groups that start with a provided string. To subscribe to all log
       groups, use the wildcard operator *.
     Default: ''
+  DiscoveryRate:
+    Type: String
+    Description: EventBridge rate expression for periodically triggering
+      discovery. If not set, no eventbridge rules are configured.
+    Default: ''
+    AllowedPattern: '^([1-9]\d* (minute|hour|day)s?)?$'
   FilterName:
     Type: String
     Description: >-
@@ -56,6 +86,12 @@ Parameters:
     Description: >-
       Subscription filter pattern.
     Default: ''
+  NameOverride:
+    Type: String
+    Description: >-
+      Name of Lambda function.
+    Default: ''
+    MaxLength: 64
   BufferingInterval:
     Type: Number
     Default: 60
@@ -77,27 +113,43 @@ Parameters:
     Description: Maximum number of concurrent workers when processing log groups.
     Default: ''
     AllowedPattern: '^[0-9]*$'
-  DiscoveryRate:
-    Type: String
-    Description: EventBridge rate expression for periodically triggering
-      discovery. If not set, no eventbridge rules are configured.
-    Default: ''
-    AllowedPattern: '^([1-9]\d* (minute|hour|day)s?)?$'
-  NameOverride:
+  MemorySize:
     Type: String
     Description: >-
-      Name of Lambda function.
+      The amount of memory, in megabytes, that your function has access to.
     Default: ''
-    MaxLength: 64
+    AllowedValues:
+      - ''
+      - '64'
+      - '128'
+      - '256'
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+      - '8128'
+    AllowedPattern: "^[0-9]*$"
+  Timeout:
+    Type: String
+    Description: >-
+      The amount of time that Lambda allows a function to run before stopping
+      it. The maximum allowed value is 900 seconds.
+    Default: ''
+    AllowedPattern: "^[0-9]*$"
   DebugEndpoint:
     Type: String
     Description: >-
       Endpoint to send additional debug telemetry to.
     Default: ''
     AllowedPattern: "^(http(s)?:\/\/.*)?$"
-
+  Verbosity:
+    Type: String
+    Default: ''
+    Description: >-
+      Logging verbosity for Lambda. Highest log verbosity is 9.
+    AllowedPattern: "^[0-9]?$"
 Conditions:
-  SetDefaultFilterName: !Equals
+  UseDefaultFilterName: !Equals
     - !Ref FilterName
     - ''
   UseStackName: !Equals
@@ -126,6 +178,15 @@ Conditions:
         - ''
   DisableOTEL: !Equals
     - !Ref DebugEndpoint
+    - ''
+  UseDefaultMemorySize: !Equals
+    - !Ref MemorySize
+    - ''
+  UseDefaultTimeout: !Equals
+    - !Ref Timeout
+    - ''
+  UseDefaultVerbosity: !Equals
+    - !Ref Verbosity
     - ''
 Resources:
   FirehoseRole:
@@ -251,7 +312,10 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt DeadLetter.Arn
         maxReceiveCount: 4
-      VisibilityTimeout: 120
+      VisibilityTimeout: !If
+        - UseDefaultTimeout
+        - "120"
+        - !Ref Timeout
   QueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Condition: EnableSubscription
@@ -350,6 +414,14 @@ Resources:
       CodeUri: ../..
       Handler: bootstrap
       Runtime: provided.al2
+      MemorySize: !If
+        - UseDefaultMemorySize
+        - "128"
+        - !Ref MemorySize
+      Timeout: !If
+        - UseDefaultTimeout
+        - "120"
+        - !Ref Timeout
       Architectures:
         - arm64
       Events:
@@ -366,7 +438,7 @@ Resources:
       Environment:
         Variables:
           FILTER_NAME: !If
-           - SetDefaultFilterName
+           - UseDefaultFilterName
            - 'observe-logs-subscription'
            - !Ref FilterName
           FILTER_PATTERN: !Ref FilterPattern
@@ -379,7 +451,10 @@ Resources:
             - !Ref LogGroupNamePatterns
           ROLE_ARN: !GetAtt DestinationRole.Arn
           QUEUE_URL: !Ref Queue
-          VERBOSITY: 9
+          VERBOSITY: !If
+            - UseDefaultVerbosity
+            - "1"
+            - !Ref Verbosity
           NUM_WORKERS: !Ref NumWorkers
           OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
           OTEL_TRACES_EXPORTER: !If [ DisableOTEL, "none", "otlp" ]

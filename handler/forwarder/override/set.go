@@ -30,7 +30,7 @@ func (s *Set) Apply(ctx context.Context, input *s3.CopyObjectInput) (modified bo
 			if id == "" {
 				id = fmt.Sprintf("%d", i)
 			}
-			s.Logger.Info("applied rule", "id", id)
+			s.Logger.V(3).Info("applied rule", "id", id)
 			if !rule.Continue {
 				return
 			}
