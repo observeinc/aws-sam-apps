@@ -33,11 +33,8 @@ Metadata:
           - ContentTypeOverrides
           - SourceKMSKeyArns
           - DebugEndpoint
-
-Globals:
-  Function:
-    Timeout: 300
-    MemorySize: 128
+          - MemorySize
+          - Timeout
 
 Parameters:
   DestinationUri:
@@ -101,6 +98,29 @@ Parameters:
       Endpoint to send additional debug telemetry to.
     Default: ''
     AllowedPattern: "^(http(s)?:\/\/.*)?$"
+  MemorySize:
+    Type: String
+    Description: >-
+      The amount of memory, in megabytes, that your function has access to.
+    Default: ''
+    AllowedValues:
+      - ''
+      - '64'
+      - '128'
+      - '256'
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+      - '8128'
+    AllowedPattern: "^[0-9]*$"
+  Timeout:
+    Type: String
+    Description: >-
+      The amount of time that Lambda allows a function to run before stopping
+      it. The maximum allowed value is 900 seconds.
+    Default: ''
+    AllowedPattern: "^[0-9]*$"
 Conditions:
   NoDataAccessPointArn: !Equals
     - !Ref DataAccessPointArn
@@ -111,8 +131,14 @@ Conditions:
   HasS3DestinationWithoutAccessPoint: !And
     - !Condition HasS3Destination
     - !Condition NoDataAccessPointArn
-  IsMaxFileSizeEmpty: !Equals
+  UseDefaultMaxFileSize: !Equals
     - !Ref MaxFileSize
+    - ''
+  UseDefaultMemorySize: !Equals
+    - !Ref MemorySize
+    - ''
+  UseDefaultTimeout: !Equals
+    - !Ref Timeout
     - ''
   DisableSourceS3: !Equals
     - !Join
@@ -344,6 +370,17 @@ Resources:
       CodeUri: ../..
       Handler: bootstrap
       Runtime: provided.al2
+      MemorySize: !If
+        - UseDefaultMemorySize
+        - !If
+          - HasS3Destination
+          - "128"
+          - "256"
+        - !Ref MemorySize
+      Timeout: !If
+        - UseDefaultTimeout
+        - "300"
+        - !Ref Timeout
       Architectures:
         - arm64
       Events:
@@ -359,7 +396,10 @@ Resources:
         Variables:
           DESTINATION_URI: !Ref DestinationUri
           VERBOSITY: 9
-          MAX_FILE_SIZE: !If [ IsMaxFileSizeEmpty, '1073741824', !Ref MaxFileSize ]
+          MAX_FILE_SIZE: !If
+            - UseDefaultMaxFileSize
+            - "1073741824"
+            - !Ref MaxFileSize
           CONTENT_TYPE_OVERRIDES: !Join
             - ","
             - !Ref ContentTypeOverrides
