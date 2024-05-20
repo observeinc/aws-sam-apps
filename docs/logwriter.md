@@ -12,6 +12,7 @@ Additionally, the stack is capable of subscribing log groups and provides a meth
 | `Prefix` | String | Optional prefix to write log records to. |
 | `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. We will only subscribe to log groups that have names matching one of the provided strings based on strings based on a case-sensitive substring search. To subscribe to all log groups, use the wildcard operator *. |
 | `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. The lambda function will only apply to log groups that start with a provided string. To subscribe to all log groups, use the wildcard operator *. |
+| `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This paramter is used to filter out log groups from subscription, and supports the use of regular expressions. |
 | `DiscoveryRate` | String | EventBridge rate expression for periodically triggering discovery. If not set, no eventbridge rules are configured. |
 | `FilterName` | String | Subscription filter name. Existing filters that have this name as a prefix will be removed. |
 | `FilterPattern` | String | Subscription filter pattern. |

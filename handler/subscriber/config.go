@@ -15,6 +15,7 @@ var (
 	ErrMissingDestinationARN       = errors.New("destination ARN must be provided if role ARN is set")
 	ErrInvalidARN                  = errors.New("invalid ARN")
 	ErrInvalidLogGroupName         = errors.New("invalid log group name substring")
+	ErrInvalidRegexp               = errors.New("invalid regular expression")
 
 	logGroupNameRe = regexp.MustCompile(`^[a-zA-Z0-9_\.\-\/]+$`)
 )
@@ -45,6 +46,10 @@ type Config struct {
 	// LogGroupNamePatterns contains a list of substrings which restricts the log
 	// groups we operate on.
 	LogGroupNamePatterns []string
+
+	// ExcludeLogGroupNamePatterns allows filtering out log groups after they
+	// have been retrieved from AWS
+	ExcludeLogGroupNamePatterns []string
 
 	// Number of concurrent workers. Defaults to number of CPUs.
 	NumWorkers int
@@ -84,18 +89,36 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// Exclusion patterns may be regular expressions. This is because
+	// `LogGroupNamePatterns` is a filter than can be pushed to AWS API,
+	// whereas exclusion can only be performed on client side.
+	for _, s := range c.ExcludeLogGroupNamePatterns {
+		if _, err := regexp.Compile(s); err != nil {
+			errs = append(errs, fmt.Errorf("%w: %q", ErrInvalidRegexp, s))
+		}
+	}
+
 	return errors.Join(errs...)
 }
 
 func (c *Config) LogGroupFilter() FilterFunc {
-	var re *regexp.Regexp
+	var includeRe, excludeRe *regexp.Regexp
 	filterFunc := func(logGroupName string) bool {
-		if re != nil {
-			return re.MatchString(logGroupName)
+		if excludeRe != nil && excludeRe.MatchString(logGroupName) {
+			return false
+		}
+		if includeRe != nil && !includeRe.MatchString(logGroupName) {
+			return false
 		}
 		return true
 	}
 
+	// build exclusion regex
+	if len(c.ExcludeLogGroupNamePatterns) != 0 {
+		excludeRe = regexp.MustCompile(strings.Join(c.ExcludeLogGroupNamePatterns, "|"))
+	}
+
+	// build inclusion regex
 	var exprs []string
 
 	for _, pattern := range c.LogGroupNamePatterns {
@@ -113,7 +136,7 @@ func (c *Config) LogGroupFilter() FilterFunc {
 	}
 
 	if len(exprs) != 0 {
-		re = regexp.MustCompile(strings.Join(exprs, "|"))
+		includeRe = regexp.MustCompile(strings.Join(exprs, "|"))
 	}
 
 	return filterFunc

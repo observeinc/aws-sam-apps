@@ -23,15 +23,16 @@ const (
 )
 
 var env struct {
-	FilterName           string   `env:"FILTER_NAME"`
-	FilterPattern        string   `env:"FILTER_PATTERN"`
-	DestinationARN       string   `env:"DESTINATION_ARN"`
-	RoleARN              *string  `env:"ROLE_ARN,noinit"` // noinit retains nil if env var unset
-	LogGroupNamePatterns []string `env:"LOG_GROUP_NAME_PATTERNS"`
-	LogGroupNamePrefixes []string `env:"LOG_GROUP_NAME_PREFIXES"`
-	QueueURL             string   `env:"QUEUE_URL,required"`
-	Verbosity            int      `env:"VERBOSITY,default=1"`
-	ServiceName          string   `env:"OTEL_SERVICE_NAME,default=subscriber"`
+	FilterName                  string   `env:"FILTER_NAME"`
+	FilterPattern               string   `env:"FILTER_PATTERN"`
+	DestinationARN              string   `env:"DESTINATION_ARN"`
+	RoleARN                     *string  `env:"ROLE_ARN,noinit"` // noinit retains nil if env var unset
+	LogGroupNamePatterns        []string `env:"LOG_GROUP_NAME_PATTERNS"`
+	LogGroupNamePrefixes        []string `env:"LOG_GROUP_NAME_PREFIXES"`
+	ExcludeLogGroupNamePatterns []string `env:"EXCLUDE_LOG_GROUP_NAME_PATTERNS"`
+	QueueURL                    string   `env:"QUEUE_URL,required"`
+	Verbosity                   int      `env:"VERBOSITY,default=1"`
+	ServiceName                 string   `env:"OTEL_SERVICE_NAME,default=subscriber"`
 
 	AWSMaxAttempts string `env:"AWS_MAX_ATTEMPTS,default=7"`
 	AWSRetryMode   string `env:"AWS_RETRY_MODE,default=adaptive"`
@@ -105,14 +106,15 @@ func realInit() error {
 	iq := subscriber.InstrumentQueue(*queue)
 
 	s, err := subscriber.New(&subscriber.Config{
-		FilterName:           env.FilterName,
-		FilterPattern:        env.FilterPattern,
-		DestinationARN:       env.DestinationARN,
-		RoleARN:              env.RoleARN,
-		LogGroupNamePrefixes: env.LogGroupNamePrefixes,
-		LogGroupNamePatterns: env.LogGroupNamePatterns,
-		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(awsCfg),
-		Queue:                &iq,
+		FilterName:                  env.FilterName,
+		FilterPattern:               env.FilterPattern,
+		DestinationARN:              env.DestinationARN,
+		RoleARN:                     env.RoleARN,
+		LogGroupNamePrefixes:        env.LogGroupNamePrefixes,
+		LogGroupNamePatterns:        env.LogGroupNamePatterns,
+		ExcludeLogGroupNamePatterns: env.ExcludeLogGroupNamePatterns,
+		CloudWatchLogsClient:        cloudwatchlogs.NewFromConfig(awsCfg),
+		Queue:                       &iq,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
