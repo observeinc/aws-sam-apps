@@ -16,7 +16,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.5
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/sethvargo/go-envconfig v1.0.1
+	github.com/sethvargo/go-envconfig v1.0.3
 	go.opentelemetry.io/contrib/detectors/aws/lambda v0.51.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.51.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.51.0
