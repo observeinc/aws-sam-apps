@@ -31,6 +31,7 @@ The Observe stack provisions the following components:
 | `ExcludeResourceTypes` | CommaDelimitedList | Exclude a subset of resource types from configuration collection. This parameter can only be set if IncludeResourceTypes is wildcarded. |
 | `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. If not empty, the lambda function will only apply to log groups that have names that match one of the provided strings based on a case-sensitive substring search. |
 | `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. If not empty, the lambda function will only apply to log groups that start with a provided string. |
+| `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This paramter is used to filter out log groups from subscription, and supports the use of regular expressions. |
 | `MetricStreamFilterUri` | String | S3 URI containing filters for metrics to be collected by CloudWatch Metrics Stream. If empty, no metrics will be collected. |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |

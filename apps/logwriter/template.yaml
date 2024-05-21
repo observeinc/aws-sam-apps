@@ -59,9 +59,10 @@ Parameters:
     Type: CommaDelimitedList
     Description: >-
       Comma separated list of patterns.
-      We will only subscribe to log groups that have names matching one of the
-      provided strings based on strings based on a case-sensitive substring
-      search. To subscribe to all log groups, use the wildcard operator *.
+      We will only subscribe to log groups that have names matching any of the
+      provided strings based on a case-sensitive substring search. See the AWS
+      `DescribeLogGroups` action for more information.
+      To subscribe to all log groups, use the wildcard operator *.
     Default: ''
   LogGroupNamePrefixes:
     Type: CommaDelimitedList
@@ -69,6 +70,12 @@ Parameters:
       Comma separated list of prefixes. The lambda function will only apply to
       log groups that start with a provided string. To subscribe to all log
       groups, use the wildcard operator *.
+    Default: ''
+  ExcludeLogGroupNamePatterns:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma separated list of patterns. This paramter is used to filter out log
+      groups from subscription, and supports the use of regular expressions.
     Default: ''
   DiscoveryRate:
     Type: String
@@ -453,6 +460,9 @@ Resources:
           LOG_GROUP_NAME_PATTERNS: !Join
             - ','
             - !Ref LogGroupNamePatterns
+          EXCLUDE_LOG_GROUP_NAME_PATTERNS: !Join
+            - ','
+            - !Ref ExcludeLogGroupNamePatterns
           ROLE_ARN: !GetAtt DestinationRole.Arn
           QUEUE_URL: !Ref Queue
           VERBOSITY: !If
