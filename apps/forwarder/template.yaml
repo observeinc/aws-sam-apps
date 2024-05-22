@@ -188,7 +188,7 @@ Resources:
         - !Ref AWS::StackName
         - !Ref NameOverride
       DelaySeconds: 0
-      MessageRetentionPeriod: 1209600
+      MessageRetentionPeriod: 345600
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt DeadLetter.Arn
         maxReceiveCount: 4
