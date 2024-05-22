@@ -211,7 +211,7 @@ Resources:
     Properties:
       LifecycleConfiguration:
         Rules:
-          - ExpirationInDays: 1
+          - ExpirationInDays: 4
             Status: Enabled
       NotificationConfiguration:
         TopicConfigurations:
