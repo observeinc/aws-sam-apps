@@ -152,6 +152,12 @@ jobs:
         VERSION: latest
         AWS_REGION: ${{ matrix.region }}
 
+    - name: sync metric filters
+      if: github.event_name == 'workflow_dispatch'
+      run: make upload-filters
+      env:
+        VERSION: ${{ needs.github-release.outputs.VERSION }}
+
     - name: delete pre-releases
       uses: dev-drprasad/delete-older-releases@v0.3.4
       with:

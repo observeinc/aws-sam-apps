@@ -185,5 +185,9 @@ parameters:
 	@echo "|-----------------|---------|-------------|"
 	@python3 -c 'import sys, yaml, json; y=yaml.safe_load(sys.stdin.read()); print(json.dumps(y))' < $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml | jq -r '.Parameters | to_entries[] | "| \(if .value.Default then "" else "**" end)`\(.key)`\(if .value.Default then "" else "**" end) | \(.value.Type) | \(.value.Description |  gsub("[\\n\\t]"; " ")) |"'
 
-.PHONY: help go-lint go-lint-all go-test sam-validate sam-validate-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
+## upload-filters: upload cloudwatch metric filters
+upload-filters:
+	$(call check_var,S3_BUCKET_PREFIX)
+	@aws s3 sync static s3://$(S3_BUCKET_PREFIX)/ --acl public-read --metadata Version=$(VERSION)
 
+.PHONY: help go-lint go-lint-all go-test sam-validate sam-validate-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
