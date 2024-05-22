@@ -107,8 +107,8 @@ jobs:
       github.actor != 'dependabot[bot]' &&
       needs.github-release.outputs.version != ''
     secrets: inherit
-    env:
-      VERSION: ${{ needs.github-release.outputs.VERSION }}
+    with:
+      version: ${{ needs.github-release.outputs.VERSION }}
      
   aws-release:
     needs: [fetch-regions, github-release, tests]

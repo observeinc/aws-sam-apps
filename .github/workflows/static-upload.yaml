@@ -1,12 +1,21 @@
 name: Upload static assets
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-  pull_request:
-
+    inputs:
+      version:
+        description: 'Version metadata tag to attach to S3 object'
+        default: ''
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version metadata tag to attach to S3 object'
+        default: ''
+        required: false
+        type: string
+ 
 env:
   S3_BUCKET_PREFIX: observeinc
 
@@ -47,3 +56,5 @@ jobs:
 
     - name: Sync
       run: make static-upload
+      env:
+        VERSION: ${{ inputs.version }}
