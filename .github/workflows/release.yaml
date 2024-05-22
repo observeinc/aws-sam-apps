@@ -97,7 +97,19 @@ jobs:
         echo "VERSION=${{ env.VERSION }}" >> "$GITHUB_OUTPUT"
       env:
         VERSION: ${{ (steps.prerelease.outputs.release-version != '') && steps.prerelease.outputs.release-version || steps.fullrelease.outputs.release-version }}
-      
+
+  static-upload:
+    needs: [permission_check, github-release, tests]
+    uses: ./.github/workflows/static-upload.yaml
+    permissions:
+      id-token: write
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      needs.github-release.outputs.version != ''
+    secrets: inherit
+    env:
+      VERSION: ${{ needs.github-release.outputs.VERSION }}
+     
   aws-release:
     needs: [fetch-regions, github-release, tests]
     runs-on: ubuntu-latest
@@ -151,12 +163,6 @@ jobs:
       env:
         VERSION: latest
         AWS_REGION: ${{ matrix.region }}
-
-    - name: sync metric filters
-      if: github.event_name == 'workflow_dispatch'
-      run: make upload-filters
-      env:
-        VERSION: ${{ needs.github-release.outputs.VERSION }}
 
     - name: delete pre-releases
       uses: dev-drprasad/delete-older-releases@v0.3.4
