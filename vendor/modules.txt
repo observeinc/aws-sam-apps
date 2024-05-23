@@ -193,6 +193,9 @@ github.com/hashicorp/go-retryablehttp
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
+# github.com/lithammer/dedent v1.1.0
+## explicit
+github.com/lithammer/dedent
 # github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure

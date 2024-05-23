@@ -71,6 +71,15 @@ func TestCopy(t *testing.T) {
 				Key:        aws.String("prefix/hello/test.json"),
 			},
 		},
+		{
+			SourceURI:      "s3://my-bucket/hello/test.json",
+			DestinationURI: "https://localhost/prefix/",
+			Expected: &s3.CopyObjectInput{
+				Bucket:     aws.String("localhost"),
+				CopySource: aws.String("my-bucket/hello/test.json"),
+				Key:        aws.String("hello/test.json"),
+			},
+		},
 	}
 
 	for i, tc := range testcases {
@@ -333,6 +342,18 @@ func TestRecorder(t *testing.T) {
 			Expect: &s3.PutObjectInput{
 				Bucket:      aws.String("my-bucket"),
 				Key:         aws.String("path/to/AWSLogs/123456789012/sqs/us-east-1/2009/11/10/23/c8ee04d5-5925-541a-b113-5942a0fc5985"),
+				ContentType: aws.String("application/x-aws-sqs"),
+			},
+		},
+		{
+			DestinationURI: "https://localhost/path/to",
+			Now: func() time.Time {
+				t, _ := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
+				return t
+			},
+			Expect: &s3.PutObjectInput{
+				Bucket:      aws.String("localhost"),
+				Key:         aws.String("AWSLogs/123456789012/sqs/us-east-1/2009/11/10/23/c8ee04d5-5925-541a-b113-5942a0fc5985"),
 				ContentType: aws.String("application/x-aws-sqs"),
 			},
 		},
