@@ -40,7 +40,6 @@ func (h *Handler) Handle(ctx context.Context, body io.Reader) error {
 	if h.GzipLevel != 0 {
 		req.Header.Set("Content-Encoding", "gzip")
 	}
-
 	for k, v := range h.Headers {
 		req.Header.Set(k, v)
 	}

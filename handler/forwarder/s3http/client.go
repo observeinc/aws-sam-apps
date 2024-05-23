@@ -2,7 +2,6 @@ package s3http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -15,7 +14,13 @@ import (
 	"github.com/observeinc/aws-sam-apps/handler/forwarder/s3http/internal/request"
 )
 
-var ErrGetRequest = errors.New("failed to construct get request")
+var (
+	errInvalidCopySource = fmt.Errorf("invalid copy source")
+	errNoObjectInput     = fmt.Errorf("no object input")
+	errMissingBucket     = fmt.Errorf("missing bucket")
+	errMissingKey        = fmt.Errorf("missing key")
+	errMissingBody       = fmt.Errorf("missing body")
+)
 
 type GetObjectAPIClient interface {
 	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
@@ -27,10 +32,10 @@ type Client struct {
 	RequestBuilder *request.Builder
 }
 
-func toGetInput(copyInput *s3.CopyObjectInput) *s3.GetObjectInput {
+func toGetInput(copyInput *s3.CopyObjectInput) (*s3.GetObjectInput, error) {
 	parts := strings.SplitN(aws.ToString(copyInput.CopySource), "/", 2)
 	if len(parts) != 2 {
-		return nil
+		return nil, fmt.Errorf("%w: %q", errInvalidCopySource, aws.ToString(copyInput.CopySource))
 	}
 
 	return &s3.GetObjectInput{
@@ -45,7 +50,7 @@ func toGetInput(copyInput *s3.CopyObjectInput) *s3.GetObjectInput {
 		SSECustomerAlgorithm: copyInput.CopySourceSSECustomerAlgorithm,
 		SSECustomerKey:       copyInput.CopySourceSSECustomerKey,
 		SSECustomerKeyMD5:    copyInput.CopySourceSSECustomerKeyMD5,
-	}
+	}, nil
 }
 
 func toPutInput(copyInput *s3.CopyObjectInput, getOutput *s3.GetObjectOutput) *s3.PutObjectInput {
@@ -100,9 +105,9 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.V(6).Info("processing CopyObject", "copyObjectInput", params)
 
-	getInput := toGetInput(params)
-	if getInput == nil {
-		return nil, ErrGetRequest
+	getInput, err := toGetInput(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy object: %w", err)
 	}
 
 	getResp, err := c.GetObjectAPIClient.GetObject(ctx, getInput, opts...)
@@ -127,6 +132,17 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 func (c *Client) PutObject(ctx context.Context, params *s3.PutObjectInput, _ ...func(*s3.Options)) (out *s3.PutObjectOutput, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.V(6).Info("processing PutObject", "putObjectInput", params)
+
+	switch {
+	case params == nil:
+		return nil, errNoObjectInput
+	case aws.ToString(params.Bucket) == "":
+		return nil, errMissingBucket
+	case aws.ToString(params.Key) == "":
+		return nil, errMissingKey
+	case params.Body == nil:
+		return nil, errMissingBody
+	}
 
 	dec, err := decoders.Get(aws.ToString(params.ContentEncoding), aws.ToString(params.ContentType), params.Body)
 	if err != nil {

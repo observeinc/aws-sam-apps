@@ -55,9 +55,15 @@ func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 	var (
 		bucket     = destination.Host
 		copySource = fmt.Sprintf("%s%s", source.Host, source.Path)
-		// empty string as base strips the leading slash
-		key = strings.TrimLeft(fmt.Sprintf("%s%s", strings.Trim(destination.Path, "/"), source.Path), "/")
+		key        = source.Path
 	)
+
+	if destination.Scheme == "s3" {
+		// empty string as base strips the leading slash
+		key = fmt.Sprintf("%s%s", strings.Trim(destination.Path, "/"), source.Path)
+	}
+
+	key = strings.TrimLeft(key, "/")
 
 	return &s3.CopyObjectInput{
 		Bucket:     &bucket,
@@ -90,7 +96,6 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 
 	now := h.Now()
 	key := strings.Join([]string{
-		strings.Trim(h.DestinationURI.Path, "/"),
 		"AWSLogs",
 		functionArn.AccountID,
 		"sqs",
@@ -98,6 +103,10 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 		now.Format("2006/01/02/15"), // use yyyy/mm/dd/hh format
 		lctx.AwsRequestID,
 	}, "/")
+
+	if h.DestinationURI.Scheme == "s3" {
+		key = strings.Trim(h.DestinationURI.Path, "/") + "/" + key
+	}
 
 	_, err = h.S3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(h.DestinationURI.Host),
