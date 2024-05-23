@@ -46,3 +46,9 @@
     source: 'aws-programmatic-access-test-object$'
   override:
     content-type: 'text/x-ignore'
+
+- id: elasticLoadBalancing
+  match:
+    source: '\d{12}_elasticloadbalancing_[a-z\d-]+_[a-zA-Z0-9-]+_\d{8}T\d{4}Z_[0-9.]+_[a-zA-Z0-9]+\.log\.gz$'
+  override:
+    content-type: 'application/x-aws-elasticloadbalancing'

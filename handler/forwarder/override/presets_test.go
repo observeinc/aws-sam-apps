@@ -83,6 +83,16 @@ func TestPresets(t *testing.T) {
 						Key: nil,
 					},
 				},
+				{
+					Input: &s3.CopyObjectInput{
+						CopySource: aws.String("test-bucket/AWSLogs/123456789012/elasticloadbalancing/us-west-2/2024/05/23/123456789012_elasticloadbalancing_us-west-2_ac5f85808922711e98f8e02481e016be_20240523T0015Z_127.69.70.85_5cpyxp74.log.gz"),
+					},
+					Expect: &s3.CopyObjectInput{
+						CopySource:        aws.String("test-bucket/AWSLogs/123456789012/elasticloadbalancing/us-west-2/2024/05/23/123456789012_elasticloadbalancing_us-west-2_ac5f85808922711e98f8e02481e016be_20240523T0015Z_127.69.70.85_5cpyxp74.log.gz"),
+						ContentType:       aws.String("application/x-aws-elasticloadbalancing"),
+						MetadataDirective: types.MetadataDirectiveReplace,
+					},
+				},
 			},
 		},
 		{

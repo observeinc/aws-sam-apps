@@ -38,7 +38,8 @@ func CSVDecoderFactory(r io.Reader, params map[string]string) Decoder {
 	return csvDecoder
 }
 
-func VPCFlowLogDecoderFactory(r io.Reader, params map[string]string) Decoder {
+// SSVDecoderFactory handles space separated values.
+func SSVDecoderFactory(r io.Reader, params map[string]string) Decoder {
 	if _, ok := params["delimiter"]; !ok {
 		params["delimiter"] = "space"
 	}
