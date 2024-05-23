@@ -13,19 +13,20 @@ var (
 )
 
 var decoders = map[string]DecoderFactory{
-	"":                                    JSONDecoderFactory,
-	"application/json":                    JSONDecoderFactory,
-	"application/x-csv":                   CSVDecoderFactory,
-	"application/x-ndjson":                JSONDecoderFactory,
-	"text/plain":                          TextDecoderFactory,
-	"text/csv":                            CSVDecoderFactory,
-	"application/x-aws-cloudwatchlogs":    CloudWatchLogsDecoderFactory,
-	"application/x-aws-cloudwatchmetrics": JSONDecoderFactory,
-	"application/x-aws-config":            FilteredNestedJSONDecoderFactory(ConfigurationItem{}),
-	"application/x-aws-change":            FilteredJSONDecoderFactory(ConfigurationDiff{}),
-	"application/x-aws-cloudtrail":        NestedJSONDecoderFactory,
-	"application/x-aws-sqs":               JSONDecoderFactory,
-	"application/x-aws-vpcflowlogs":       VPCFlowLogDecoderFactory,
+	"":                                       JSONDecoderFactory,
+	"application/json":                       JSONDecoderFactory,
+	"application/x-csv":                      CSVDecoderFactory,
+	"application/x-ndjson":                   JSONDecoderFactory,
+	"text/plain":                             TextDecoderFactory,
+	"text/csv":                               CSVDecoderFactory,
+	"application/x-aws-cloudwatchlogs":       CloudWatchLogsDecoderFactory,
+	"application/x-aws-cloudwatchmetrics":    JSONDecoderFactory,
+	"application/x-aws-config":               FilteredNestedJSONDecoderFactory(ConfigurationItem{}),
+	"application/x-aws-change":               FilteredJSONDecoderFactory(ConfigurationDiff{}),
+	"application/x-aws-cloudtrail":           NestedJSONDecoderFactory,
+	"application/x-aws-sqs":                  JSONDecoderFactory,
+	"application/x-aws-vpcflowlogs":          SSVDecoderFactory,
+	"application/x-aws-elasticloadbalancing": SSVDecoderFactory,
 }
 
 type Decoder interface {
