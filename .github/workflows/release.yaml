@@ -144,10 +144,18 @@ jobs:
     - name: AWS Info
       run: aws sts get-caller-identity
 
+    - name: Set release tag (beta)
+      if: github.event_name == 'push'
+      run: echo "TAG=beta" >> $GITHUB_ENV
+
+    - name: Set release tag (latest)
+      if: github.event_name == 'workflow_dispatch'
+      run: echo "TAG=latest" >> $GITHUB_ENV
+
     - name: aws sam release
       run: make release-all
       env:
-        TAG: fromJSON('{"workflow_dispatch": "latest", "push": "beta"}')[github.event_name]
+        # TAG is set implicitly
         VERSION: ${{ needs.github-release.outputs.VERSION }}
         AWS_REGION: ${{ matrix.region }}
 
