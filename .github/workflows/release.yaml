@@ -144,24 +144,11 @@ jobs:
     - name: AWS Info
       run: aws sts get-caller-identity
 
-    - name: aws sam release (versioned)
+    - name: aws sam release
       run: make release-all
       env:
+        TAG: fromJSON('{"workflow_dispatch": "latest", "push": "beta"}')[github.event_name]
         VERSION: ${{ needs.github-release.outputs.VERSION }}
-        AWS_REGION: ${{ matrix.region }}
-
-    - name: aws sam release (beta)
-      if: github.event_name == 'push'
-      run: make release-all
-      env:
-        VERSION: beta
-        AWS_REGION: ${{ matrix.region }}
-
-    - name: aws sam release (stable)
-      if: github.event_name == 'workflow_dispatch'
-      run: make release-all
-      env:
-        VERSION: latest
         AWS_REGION: ${{ matrix.region }}
 
     - name: delete pre-releases

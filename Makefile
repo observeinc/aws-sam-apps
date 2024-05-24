@@ -139,18 +139,14 @@ ifeq ($(S3_BUCKET_PREFIX),)
 	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release.)
 endif
 	$(MAKE) sam-package
-	@echo "Copying packaged.yaml to S3"
-	aws s3 cp $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
-	@echo "Fetching objects with prefix: apps/$(APP)/$(VERSION)/ and filtering by last modified date"
-	# calculate a week ago in platform agnostic manner
-	@current_date_seconds=`date -u +"%s"`; \
-	one_week_ago_seconds=$$((current_date_seconds - 7 * 24 * 3600)); \
-	week_ago=`date -u -r "$$one_week_ago_seconds" +"%Y-%m-%d%H:%M:%SZ"`; \
-	objects=`aws s3api list-objects --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --prefix apps/$(APP)/$(VERSION)/ --query "Contents[?LastModified>='$$week_ago'].[Key]" --output text`; \
-	for object in $$objects; do \
-		echo "Setting ACL for object: $$object"; \
-		aws s3api put-object-acl --bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) --key $$object --acl public-read; \
-	done
+	@echo "Resetting assets to be public readable"
+	aws s3 cp --acl public-read	--recursive s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/ s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
+	@echo "Copying stack definition"
+	aws s3 cp --acl public-read $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
+ifeq ($(TAG),)
+else
+	aws s3 cp --acl public-read $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(TAG)/
+endif
 
 ## sam-package-all-regions: Packages and uploads all SAM applications to S3 across multiple regions
 sam-package-all-regions:
