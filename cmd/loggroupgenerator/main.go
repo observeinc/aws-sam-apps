@@ -177,7 +177,7 @@ func main() {
 		}
 	}()
 
-	ctx, span := tracer.Start(context.Background(), "invocation")
+	ctx, span := tracer.Start(context.Background(), "invocation", trace.WithSpanKind(trace.SpanKindServer))
 	defer span.End()
 
 	if err := realMain(ctx); err != nil {

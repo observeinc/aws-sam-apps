@@ -83,7 +83,7 @@ func realInit() (err error) {
 		trace.WithInstrumentationVersion(version.Version),
 	)
 
-	ctx, span := tracer.Start(ctx, "realInit")
+	ctx, span := tracer.Start(ctx, "realInit", trace.WithSpanKind(trace.SpanKindServer))
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
