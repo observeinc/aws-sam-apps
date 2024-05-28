@@ -50,10 +50,14 @@ func NewTracerProvider(ctx context.Context) (*trace.TracerProvider, error) {
 		return nil, fmt.Errorf("failed to handle OTLP endpoint auth: %w", err)
 	}
 
-	res, err := resource.New(ctx,
-		resource.WithDetectors(lambda.NewResourceDetector()),
+	options := []resource.Option{
 		resource.WithFromEnv(),
-	)
+	}
+	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
+		options = append(options, resource.WithDetectors(lambda.NewResourceDetector()))
+	}
+
+	res, err := resource.New(ctx, options...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
