@@ -9,6 +9,9 @@ updates:
       github.com/aws/aws-sdk-go-v2:
         patterns:
           - "github.com/aws/aws-sdk-go-v2*"
+      go.opentelemetry.io:
+        patterns:
+          - "go.opentelemetry.io*"
   - package-ecosystem: "terraform"
     directory: "/infrastructure/"
     schedule:
