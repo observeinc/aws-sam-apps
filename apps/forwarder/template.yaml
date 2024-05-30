@@ -260,9 +260,12 @@ Resources:
     Type: 'AWS::IAM::Role'
     Properties:
       RoleName: !If
-        - UseStackName
-        - !Ref AWS::StackName
-        - !Ref NameOverride
+        - NoDataAccessPointArn
+        - !Ref AWS::NoValue
+        - !If
+          - UseStackName
+          - !Ref AWS::StackName
+          - !Ref NameOverride
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
