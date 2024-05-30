@@ -15,9 +15,10 @@ type LambdaHandler struct {
 }
 
 func (h *LambdaHandler) Invoke(ctx context.Context, payload []byte) (response []byte, err error) {
-	cctx, span := h.Tracer.Start(ctx, "Invoke", trace.WithAttributes(
-		attribute.String("payload", string(payload)),
-	))
+	cctx, span := h.Tracer.Start(ctx, "Invoke",
+		trace.WithAttributes(attribute.String("payload", string(payload))),
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
