@@ -2,7 +2,6 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .ONESHELL:
 
-REGIONS := us-west-1 us-east-1
 VERSION ?= unreleased
 # leave this undefined for the purposes of development
 S3_BUCKET_PREFIX ?= 
@@ -20,7 +19,7 @@ endef
 
 SUBDIR = $(shell ls apps)
 
-.PHONY: help go-lint go-lint-all go-test integration-test debug sam-validate sam-validate-all sam-build-all sam-build sam-publish sam-package-all sam-package release-all release sam-package-all-regions sam-publish-all build-App build-Forwarder build-Subscriber clean-aws-sam
+.PHONY: help go-lint go-lint-all go-test integration-test debug sam-validate sam-validate-all sam-build-all sam-build sam-publish sam-package-all sam-package release-all release sam-publish-all build-App build-Forwarder build-Subscriber clean-aws-sam
 
 clean-aws-sam:
 	rm -rf $(SAM_BUILD_DIR)
@@ -147,14 +146,6 @@ ifeq ($(TAG),)
 else
 	aws s3 cp --acl public-read $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(TAG)/
 endif
-
-## sam-package-all-regions: Packages and uploads all SAM applications to S3 across multiple regions
-sam-package-all-regions:
-	@ for app in $(SUBDIR); do \
-		for region in $(REGIONS); do \
-			APP=$$app AWS_REGION=$$region $(MAKE) sam-package || exit 1; \
-		done \
-	done
 
 ## sam-publish-all: Publishes all serverless applications
 sam-publish-all:
