@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/observeinc/aws-sam-apps/version"
 
@@ -17,7 +18,10 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-var serviceVersionKey = attribute.Key("service.version")
+var (
+	serviceVersionKey              = attribute.Key("service.version")
+	allowedResourceAttributeParams = []string{"deployment.environment"}
+)
 
 func SetLogger(logger logr.Logger) {
 	otel.SetLogger(logger)
@@ -25,18 +29,21 @@ func SetLogger(logger logr.Logger) {
 
 // The OTEL SDK does not handle basic auth in OTEL_EXPORTER_OTLP_ENDPOINT
 // Extract username and password and set as OTLP Headers.
-func handleOTLPEndpointAuth() error {
-	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+func UpdateOTELEnvVars(getenv func(string) string, setenv func(string, string) error) error {
+	endpoint := getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if endpoint == "" {
 		return nil
 	}
 
-	if u, err := url.Parse(endpoint); err != nil {
+	u, err := url.ParseRequestURI(endpoint)
+	if err != nil {
 		return fmt.Errorf("failed to parse OTEL_EXPORTER_OTLP_ENDPOINT: %w", err)
-	} else if userinfo := u.User; userinfo != nil {
+	}
+
+	if userinfo := u.User; userinfo != nil {
 		authHeader := "Bearer " + userinfo.String()
 
-		headers := os.Getenv("OTEL_EXPORTER_OTLP_HEADERS")
+		headers := getenv("OTEL_EXPORTER_OTLP_HEADERS")
 		if headers != "" {
 			headers += ","
 		}
@@ -44,15 +51,43 @@ func handleOTLPEndpointAuth() error {
 
 		// remove auth from URL
 		u.User = nil
-		os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", u.String())
-		os.Setenv("OTEL_EXPORTER_OTLP_HEADERS", headers)
+		if err := setenv("OTEL_EXPORTER_OTLP_HEADERS", headers); err != nil {
+			return fmt.Errorf("failed to set OTLP headers: %w", err)
+		}
 	}
+
+	var resourceAttributes []string
+
+	params := u.Query()
+	for _, k := range allowedResourceAttributeParams {
+		if v := params.Get(k); v != "" {
+			resourceAttributes = append(resourceAttributes, fmt.Sprintf("%s=%s", k, v))
+			params.Del(k)
+		}
+	}
+
+	if len(resourceAttributes) > 0 {
+		if existing := getenv("OTEL_RESOURCE_ATTRIBUTES"); existing != "" {
+			resourceAttributes = append(resourceAttributes, getenv("OTEL_RESOURCE_ATTRIBUTES"))
+		}
+		u.RawQuery = params.Encode()
+		if err := setenv("OTEL_RESOURCE_ATTRIBUTES", strings.Join(resourceAttributes, ",")); err != nil {
+			return fmt.Errorf("failed to set OTLP resource attributes: %w", err)
+		}
+	}
+
+	if getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != u.String() {
+		if err := setenv("OTEL_EXPORTER_OTLP_ENDPOINT", u.String()); err != nil {
+			return fmt.Errorf("failed to set OTLP endpoint: %w", err)
+		}
+	}
+
 	return nil
 }
 
 func NewTracerProvider(ctx context.Context) (*trace.TracerProvider, error) {
-	if err := handleOTLPEndpointAuth(); err != nil {
-		return nil, fmt.Errorf("failed to handle OTLP endpoint auth: %w", err)
+	if err := UpdateOTELEnvVars(os.Getenv, os.Setenv); err != nil {
+		return nil, fmt.Errorf("failed to update OTEL environment variables: %w", err)
 	}
 
 	options := []resource.Option{
