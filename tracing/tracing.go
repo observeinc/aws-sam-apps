@@ -6,13 +6,18 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/observeinc/aws-sam-apps/version"
+
 	"github.com/go-logr/logr"
 	"go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
+
+var serviceVersionKey = attribute.Key("service.version")
 
 func SetLogger(logger logr.Logger) {
 	otel.SetLogger(logger)
@@ -51,6 +56,7 @@ func NewTracerProvider(ctx context.Context) (*trace.TracerProvider, error) {
 	}
 
 	options := []resource.Option{
+		resource.WithAttributes(serviceVersionKey.String(version.Version)),
 		resource.WithFromEnv(),
 	}
 	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
