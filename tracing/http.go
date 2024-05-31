@@ -7,7 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-retryablehttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // leveledLogger provides an adapter between logr.Logger and retryablehttp.LeveledLogger.
@@ -38,7 +38,7 @@ type HTTPClientConfig struct {
 	HTTPClient     *http.Client
 	UserAgent      *string
 	Logger         *logr.Logger
-	TracerProvider *trace.TracerProvider
+	TracerProvider trace.TracerProvider
 }
 
 func NewHTTPClient(cfg *HTTPClientConfig) *http.Client {
@@ -79,7 +79,12 @@ func NewHTTPClient(cfg *HTTPClientConfig) *http.Client {
 		}
 	}
 	return &http.Client{
-		Transport: otelhttp.NewTransport(transport, otelhttp.WithTracerProvider(cfg.TracerProvider)),
+		Transport: otelhttp.NewTransport(transport,
+			otelhttp.WithTracerProvider(cfg.TracerProvider),
+			otelhttp.WithSpanOptions(
+				trace.WithSpanKind(trace.SpanKindClient),
+			),
+		),
 	}
 }
 
