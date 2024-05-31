@@ -229,6 +229,9 @@ go.opentelemetry.io/contrib/detectors/aws/lambda
 # go.opentelemetry.io/contrib/exporters/autoexport v0.52.0
 ## explicit; go 1.21
 go.opentelemetry.io/contrib/exporters/autoexport
+# go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda v0.52.0
+## explicit; go 1.21
+go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda
 # go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.52.0
 ## explicit; go 1.21
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws

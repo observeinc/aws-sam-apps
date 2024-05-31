@@ -4,28 +4,27 @@ import (
 	"context"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
+var payloadKey = attribute.Key("payload")
+
+func NewLambdaHandler(handler lambda.Handler, tp trace.TracerProvider) lambda.Handler {
+	return otellambda.WrapHandler(
+		&LambdaHandler{handler},
+		otellambda.WithTracerProvider(tp),
+	)
+}
+
 type LambdaHandler struct {
-	Tracer trace.Tracer
 	lambda.Handler
 }
 
-func (h *LambdaHandler) Invoke(ctx context.Context, payload []byte) (response []byte, err error) {
-	cctx, span := h.Tracer.Start(ctx, "Invoke",
-		trace.WithAttributes(attribute.String("payload", string(payload))),
-		trace.WithSpanKind(trace.SpanKindServer),
-	)
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
-	}()
-	response, err = h.Handler.Invoke(cctx, payload)
-	return
+func (h *LambdaHandler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(payloadKey.String(string(payload)))
+	// nolint: wrapcheck
+	return h.Handler.Invoke(ctx, payload)
 }
