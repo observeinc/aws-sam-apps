@@ -161,10 +161,7 @@ func realInit() (err error) {
 		return fmt.Errorf("failed to register functions: %w", err)
 	}
 
-	entrypoint = &tracing.LambdaHandler{
-		Handler: mux,
-		Tracer:  tracer,
-	}
+	entrypoint = tracing.NewLambdaHandler(mux, tracerProvider)
 	return nil
 }
 

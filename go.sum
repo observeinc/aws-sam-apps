@@ -123,6 +123,8 @@ go.opentelemetry.io/contrib/detectors/aws/lambda v0.52.0 h1:aZAZUtzXd7dklbWDqf0s
 go.opentelemetry.io/contrib/detectors/aws/lambda v0.52.0/go.mod h1:0oIsMo4DjOJNB/mn/bssl3ba7TEZhSgqe26vRMoxHv4=
 go.opentelemetry.io/contrib/exporters/autoexport v0.52.0 h1:G/AGl5O78ZKHs63Rl65P1HyZfDnTyxjv8r7dbdZ9fB0=
 go.opentelemetry.io/contrib/exporters/autoexport v0.52.0/go.mod h1:WoVWPZjJ7EB5Z9aROW1DZuRIoFEemxmhCdZJlcjY2AE=
+go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda v0.52.0 h1:djhGC0347ZyXb4HB7qqVoNRlyEmRshXl2lzD2cU4fSI=
+go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda v0.52.0/go.mod h1:+PgU2bOkTOL1XcmdCe/8EA5H5XY/RRq2QqQRyjP5RZ0=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.52.0 h1:kAytSRJYoIy4eJtDOfSGf9LOCD4QdXFN37YJs0+bYrw=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.52.0/go.mod h1:l6VnFEqDdeMSMfwULTDDY9ewlnlVLhmvBainVT+h/Zs=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0 h1:9l89oX4ba9kHbBol3Xin3leYJ+252h0zszDtBwyKe2A=
