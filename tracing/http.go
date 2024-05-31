@@ -1,13 +1,17 @@
 package tracing
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-retryablehttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/observeinc/aws-sam-apps/version"
 )
 
 // leveledLogger provides an adapter between logr.Logger and retryablehttp.LeveledLogger.
@@ -36,7 +40,6 @@ type HTTPClientConfig struct {
 	RetryWaitMax   *time.Duration // Maximumum time to wait on retry
 	RetryMax       *int           // Maximum number of retries
 	HTTPClient     *http.Client
-	UserAgent      *string
 	Logger         *logr.Logger
 	TracerProvider trace.TracerProvider
 }
@@ -72,10 +75,10 @@ func NewHTTPClient(cfg *HTTPClientConfig) *http.Client {
 	client.Logger = &leveledLogger{logger}
 
 	var transport http.RoundTripper = &retryablehttp.RoundTripper{Client: client}
-	if cfg.UserAgent != nil {
+	if serviceName := os.Getenv("OTEL_SERVICE_NAME"); serviceName != "" {
 		transport = &addUserAgent{
 			RoundTripper: transport,
-			UserAgent:    *cfg.UserAgent,
+			UserAgent:    fmt.Sprintf("%s/%s", serviceName, version.Version),
 		}
 	}
 	return &http.Client{
