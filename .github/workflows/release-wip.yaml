@@ -27,8 +27,14 @@ jobs:
             echo "can-write=true" >> $GITHUB_OUTPUT
         fi
 
+  tests:
+    needs: permission_check
+    uses: ./.github/workflows/tests-integration.yaml
+    if: needs.permission_check.outputs.can-write == 'true'
+    secrets: inherit
+
   discover:
-    needs: [permission_check]
+    needs: permission_check
     if: needs.permission_check.outputs.can-write == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -65,10 +71,11 @@ jobs:
       run: echo "matrix=${regions_json}" >> "$GITHUB_OUTPUT"
 
   github-release:
-    needs: [permission_check]
+    needs: [permission_check, tests]
     runs-on: ubuntu-latest
     if: >
-      (needs.permission_check.outputs.can-write == 'true' && github.event_name == 'push') 
+      (needs.permission_check.outputs.can-write == 'true' && github.event_name == 'push') || 
+      (github.event_name == 'workflow_dispatch' && needs.tests.result == 'success')
     outputs:
       version: ${{ steps.release-version.outputs.VERSION }}
     steps:
@@ -172,4 +179,33 @@ jobs:
       env:
         # TAG is set implicitly
         APP: ${{ matrix.app }}
+        VERSION: ${{ needs.github-release.outputs.VERSION }}
         AWS_REGION: ${{ matrix.region }}
+
+  static-upload:
+    needs: [permission_check, github-release, tests]
+    uses: ./.github/workflows/static-upload.yaml
+    permissions:
+      id-token: write
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      needs.github-release.outputs.version != ''
+    secrets: inherit
+    with:
+      version: ${{ needs.github-release.outputs.VERSION }}
+
+  cleanup:
+    needs: [release]
+    if: needs.permission_check.outputs.can-write == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+    - name: delete pre-releases
+      uses: dev-drprasad/delete-older-releases@v0.3.4
+      with:
+        keep_latest: 0
+        delete_tags: true
+        delete_prerelease_only: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
