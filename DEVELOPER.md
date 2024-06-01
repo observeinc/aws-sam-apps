@@ -34,8 +34,6 @@ Refer to `make help` for an authoritative list of Make targets
 - Sync: Sync your code changes to AWS rapidly (`make sam-sync APP=$APP`)
 - Validate: Check your SAM template for errors (`make sam-validate APP=$APP`)
 - Publish: Share your application via AWS Serverless Application Repository (`make sam-publish APP=$APP`)
-- Multi-application Commands: Build, package, or publish all applications (`make sam-build-all, make sam-package-all, make sam-publish-all`)
-- Multi-region Commands: Manage multi-region deployments (`make sam-package-all-regions`)
 
 ## Development Workflow
 

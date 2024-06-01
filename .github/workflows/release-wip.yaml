@@ -1,0 +1,161 @@
+name: Release WIP
+
+on:
+  push:
+    branches:
+      - joao/ci-overhaul
+  workflow_dispatch:
+
+env:
+  S3_BUCKET_PREFIX: observeinc
+
+jobs:
+  permission_check:
+    runs-on: ubuntu-latest
+    outputs:
+      can-write: ${{ steps.check.outputs.can-write }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    steps:
+    - id: check
+      run: |
+        # If the AWS_ACCESS_KEY_ID secret is MIA we can't run tests
+        if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
+            echo "can-write=false" >> $GITHUB_OUTPUT
+        else
+            echo "can-write=true" >> $GITHUB_OUTPUT
+        fi
+
+  discover:
+    needs: [permission_check]
+    if: needs.permission_check.outputs.can-write == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      apps: ${{ steps.apps.outputs.matrix }}
+      regions: ${{ steps.regions.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Find apps
+      id: apps
+      run: |
+        echo "matrix=$(ls apps/ | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+    - name: Setup AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4.0.2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: us-west-2
+
+    - name: AWS Info
+      run: aws sts get-caller-identity
+
+    - name: Fetch available AWS regions
+      id: fetch-regions
+      run: |
+        regions=$(aws ec2 describe-regions --query "Regions[].RegionName" --output text | tr '\t' '\n' | jq -R -s -c 'split("\n")[:-1]')
+        echo "Regions: $regions"
+        echo "regions_json=$regions" >> "$GITHUB_ENV"
+    
+    - name: Set Matrix for aws-release job
+      id: regions 
+      run: echo "matrix=${regions_json}" >> "$GITHUB_OUTPUT"
+
+  github-release:
+    needs: [permission_check]
+    runs-on: ubuntu-latest
+    if: >
+      (needs.permission_check.outputs.can-write == 'true' && github.event_name == 'push') 
+    outputs:
+      version: ${{ steps.release-version.outputs.VERSION }}
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: github release (beta)
+      if: github.event_name == 'push'
+      id: prerelease
+      uses: ahmadnassri/action-semantic-release@v2
+      with:
+        config: ${{ github.workspace }}/.releaserc.json
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: github release (stable)
+      if: github.event_name == 'workflow_dispatch'
+      id: fullrelease
+      uses: ahmadnassri/action-semantic-release@v2
+      with:
+        config: ${{ github.workspace }}/.releaserc-release.json
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set version for aws-release job
+      id: release-version
+      run: |
+        echo "VERSION=${{ env.VERSION }}" >> "$GITHUB_OUTPUT"
+      env:
+        VERSION: ${{ (steps.prerelease.outputs.release-version != '') && steps.prerelease.outputs.release-version || steps.fullrelease.outputs.release-version }}
+
+  build:
+    needs: [discover, github-release]
+    runs-on: ubuntu-latest
+    if: |
+      github.actor != 'dependabot[bot]' && needs.github-release.outputs.version != ''
+    strategy:
+      matrix:
+        app: ${{fromJson(needs.discover.outputs.apps)}}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Build SAM app
+      run: make sam-build
+      env:
+        APP: ${{ matrix.app }}
+        VERSION: ${{ needs.github-release.outputs.VERSION }}
+
+    - name: Archive build directory
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.app }}
+        path: |
+          ${{ github.workspace }}/.aws-sam/build/${{ matrix.app }}
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [discover, build]
+    strategy:
+      matrix:
+        region: ${{fromJson(needs.discover.outputs.regions)}}
+        app: ${{fromJson(needs.discover.outputs.apps)}}
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: Download build directory
+      uses: actions/download-artifact@v4
+      with:
+        path: .aws-sam/build/
+
+    - name: Set release tag (beta)
+      if: github.event_name == 'push'
+      run: echo "TAG=beta" >> $GITHUB_ENV
+
+    - name: Set release tag (latest)
+      if: github.event_name == 'workflow_dispatch'
+      run: echo "TAG=latest" >> $GITHUB_ENV
+
+    - name: Release SAM app
+      run: make release
+      env:
+        # TAG is set implicitly
+        APP: ${{ matrix.app }}
+        AWS_REGION: ${{ matrix.region }}

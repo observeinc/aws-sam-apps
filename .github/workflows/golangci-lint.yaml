@@ -1,4 +1,4 @@
-name: golangci-lint
+name: Run Go linter
 on:
   push:
     branches:
@@ -11,5 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: golangci-lint
-        run: |
-          make go-lint-all
+        run: make go-lint

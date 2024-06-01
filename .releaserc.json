@@ -7,7 +7,7 @@
         "type": "maintenance"
     },
     {
-        "name": "main", 
+        "name": "joao/ci-overhaul", 
         "channel": "beta",
         "prerelease": "beta"
     }

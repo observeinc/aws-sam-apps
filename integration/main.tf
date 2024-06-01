@@ -2,7 +2,7 @@ data "aws_region" "current" {}
 
 resource "aws_cloudformation_stack" "this" {
   name          = var.setup.stack_name
-  template_body = file("../.aws-sam/build/${var.app}/${data.aws_region.current.name}/packaged.yaml")
+  template_body = file("../.aws-sam/build/${var.app}/${data.aws_region.current.name}.yaml")
   parameters    = var.parameters
   capabilities  = var.capabilities
   iam_role_arn  = var.install_policy_json == null ? null : aws_iam_role.this[0].arn
