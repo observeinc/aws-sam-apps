@@ -8,6 +8,7 @@ on:
 
 env:
   S3_BUCKET_PREFIX: observeinc
+  SAM_CLI_TELEMETRY: 0
 
 jobs:
   permission_check:
@@ -133,6 +134,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [discover, build]
     strategy:
+      max-parallel: 8
       matrix:
         region: ${{fromJson(needs.discover.outputs.regions)}}
         app: ${{fromJson(needs.discover.outputs.apps)}}
@@ -144,6 +146,15 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: .aws-sam/build/
+
+    - name: Setup AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4.0.2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: us-west-2
+
+    - name: AWS Info
+      run: aws sts get-caller-identity
 
     - name: Set release tag (beta)
       if: github.event_name == 'push'
