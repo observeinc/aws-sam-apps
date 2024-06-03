@@ -1,46 +1,81 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-
-env:
-  S3_BUCKET_PREFIX: observeinc
-
+    inputs:
+      dry_run:
+        type: boolean
+        description: 'Dry run. Compute release version only'
+        default: false
+      skip_tests:
+        type: boolean
+        description: 'Skip tests.'
+        default: false
+ 
 jobs:
-  permission_check:
+  version:
+    name: Compute release version
     runs-on: ubuntu-latest
     outputs:
-      can-write: ${{ steps.check.outputs.can-write }}
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      version: ${{ steps.dryrun.outputs.release-version }}
+      tag: ${{ steps.dryrun.outputs.release-channel == 'main' && 'latest' || steps.dryrun.outputs.release-channel }}
+    permissions:
+      contents: write
     steps:
-    - id: check
-      run: |
-        # If the AWS_ACCESS_KEY_ID secret is MIA we can't run tests
-        if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
-            echo "can-write=false" >> $GITHUB_OUTPUT
-        else
-            echo "can-write=true" >> $GITHUB_OUTPUT
-        fi
+    - name: checkout
+      uses: actions/checkout@v4
 
+    - name: dryrun
+      id: dryrun
+      uses: ahmadnassri/action-semantic-release@v2
+      with:
+        config: ${{ github.workspace }}/.releaserc.json
+        dry: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ 
   tests:
-    needs: permission_check
-    uses: ./.github/workflows/tests-integration.yaml
-    if: needs.permission_check.outputs.can-write == 'true'
+    needs: version
+    if: ${{ !inputs.skip_tests }}
+    name: Run tests
+    uses: ./.github/workflows/tests.yaml
     secrets: inherit
 
-  fetch-regions:
-    runs-on: ubuntu-latest
-    needs: permission_check
-    if: needs.permission_check.outputs.can-write == 'true'
+  upload:
+    needs: [version, tests]
+    if: always() && !failure() && !cancelled()
+    name: Upload SAM assets
+    uses: ./.github/workflows/upload.yaml
     permissions:
       id-token: write
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    secrets: inherit
+    with:
+      s3_bucket_prefix: "observeinc-"
+      global: ${{ needs.version.outputs.version != '' }}
+      release_version: ${{ needs.version.outputs.version }}
+
+  integration:
+    needs: upload
+    name: Run integration tests 
+    if: ${{ !inputs.skip_tests }}
+    uses: ./.github/workflows/integration.yaml
+    secrets: inherit
+    with:
+      s3_bucket_prefix: "observeinc-"
+      release_version: ${{ needs.version.outputs.release_version }}
+
+  publish:
+    needs: [version, integration]
+    # allow for integration to be skipped
+    if: always() && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - name: Setup AWS credentials
       uses: aws-actions/configure-aws-credentials@v4.0.2
       with:
@@ -50,113 +85,26 @@ jobs:
     - name: AWS Info
       run: aws sts get-caller-identity
 
-    - name: Fetch available AWS regions
-      id: fetch-regions
+    - name: Tag release 
+      id: build
+      if: ${{ needs.version.outputs.tag != '' }}
       run: |
-        regions=$(aws ec2 describe-regions --query "Regions[].RegionName" --output text | tr '\t' '\n' | jq -R -s -c 'split("\n")[:-1]')
-        echo "Regions: $regions"
-        echo "regions_json=$regions" >> "$GITHUB_ENV"
-    
-    - name: Set Matrix for aws-release job
-      id: set-matrix
-      run: echo "matrix=${regions_json}" >> "$GITHUB_OUTPUT"
+          make tag
+      env:
+        MAKEFLAGS: "-j 4 --output-sync=target"
+        S3_BUCKET_PREFIX: "observeinc-"
+        RELEASE_VERSION: "${{ needs.version.outputs.version }}"
+        RELEASE_TAG: ${{ needs.version.outputs.tag }}
 
-  github-release:
-    needs: [tests, permission_check]
-    runs-on: ubuntu-latest
-    if: >
-      (needs.permission_check.outputs.can-write == 'true' && github.event_name == 'push') || 
-      (github.event_name == 'workflow_dispatch' && needs.tests.result == 'success')
-    outputs:
-      version: ${{ steps.release-version.outputs.VERSION }}
-    steps:
-    - name: checkout
-      uses: actions/checkout@v4
-
-    - name: github release (beta)
-      if: github.event_name == 'push'
-      id: prerelease
+    - name: Cut release
+      id: release
       uses: ahmadnassri/action-semantic-release@v2
       with:
         config: ${{ github.workspace }}/.releaserc.json
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: github release (stable)
-      if: github.event_name == 'workflow_dispatch'
-      id: fullrelease
-      uses: ahmadnassri/action-semantic-release@v2
-      with:
-        config: ${{ github.workspace }}/.releaserc-release.json
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Set version for aws-release job
-      id: release-version
-      run: |
-        echo "VERSION=${{ env.VERSION }}" >> "$GITHUB_OUTPUT"
-      env:
-        VERSION: ${{ (steps.prerelease.outputs.release-version != '') && steps.prerelease.outputs.release-version || steps.fullrelease.outputs.release-version }}
-
-  static-upload:
-    needs: [permission_check, github-release, tests]
-    uses: ./.github/workflows/static-upload.yaml
-    permissions:
-      id-token: write
-    if: |
-      github.actor != 'dependabot[bot]' &&
-      needs.github-release.outputs.version != ''
-    secrets: inherit
-    with:
-      version: ${{ needs.github-release.outputs.VERSION }}
-     
-  aws-release:
-    needs: [fetch-regions, github-release, tests]
-    runs-on: ubuntu-latest
-    if: |
-      github.actor != 'dependabot[bot]' &&
-      needs.github-release.outputs.version != ''
-    strategy:
-      matrix:
-        region: ${{fromJson(needs.fetch-regions.outputs.matrix)}}
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
-
-    steps:
-    - name: checkout
-      uses: actions/checkout@v4
-
-    - uses: actions/setup-go@v5
-      with:
-        go-version-file: 'go.mod'
-
-    - name: Setup AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4.0.2
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: us-west-2
-
-    - name: AWS Info
-      run: aws sts get-caller-identity
-
-    - name: Set release tag (beta)
-      if: github.event_name == 'push'
-      run: echo "TAG=beta" >> $GITHUB_ENV
-
-    - name: Set release tag (latest)
-      if: github.event_name == 'workflow_dispatch'
-      run: echo "TAG=latest" >> $GITHUB_ENV
-
-    - name: aws sam release
-      run: make release-all
-      env:
-        # TAG is set implicitly
-        VERSION: ${{ needs.github-release.outputs.VERSION }}
-        AWS_REGION: ${{ matrix.region }}
-
-    - name: delete pre-releases
+    - name: Delete older pre-releases
       uses: dev-drprasad/delete-older-releases@v0.3.4
       with:
         keep_latest: 0

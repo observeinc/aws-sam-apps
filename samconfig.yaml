@@ -3,8 +3,8 @@ version: 0.1
 default:
   build:
     parameters:
-      debug: true
-      cached: true
+      debug: false
+      cached: false # Makefile build doesn't seem to support this
       parallel: true
   validate:
     parameters:

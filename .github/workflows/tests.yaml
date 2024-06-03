@@ -1,26 +1,31 @@
-name: Run Go tests
+name: Run tests
 
 on:
-  push:
-    tags:
-      - v*
-    branches:
-      - main
-  pull_request:
+  workflow_dispatch:
+  workflow_call:
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        go: [ 1.22.x ]
-        platform: [ ubuntu-latest ]
-    runs-on: ${{ matrix.platform }}
+  go-lint:
+    name: Lint Go
+    runs-on: ubuntu-latest
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go }}
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Test
+    - name: Lint
+      run: make go-lint
+
+  go-test:
+    name: Run Go tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Go unit tests
       run: make go-test
+
+  sam-validate:
+    name: Validate SAM templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make sam-validate
