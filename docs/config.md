@@ -29,3 +29,16 @@ The following parameters are required for stack configuration:
 | `IncludeGlobalResourceTypes` | String | Specifies whether AWS Config includes all supported types of global resources with the resources that it records. This field only takes effect if all resources are included for collection. IncludeResourceTypes must be set to *, and ExcludeResourceTypes must not be set. |
 | `Prefix` | String | The prefix for the specified Amazon S3 bucket. |
 | `DeliveryFrequency` | String | The frequency with which AWS Config delivers configuration snapshots. |
+
+## Filtering resource types
+
+AWS Config allows including _or_ excluding resource types. The following table summarizes possible configuration states for our stack:
+
+| `IncludeResourceTypes`             | `ExcludeResourceTypes`             | Description                                                                                             |
+|------------------------------------|------------------------------------|---------------------------------------------------------------------------------------------------------|
+|                                    |                                    | No recorder configured.                                                                                 |
+| *                                  |                                    | Record all resource types, including global resource types.                                             |
+| *                                  | AWS::S3::Bucket,AWS::EC2::Instance | Record all resource types, except for S3 buckets and EC2 instances. Global types are not recorded.      |
+| AWS::S3::Bucket,AWS::EC2::Instance |                                    | Record only S3 buckets and EC2 instances.                                                               |
+| AWS::S3::Bucket                    | AWS::EC2::Instance                 | Record only S3 buckets. `ExcludeResourceTypes` is ignored.                                              |
+|                                    | AWS::EC2::Instance                 | No recorder configured. `IncludeResourceTypes` cannot be empty.                                         |
