@@ -2,6 +2,8 @@
 .aws-sam/
 .*.swp
 build/
+.go
+bin/
 
 .terraform
 terraform.tfstate

@@ -2,14 +2,13 @@
 
 This document details the processes and commands needed to develop, build, and deploy applications within this project.
 
-## Setup
+## Prequisites
 
 Before you begin, ensure that you have the following tools installed:
-- AWS CLI
-- SAM CLI
-- Docker
-- Terraform
-- jq
+- [aws-cli](https://github.com/aws/aws-cli)
+- [aws-sam-cli](https://github.com/aws/aws-sam-cli)
+- [Docker](https://docs.docker.com/engine/install/)
+- [Terraform](https://developer.hashicorp.com/terraform/install)
 
 Set up your AWS credentials and configure the default region:
 
@@ -18,24 +17,166 @@ export AWS_REGION=us-east-1
 aws configure
 ```
 
-## Makefile Targets for SAM
+## Repository organization
 
-The project's Makefile streamlines the development process with various targets:
+The most important directories:
+
+- `apps/` contains the SAM template definitions. This way lies Cloudformation.
+- `cmd/`  contains Go entrypoints used by the different Lambda functions.
+- `docs/`  contains repo documentation.
+- `integration/` contains Terraform for integration testing
+- `vendor/` contains vendored Golang dependencies.
+
+## Makefile Targets
+
+Our Makefile encodes all development and release workflows. To list all targets
+and the most important variables, run `make help`, e.g:
 
 ```
-export APP=forwarder #As an example
+VARIABLES:
+  APPS          = config configsubscription firehose forwarder logwriter metricstream stack
+  AWS_REGION    = us-west-2
+  GO_BINS       = forwarder subscriber
+  GO_BUILD_DIRS = bin/linux_arm64 .go/bin/linux_arm64 .go/cache .go/pkg
+  TF_TESTS      = config configsubscription firehose forwarder forwarder_s3 logwriter metricstream simple stack
+  VERSION       = v1.19.2-4-gb1238b5-dirty
+
+TARGETS:
+  clean                           removes built binaries and temporary files.
+  go-build                        build Go binaries.
+  go-clean                        clean Go temp files.
+  ...
 ```
 
-Refer to `make help` for an authoritative list of Make targets
+## Quick start
 
-- Build: Compile your application for deployment (`make sam-build APP=$APP`)
-- Package: Package your application for AWS (`make sam-package APP=$APP`)
-- Deploy: Deploy your application to AWS (`make sam-deploy APP=$APP`)
-- Sync: Sync your code changes to AWS rapidly (`make sam-sync APP=$APP`)
-- Validate: Check your SAM template for errors (`make sam-validate APP=$APP`)
-- Publish: Share your application via AWS Serverless Application Repository (`make sam-publish APP=$APP`)
-- Multi-application Commands: Build, package, or publish all applications (`make sam-build-all, make sam-package-all, make sam-publish-all`)
-- Multi-region Commands: Manage multi-region deployments (`make sam-package-all-regions`)
+```
+# run Go tests
+→ make go-test
+
+# package a single SAM app, will upload lambda function to S3
+→ make sam-package-forwarder
+```
+
+At this point, you will have a functional CloudFormation template under
+`.aws-sam/build/regions/${AWS_REGION}/forwarder.yaml`. You can deploy this by:
+
+- uploading manually using Cloudformation console
+- deploying through `sam deploy`
+- installing via Terraform
+
+## Running tests
+
+This repository contains both Go code and SAM templates which can be quickly
+validated locally:
+
+`make go-test` executes Go unit tests. You can use the `GOFLAGS` environment
+variable to pass in additional flags. Tests are executed within a docker
+container. During development you may prefer to run `go` directly in your local
+environment. A dockerized environment is provided to ensure consistency in
+builds and across CI.
+
+`make go-lint` lints Go code using [golangci-lint](https://github.com/golangci/golangci-lint).
+
+`make sam-validate` validates SAM templates in `apps/${APP}/template.yaml`. To
+run validation for a specific app, run `make sam-validate-${APP}`. This command
+will also lint data according to [yamllint] and [aws-sam-cli](https://github.com/aws/aws-sam-cli).
+
+## Packaging apps
+
+Once your tests pass, you are ready to package a SAM application by running `make sam-package`.
+You will need AWS credentials allow you to write objects to an S3 bucket.
+
+The Makefile is wired such that running `make sam-package` will run multiple
+steps as a dependency graph:
+- building Lambda binaries
+- running `sam build`
+- running `sam package`
+
+### Building Lambda binaries
+
+`make go-build` is responsible for building Lambda binaries. The list of
+binaries to compile are controlled through the `GO_BINS` variable. The target
+architecture is set to `arm64` for compatibility with the `provided.al2` Lambda
+runtime.
+
+A build is tagged with a version. By omission, the version is derived from
+git. You can override the version by setting the `RELEASE_VERSION` environment
+variable.
+
+Our build process follows [go-build-template](https://github.com/thockin/go-build-template) very
+closely in order to minimize file changes that would otherwise confuse Make. 
+
+Once build is successful, you should have a set of binaries under `bin/linux_arm64`.
+
+### SAM build
+
+`sam build` takes the SAM templates under `apps/${APP}/template.yaml`, and
+produces a directory containing all necessary templates and artifacts for that
+particular app. In our case, it does not actually build any binaries. It
+invokes Make in the `CodeUri` directory specified in the template:
+
+```
+  Forwarder:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: ../../bin/linux_arm64
+```
+
+We create `bin/linux_arm64/Makefile` as part of the dependencies to `make
+sam-package`. The code is in `lambda.mk`, and simply copies the binary from the
+Go build directory, to the temporary build directory provided through the
+`${ARTIFACTS_DIR}` environment variable. The `make` target is always
+`build-${ResourceName}`. By convention our resource name for a Lambda function
+in the CloudFormation template is always the capitalied binary name.
+
+### SAM package
+
+`make sam-package` takes the artifact directory created by `sam build`, and
+pushes the assets to S3. If no `S3_BUCKET_PREFIX` is provied, `samcli` will
+create an S3 bucket for you. It will render a new CloudFormation template which
+references the resulting S3 URIs. This template is stored in
+`.aws-sam/build/regions/${AWS_REGION}/${APP}.yaml`
+
+Lambda functions can only reference binaries stored in the same region. For
+this reason, the result of running `sam package` is always region specific.
+When cutting a release, we must run `sam package` for every region we wish to
+support. This list of regions is maintained in the `AWS_REGIONS` variable.
+
+### Push templates 
+
+`make sam-push` ensures the packaged template can be used by others. The result
+of `sam package` is a local template file referencing remote assets. We need
+to push the template file to S3 so that it can be referenced as a URI, and we
+must ensure both the templates and the assets are publicly accessible.
+
+### Pull templates 
+
+`make sam-pull` does the reverse of `make sam-push`. Given an
+`S3_BUCKET_PREFIX`, it attempts to pull all the remote templates back to the
+local build directory.
+
+This option primarily useful for testing. For one, `make sam-pull` curls data,
+and will therefore fail if the S3 objects are not publicly readable. Secondly,
+our integration tests run off of local files. By allowing to pull in any
+existing release version, we can run the current integration tests against
+older releases, which is useful in verifying fixes.
+
+## CI workflows
+
+A `push` workflow is triggered on every push. It executes the following sequence:
+
+- Run tests
+    - `make go-test`
+    - `make go-lint`
+    - `make sam-validate`
+- Upload SAM assets
+    - `make sam-push`
+- Run integration tests
+    - `make sam-pull`
+    - `make test-integration`
 
 ## Development Workflow
 

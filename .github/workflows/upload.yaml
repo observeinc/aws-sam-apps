@@ -1,0 +1,86 @@
+name: Upload assets 
+
+on:
+  workflow_call:
+    inputs:
+      global:
+        type: boolean
+        description: 'Upload to all supported regions'
+        default: false
+      concurrency:
+        type: number
+        description: 'Number of concurrenct jobs'
+        default: 4 
+      s3_bucket_prefix:
+        type: string
+        description: 'S3 bucket prefix to upload SAM assets to'
+        required: true
+      release_version:
+        type: string
+        description: 'Release version to use. If omitted, version will be computed'
+        default: ''
+    outputs:
+      release_version:
+        description: "Release version used."
+        value: ${{ jobs.upload.outputs.release_version }}
+
+env:
+  SAM_CLI_TELEMETRY: 0
+
+jobs:
+  check_permission:
+    name: Check permissions
+    runs-on: ubuntu-latest
+    outputs:
+      can-write: ${{ steps.check.outputs.can-write }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    steps:
+    - id: check
+      run: |
+        # If the AWS_ACCESS_KEY_ID secret is MIA we can't run tests
+        if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
+            echo "can-write=false" >> $GITHUB_OUTPUT
+        else
+            echo "can-write=true" >> $GITHUB_OUTPUT
+        fi
+
+  upload:
+    name: Package and upload SAM apps
+    needs: [check_permission]
+    if: needs.check_permission.outputs.can-write == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      release_version: ${{ steps.build.outputs.version }}
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Fetch tags for versioning
+      if: inputs.release_version == ''
+      run: git fetch --prune --unshallow --tags
+
+    - name: Setup AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4.0.2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: us-west-2
+
+    - name: AWS Info
+      run: aws sts get-caller-identity
+
+    - name: Build and upload SAM apps
+      id: build
+      run: |
+          if [ "${{ inputs.global }}" = "true" ]; then
+            make sam-push
+          else
+            make sam-push-us-west-2
+          fi
+          echo "version=`make version`" >> $GITHUB_OUTPUT
+      env:
+        MAKEFLAGS: "-j ${{ inputs.concurrency }} --output-sync=target"
+        S3_BUCKET_PREFIX: "${{ inputs.s3_bucket_prefix }}"
+        RELEASE_VERSION: "${{ inputs.release_version }}"

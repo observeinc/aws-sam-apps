@@ -422,7 +422,7 @@ Resources:
         - !Ref AWS::StackName
         - !Ref NameOverride
       Role: !GetAtt SubscriberRole.Arn
-      CodeUri: ../..
+      CodeUri: ../../bin/linux_arm64
       Handler: bootstrap
       Runtime: provided.al2
       MemorySize: !If

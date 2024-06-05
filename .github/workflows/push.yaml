@@ -1,0 +1,33 @@
+name: Push
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+ 
+jobs:
+  tests:
+    name: Run tests
+    uses: ./.github/workflows/tests.yaml
+    secrets: inherit
+
+  upload:
+    name: Upload SAM assets
+    needs: tests
+    uses: ./.github/workflows/upload.yaml
+    permissions:
+      id-token: write
+    secrets: inherit
+    with:
+      s3_bucket_prefix: "observeinc-"
+
+  integration:
+    name: Run integration tests 
+    if: ${{ !inputs.skip_integration_tests }}
+    needs: upload
+    uses: ./.github/workflows/integration.yaml
+    secrets: inherit
+    with:
+      s3_bucket_prefix: "observeinc-"
+      release_version: ${{ needs.upload.outputs.release_version }}

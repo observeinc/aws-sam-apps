@@ -2,183 +2,322 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .ONESHELL:
 
-VERSION ?= unreleased
-# leave this undefined for the purposes of development
-S3_BUCKET_PREFIX ?= 
-AWS_REGION ?= $(shell aws configure get region)
-SAM_BUILD_DIR ?= .aws-sam/build
-SAM_CONFIG_FILE ?= $(shell pwd)/samconfig.yaml
-SAM_CONFIG_ENV ?= default
-BUILD_MAKEFILE_ENV_VARS = .make.env
+DBG_MAKEFILE ?=
+ifeq ($(DBG_MAKEFILE),1)
+    $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
+    $(warning ***** $(shell date))
+else
+    # If we're not debugging the Makefile, don't echo recipes.
+    MAKEFLAGS += -s
+endif
+# We don't need make's built-in rules.
+MAKEFLAGS += --no-builtin-rules
+# Be pedantic about undefined variables.
+MAKEFLAGS += --warn-undefined-variables
+.SUFFIXES:
 
-DEBUG ?= 0
+-include variables.mk
 
-define check_var
-	@[[ -n "$($1)" ]] || (echo >&2 "The environment variable '$1' is not set." && exit 2)
-endef
+LAMBDA_MAKEFILE = bin/$(OS)_$(ARCH)/Makefile
 
-SUBDIR = $(shell ls apps)
+$(LAMBDA_MAKEFILE): $(GO_BUILD_DIRS)
+	cp lambda.mk $@
 
-.PHONY: help go-lint go-lint-all go-test integration-test debug sam-validate sam-validate-all sam-build-all sam-build sam-publish sam-package-all sam-package release-all release sam-publish-all build-App build-Forwarder build-Subscriber clean-aws-sam
+.PHONY: clean
+clean: # @HELP removes built binaries and temporary files.
+clean: go-clean sam-clean
 
-clean-aws-sam:
-	rm -rf $(SAM_BUILD_DIR)
+$(GO_BUILD_DIRS):
+	mkdir -p $@
 
-## help: Displays this help message listing all targets
-help:
-	@echo "Usage: make [target]"
-	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
+# The following structure defeats Go's (intentional) behavior to always touch
+# result files, even if they have not changed.  This will still run `go` but
+# will not trigger further work if nothing has actually changed.
+GO_OUTBINS = $(foreach bin,$(GO_BINS),bin/$(OS)_$(ARCH)/$(bin))
 
-## go-lint: Runs Go linter for a specified directory, set with PACKAGE variable
-go-lint:
-	$(call check_var,PACKAGE)
-	docker run --rm -v "`pwd`:/workspace:cached" -w "/workspace/$(PACKAGE)" golangci/golangci-lint:latest golangci-lint run
+go-build: # @HELP build Go binaries.
+go-build: $(GO_OUTBINS)
+	echo
 
-## go-lint-all: Executes Go linter for all Go packages in the project
-go-lint-all:
-	docker run --rm -v "`pwd`:/workspace:cached" -w "/workspace/." golangci/golangci-lint:latest golangci-lint run
+# Each outbin target is just a facade for the respective stampfile target.
+# This `eval` establishes the dependencies for each.
+$(foreach outbin,$(GO_OUTBINS),$(eval  \
+    $(outbin): .go/$(outbin).stamp  \
+))
 
-## go-test: Runs Go tests across all packages
-go-test:
-	go build ./...
-	go test -v -race ./...
+# This is the target definition for all outbins.
+$(GO_OUTBINS):
+	true
 
-## integration-test: Executes integration tests, with optional debugging if DEBUG=1
-integration-test:
-	cd integration && terraform init && \
-	if [ "$(DEBUG)" = "1" ]; then \
-		CHECK_DEBUG_FILE=debug.sh terraform test $(TEST_ARGS); \
-	else \
-		terraform test $(TEST_ARGS); \
+# Each stampfile target can reference an $(OUTBIN) variable.
+$(foreach outbin,$(GO_OUTBINS),$(eval $(strip   \
+    .go/$(outbin).stamp: OUTBIN = $(outbin)  \
+)))
+
+# This is the target definition for all stampfiles.
+# This will build the binary under ./.go and update the real binary iff needed.
+GO_STAMPS = $(foreach outbin,$(GO_OUTBINS),.go/$(outbin).stamp)
+.PHONY: $(GO_STAMPS)
+$(GO_STAMPS): go-build-bin
+	echo -ne "binary: $(OUTBIN)  "
+	if ! cmp -s .go/$(OUTBIN) $(OUTBIN); then  \
+	    mv .go/$(OUTBIN) $(OUTBIN);            \
+	    date >$@;                              \
+	    echo;                                  \
+	else                                       \
+	    echo "(cached)";                       \
 	fi
 
-## sam-validate: Validates a specific CloudFormation template specified by APP variable
-sam-validate:
-	$(call check_var,APP)
-	yamllint apps/$(APP)/template.yaml && \
-	sam validate \
-		--template apps/$(APP)/template.yaml \
-		--config-file $(SAM_CONFIG_FILE) \
-		--config-env $(SAM_CONFIG_ENV)
+# This runs the actual `go build` which updates all binaries.
+go-build-bin: | $(GO_BUILD_DIRS)
+	echo "# building $(VERSION) for $(OS)/$(ARCH)"
+	docker run                                                      \
+	    -i                                                          \
+	    --rm                                                        \
+	    -u $$(id -u):$$(id -g)                                      \
+	    -v $$(pwd):/src                                             \
+	    -w /src                                                     \
+	    -v $$(pwd)/.go/bin/$(OS)_$(ARCH):/go/bin                    \
+	    -v $$(pwd)/.go/bin/$(OS)_$(ARCH):/go/bin/$(OS)_$(ARCH)      \
+	    -v $$(pwd)/.go/cache:/.cache                                \
+	    -v $$(pwd)/.go/pkg:/go/pkg                                  \
+	    --env GOARCH=$(ARCH)                                        \
+	    --env GOFLAGS="$(GOFLAGS) -mod=$(GO_MOD)"                   \
+	    --env GOOS=$(OS)                                            \
+	    $(GO_BUILD_IMAGE)                                           \
+	    /bin/sh -c "                                                \
+	        go install                                              \
+	          -tags lambda.norpc                                    \
+	          -ldflags \"-X $$(go list -m)/pkg/version.Version=$(VERSION)\"  \
+	          ./...                                                 \
+	    "
 
-## sam-validate-all: Validates all CloudFormation templates in the project
-sam-validate-all:
-	@ for dir in $(SUBDIR); do \
-		APP=$$dir $(MAKE) sam-validate || exit 1; \
-	done
+go-clean: # @HELP clean Go temp files.
+go-clean:
+	test -d .go && chmod -R u+w .go || true
+	rm -rf .go bin
 
-## sam-build-all: Builds assets for all SAM applications across specified regions
-sam-build-all:
-	@ for app in $(SUBDIR); do \
-		for region in $(REGIONS); do \
-			APP=$$app AWS_REGION=$$region $(MAKE) sam-build || exit 1; \
-		done \
-	done
+go-test: # @HELP run Go unit tests.
+go-test: | $(GO_BUILD_DIRS)
+	docker run                                                  \
+	    -i                                                      \
+	    --rm                                                    \
+	    -u $$(id -u):$$(id -g)                                  \
+	    -v $$(pwd):/src                                         \
+	    -w /src                                                 \
+	    -v $$(pwd)/.go/bin/$(OS)_$(ARCH):/go/bin                \
+	    -v $$(pwd)/.go/bin/$(OS)_$(ARCH):/go/bin/$(OS)_$(ARCH)  \
+	    -v $$(pwd)/.go/cache:/.cache                            \
+	    -v $$(pwd)/.go/pkg:/go/pkg                              \
+	    --env GOFLAGS="$(GOFLAGS) -mod=$(GO_MOD)"               \
+	    $(GO_BUILD_IMAGE)                                       \
+	    /bin/sh -c "                                            \
+	       go test ./...                                        \
+	    "
 
-## sam-build: Builds assets for a specific SAM application, specified by APP variable
-sam-build:
-	$(call check_var,APP)
-	echo "VERSION=${VERSION}" > ${BUILD_MAKEFILE_ENV_VARS}
+go-lint: # @HELP lint Go workspace.
+go-lint:
+	docker run  --rm -v "$$(pwd):/workspace:cached" -w "/workspace/." golangci/golangci-lint:latest golangci-lint run --timeout 3m && echo "lint passed"
+
+sam-clean: # @HELP remove SAM build directory.
+sam-clean:
+	rm -rf $(SAM_BUILD_DIR)
+
+SAM_BUILD_TEMPLATES = $(foreach app,$(APPS), $(SAM_BUILD_DIR)/apps/$(app)/template.yaml)
+
+$(foreach template,$(SAM_BUILD_TEMPLATE),$(eval  \
+	$(template): apps/$(call get_app, $(template))/template.yaml \
+))
+
+$(SAM_BUILD_TEMPLATES): go-build $(LAMBDA_MAKEFILE)
 	sam build \
-		--template-file apps/$(APP)/template.yaml \
-		--build-dir $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION) \
-		--config-file $(SAM_CONFIG_FILE) \
-		--config-env $(SAM_CONFIG_ENV)
+	  -p \
+	  -beta-features \
+	  --template-file $(patsubst $(SAM_BUILD_DIR)/%,%,$@) \
+	  --build-dir $(patsubst %template.yaml,%,$@) \
+	  --config-file $(SAM_CONFIG_FILE) \
+	  --config-env $(SAM_CONFIG_ENV)
 
-## sam-publish: Publishes a specific serverless repository application, after packaging
-sam-publish: sam-package
-	sam publish \
-		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
-		--region $(AWS_REGION) \
-		--config-file $(SAM_CONFIG_FILE) \
-		--config-env $(SAM_CONFIG_ENV)
+SAM_PACKAGE_TARGETS = $(foreach app,$(APPS),sam-package-$(app))
 
-## sam-package-all: Packages and pushes all CloudFormation templates to S3
-sam-package-all:
-	@ for dir in $(SUBDIR); do \
-		APP=$$dir $(MAKE) sam-package || exit 1; \
-	done
+.PHONY: $(SAM_PACKAGE_TARGETS)
+# map each SAM_PACKAGE_TARGET to the corresponding SAM_PACKAGE_TEMPLATE for our current region
+$(foreach target,$(SAM_PACKAGE_TARGETS),$(eval  \
+    $(target): $(SAM_BUILD_DIR)/regions/$(AWS_REGION)/$(lastword $(subst -, , $(target))).yaml \
+))
 
-## sam-package: Packages a specific CloudFormation template and pushes assets to S3, specified by APP variable
-sam-package: sam-build
-	$(call check_var,APP)
-	$(call check_var,VERSION)
-	echo "Packaging for app: $(APP) in region: $(AWS_REGION)"
+define check_var
+       @[[ -n "$($1)" ]] || (echo >&2 "The environment variable '$1' is not set." && exit 2)
+endef
+
+define get_region
+$(lastword $(subst /, ,$(basename $(dir $(1)))))
+endef
+
+define get_app
+$(subst .yaml,,$(lastword $(subst /, ,$(1))))
+endef
+
+SAM_PACKAGE_DIRS = $(foreach region, $(AWS_REGIONS), $(SAM_BUILD_DIR)/regions/$(region))
+SAM_PACKAGE_TEMPLATES = $(foreach dir,$(SAM_PACKAGE_DIRS), $(foreach app,$(APPS),$(dir)/$(app).yaml))
+
+$(foreach template,$(SAM_PACKAGE_TEMPLATES),$(eval  \
+	$(template): $(SAM_BUILD_DIR)/apps/$(call get_app, $(template))/template.yaml \
+))
+
+$(SAM_PACKAGE_DIRS):
+	mkdir -p $@
+
+$(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 ifeq ($(S3_BUCKET_PREFIX),)
 	sam package \
-		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml \
-		--output-template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
-		--region $(AWS_REGION) \
-		--resolve-s3 \
-		--config-file $(SAM_CONFIG_FILE) \
-		--config-env $(SAM_CONFIG_ENV)
+	  --template-file $(SAM_BUILD_DIR)/apps/$(call get_app, $@)/template.yaml \
+	  --output-template-file $@                                               \
+	  --region $(call get_region, $@)                                         \
+	  --resolve-s3                                                            \
+	  --s3-prefix aws-sam-apps/$(VERSION)                                     \
+	  --no-progressbar                                                        \
+	  --config-file $(SAM_CONFIG_FILE)                                        \
+	  --config-env $(SAM_CONFIG_ENV)
 else
 	sam package \
-		--template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml \
-		--output-template-file $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml \
-		--region $(AWS_REGION) \
-	    --s3-bucket $(S3_BUCKET_PREFIX)-$(AWS_REGION) \
-	    --s3-prefix apps/$(APP)/$(VERSION) \
-		--config-file $(SAM_CONFIG_FILE) \
-		--config-env $(SAM_CONFIG_ENV)
+	  --template-file $(SAM_BUILD_DIR)/apps/$(call get_app, $@)/template.yaml \
+	  --output-template-file $@                                               \
+	  --region $(call get_region, $@)                                         \
+	  --s3-bucket "$(S3_BUCKET_PREFIX)$(call get_region, $@)"                 \
+	  --s3-prefix aws-sam-apps/$(VERSION)                                     \
+	  --no-progressbar                                                        \
+	  --config-file $(SAM_CONFIG_FILE)                                        \
+	  --config-env $(SAM_CONFIG_ENV)
 endif
 
-## release-all: Releases all applications, ensuring S3_BUCKET_PREFIX is set
-release-all:
-ifeq ($(S3_BUCKET_PREFIX),)
-	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release-all.)
-endif
-	for dir in $(SUBDIR); do \
-		APP=$$dir $(MAKE) release || exit 1; \
-	done
+SAM_PULL_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-pull-$(region))
 
-## release: Packages, uploads, and sets ACL for a specific app, ensuring S3_BUCKET_PREFIX is set, specified by APP variable
-release:
-ifeq ($(S3_BUCKET_PREFIX),)
-	$(error S3_BUCKET_PREFIX is empty. Cannot proceed with release.)
-endif
-	$(MAKE) sam-package
-	@echo "Resetting assets to be public readable"
-	aws s3 cp --acl public-read	--recursive s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/ s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
-	@echo "Copying stack definition"
-	aws s3 cp --acl public-read $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(VERSION)/
-ifeq ($(TAG),)
-else
-	aws s3 cp --acl public-read $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/packaged.yaml s3://$(S3_BUCKET_PREFIX)-$(AWS_REGION)/apps/$(APP)/$(TAG)/
-endif
+.PHONY: $(SAM_PULL_REGION_TARGETS)
+$(SAM_PULL_REGION_TARGETS): require_bucket_prefix
+	# force ourselves to use the public URLs, verifying ACLs are correctly set
+	mkdir -p $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
+	  cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
+	  for app in $(APPS); do \
+	    curl -fs \
+	      -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
+	      -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \
+	  done
 
-## sam-publish-all: Publishes all serverless applications
-sam-publish-all:
-	for dir in $(SUBDIR); do
-		APP=$$dir $(MAKE) sam-publish || exit 1;
-	done
+SAM_PUSH_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-push-$(region))
 
-build-App:
-	$(call check_var,APP)
-	$(call check_var,ARTIFACTS_DIR)
-	GOARCH=arm64 GOOS=linux go build -tags lambda.norpc -ldflags "-X $(shell go list -m)/version.Version=${VERSION}" -o ./bootstrap cmd/$(APP)/main.go
-	cp ./bootstrap $(ARTIFACTS_DIR)/.
+$(foreach target,$(SAM_PUSH_REGION_TARGETS),$(eval  \
+	$(target): $(foreach app,$(APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$(target))/$(app).yaml) \
+))
 
-build-Forwarder:
-	APP=forwarder $(MAKE) build-App
-
-build-Subscriber:
-	APP=subscriber $(MAKE) build-App
-
-## parameters: generate doc table for cloudformation parameters
-parameters:
-	$(call check_var,APP)
-	@echo "| Parameter       | Type    | Description |"
-	@echo "|-----------------|---------|-------------|"
-	@python3 -c 'import sys, yaml, json; y=yaml.safe_load(sys.stdin.read()); print(json.dumps(y))' < $(SAM_BUILD_DIR)/$(APP)/$(AWS_REGION)/template.yaml | jq -r '.Parameters | to_entries[] | "| \(if .value.Default then "" else "**" end)`\(.key)`\(if .value.Default then "" else "**" end) | \(.value.Type) | \(.value.Description |  gsub("[\\n\\t]"; " ")) |"'
-
-## static-validate: validate any static assets
-static-validate:
-	@ yamllint --no-warnings static/
-
-## static-upload: upload static assets
-static-upload: static-validate
+require_bucket_prefix:
 	$(call check_var,S3_BUCKET_PREFIX)
-	aws s3 sync static s3://$(S3_BUCKET_PREFIX)/ --acl public-read --metadata Version=$(VERSION)
 
-.PHONY: help go-lint go-lint-all go-test sam-validate sam-validate-all sam-build sam-package sam-publish sam-package-all sam-publish-all build-App build-Forwarder
+.PHONY: $(SAM_PUSH_REGION_TARGETS)
+$(SAM_PUSH_REGION_TARGETS): require_bucket_prefix
+	# ensure all previously pushed assets are public
+	aws s3 cp \
+	  --acl public-read \
+	  --recursive \
+	  s3://$(S3_BUCKET_PREFIX)$(subst sam-push-,,$@)/aws-sam-apps/$(VERSION)/ s3://$(S3_BUCKET_PREFIX)$(subst sam-push-,,$@)/aws-sam-apps/$(VERSION)/
+	# push base manifests
+	aws s3 cp \
+	  --acl public-read \
+	  --recursive \
+	  $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$@)/ s3://$(S3_BUCKET_PREFIX)$(subst sam-push-,,$@)/aws-sam-apps/$(VERSION)/
+
+SAM_VALIDATE_TARGETS = $(foreach app,$(APPS),sam-validate-$(app))
+
+.PHONY: $(SAM_VALIDATE_TARGETS)
+$(SAM_VALIDATE_TARGETS):
+	yamllint apps/$(lastword $(subst -, ,$@))/template.yaml && \
+	sam validate \
+	--template apps/$(lastword $(subst -, ,$@))/template.yaml \
+	--config-file $(SAM_CONFIG_FILE) \
+	--config-env $(SAM_CONFIG_ENV)
+
+TEST_INTEGRATION_TARGETS = $(foreach test,$(TF_TESTS),test-integration-$(test))
+
+test-init:
+	terraform -chdir=integration init
+
+.PHONY: $(TEST_INTEGRATION_TARGETS)
+$(TEST_INTEGRATION_TARGETS): test-init
+	if [ "$(TF_TEST_DEBUG)" = "1" ]; then \
+	  CHECK_DEBUG_FILE=debug.sh terraform -chdir=integration test -filter=tests/$(lastword $(subst -, ,$@)).tftest.hcl $(TF_TEST_ARGS); \
+	else \
+	  terraform -chdir=integration test -filter=tests/$(lastword $(subst -, ,$@)).tftest.hcl $(TF_TEST_ARGS); \
+	fi
+
+
+TAG_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),tag-$(region))
+
+$(foreach target,$(TAG_REGION_TARGETS),$(eval  \
+	$(target): sam-pull-$(subst tag-,,$(target)) \
+))
+
+$(TAG_REGION_TARGETS):
+	$(call check_var,RELEASE_TAG)
+	aws s3 sync \
+	  --acl public-read \
+	  --delete \
+	  $(SAM_BUILD_DIR)/regions/$(subst tag-,,$@)/ s3://$(S3_BUCKET_PREFIX)$(subst tag-,,$@)/aws-sam-apps/$(RELEASE_TAG)/
+
+.PHONY: sam-package
+sam-package: # @HELP package all SAM templates.
+sam-package: $(SAM_PACKAGE_TARGETS)
+
+sam-package-%: # @HELP package specific SAM app (e.g sam-package-forwarder).
+
+.PHONY: sam-pull
+sam-pull: # @HELP pull SAM app manifests from remote URI to local build directory.
+sam-pull: $(SAM_PULL_TARGETS)
+
+sam-pull-%: # @HELP puall SAM app manifests for specific region (e.g sam-pull-us-west-2).
+
+.PHONY: sam-push
+sam-push: # @HELP package and push SAM assets to S3 to all regions.
+sam-push: $(SAM_PUSH_REGION_TARGETS)
+
+sam-push-%: # @HELP push all SAM apps to specific region (e.g sam-push-us-west-2)
+
+.PHONY: sam-validate
+sam-validate: # @HELP validate all SAM templates.
+sam-validate: $(SAM_VALIDATE_TARGETS)
+
+sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-logwriter).
+
+.PHONY: tag
+tag: # @HELP pull SAM manifests for RELEASE_VERSION, and publish as RELEASE_TAG.
+tag: $(TAG_REGION_TARGETS)
+
+tag-%: # @HELP tag for specific region (e.g tag-us-west-2).
+
+
+.PHONY: test-integration
+test-integration: # @HELP run all integration tests.
+test-integration: $(TEST_INTEGRATION_TARGETS)
+
+test-integration-%: # @HELP run specific integration test (e.g. test-integration-stack).
+
+.PHONY: version
+version: # @HELP display version
+version:
+	echo "$(VERSION)"
+
+help: # @HELP displays this message.
+help:
+	echo "VARIABLES:"
+	echo "  APPS          = $(APPS)"
+	echo "  AWS_REGION    = $(AWS_REGION)"
+	echo "  GO_BINS       = $(GO_BINS)"
+	echo "  GO_BUILD_DIRS = $(GO_BUILD_DIRS)"
+	echo "  TF_TESTS      = $(TF_TESTS)"
+	echo "  VERSION       = $(VERSION)"
+	echo
+	echo "TARGETS:"
+	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST) | cut -d':' -f2- \
+	    | awk '                                   \
+	        BEGIN {FS = ": *# *@HELP"};           \
+	        { printf "  %-30s %s\n", $$1, $$2 };  \
+	    '

@@ -1,13 +1,10 @@
 {
   "branches": [
     {
-        "name": "release", 
-        "channel": false, 
-        "prerelease": false, 
-        "type": "maintenance"
+        "name": "main"
     },
     {
-        "name": "main", 
+        "name": "joao/new-make", 
         "channel": "beta",
         "prerelease": "beta"
     }
