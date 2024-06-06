@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.dryrun.outputs.new_release_version }}
-      tag: ${{ steps.dryrun.outputs.new_release_channel == 'main' && 'latest' || steps.dryrun.outputs.new_release_channel }}
+      channel: ${{ steps.dryrun.outputs.new_release_channel }}
     permissions:
       contents: write
     steps:
@@ -87,14 +87,13 @@ jobs:
 
     - name: Tag release 
       id: build
-      if: ${{ needs.version.outputs.tag != '' }}
       run: |
           make tag
       env:
         MAKEFLAGS: "-j 4 --output-sync=target"
         S3_BUCKET_PREFIX: "observeinc-"
         RELEASE_VERSION: "${{ needs.version.outputs.version }}"
-        RELEASE_TAG: ${{ needs.version.outputs.tag }}
+        RELEASE_TAG: ${{ needs.version.outputs.channel }}
 
     - name: Cut release
       id: release
