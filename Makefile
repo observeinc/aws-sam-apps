@@ -169,27 +169,20 @@ $(SAM_PACKAGE_DIRS):
 	mkdir -p $@
 
 $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
-ifeq ($(S3_BUCKET_PREFIX),)
-	sam package \
-	  --template-file $(SAM_BUILD_DIR)/apps/$(call get_app, $@)/template.yaml \
-	  --output-template-file $@                                               \
-	  --region $(call get_region, $@)                                         \
-	  --resolve-s3                                                            \
-	  --s3-prefix aws-sam-apps/$(VERSION)                                     \
-	  --no-progressbar                                                        \
-	  --config-file $(SAM_CONFIG_FILE)                                        \
-	  --config-env $(SAM_CONFIG_ENV)
-else
-	sam package \
-	  --template-file $(SAM_BUILD_DIR)/apps/$(call get_app, $@)/template.yaml \
-	  --output-template-file $@                                               \
-	  --region $(call get_region, $@)                                         \
-	  --s3-bucket "$(S3_BUCKET_PREFIX)$(call get_region, $@)"                 \
-	  --s3-prefix aws-sam-apps/$(VERSION)                                     \
-	  --no-progressbar                                                        \
-	  --config-file $(SAM_CONFIG_FILE)                                        \
-	  --config-env $(SAM_CONFIG_ENV)
-endif
+	if [ ! -z "$(S3_BUCKET_PREFIX)" ]; then \
+	  export FLAGS=" --s3-bucket $(S3_BUCKET_PREFIX)$(call get_region, $@)"; \
+	else \
+	  export FLAGS=" --resolve-s3"; \
+    fi && \
+	  sam package \
+	    --template-file $(SAM_BUILD_DIR)/apps/$(call get_app, $@)/template.yaml \
+	    --output-template-file $@                                               \
+	    --region $(call get_region, $@)                                         \
+	    --s3-prefix aws-sam-apps/$(VERSION)                                     \
+	    --no-progressbar                                                        \
+	    --config-file $(SAM_CONFIG_FILE)                                        \
+	    --config-env $(SAM_CONFIG_ENV)                                          \
+	    $${FLAGS}
 
 SAM_PULL_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-pull-$(region))
 
@@ -244,11 +237,9 @@ test-init:
 .PHONY: $(TEST_INTEGRATION_TARGETS)
 $(TEST_INTEGRATION_TARGETS): test-init
 	if [ "$(TF_TEST_DEBUG)" = "1" ]; then \
-	  CHECK_DEBUG_FILE=debug.sh terraform -chdir=integration test -filter=tests/$(lastword $(subst -, ,$@)).tftest.hcl $(TF_TEST_ARGS); \
-	else \
-	  terraform -chdir=integration test -filter=tests/$(lastword $(subst -, ,$@)).tftest.hcl $(TF_TEST_ARGS); \
-	fi
-
+	  export CHECK_DEBUG_FILE=debug.sh; \
+	fi && \
+	  terraform -chdir=integration test -filter=tests/$(lastword $(subst -, ,$@)).tftest.hcl $(TF_TEST_ARGS);
 
 TAG_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),tag-$(region))
 
