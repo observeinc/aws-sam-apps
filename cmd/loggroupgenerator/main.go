@@ -20,7 +20,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/observeinc/aws-sam-apps/logging"
+	"github.com/observeinc/aws-sam-apps/pkg/logging"
 )
 
 const (

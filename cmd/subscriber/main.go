@@ -11,11 +11,11 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/observeinc/aws-sam-apps/handler"
-	"github.com/observeinc/aws-sam-apps/handler/subscriber"
-	"github.com/observeinc/aws-sam-apps/logging"
-	"github.com/observeinc/aws-sam-apps/tracing"
-	"github.com/observeinc/aws-sam-apps/version"
+	"github.com/observeinc/aws-sam-apps/pkg/handler"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/pkg/logging"
+	"github.com/observeinc/aws-sam-apps/pkg/tracing"
+	"github.com/observeinc/aws-sam-apps/pkg/version"
 )
 
 const (
