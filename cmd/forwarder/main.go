@@ -11,13 +11,13 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/observeinc/aws-sam-apps/handler"
-	"github.com/observeinc/aws-sam-apps/handler/forwarder"
-	"github.com/observeinc/aws-sam-apps/handler/forwarder/override"
-	"github.com/observeinc/aws-sam-apps/handler/forwarder/s3http"
-	"github.com/observeinc/aws-sam-apps/logging"
-	"github.com/observeinc/aws-sam-apps/tracing"
-	"github.com/observeinc/aws-sam-apps/version"
+	"github.com/observeinc/aws-sam-apps/pkg/handler"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/override"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http"
+	"github.com/observeinc/aws-sam-apps/pkg/logging"
+	"github.com/observeinc/aws-sam-apps/pkg/tracing"
+	"github.com/observeinc/aws-sam-apps/pkg/version"
 )
 
 const (

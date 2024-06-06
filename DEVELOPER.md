@@ -25,7 +25,8 @@ The most important directories:
 - `cmd/`  contains Go entrypoints used by the different Lambda functions.
 - `docs/`  contains repo documentation.
 - `integration/` contains Terraform for integration testing
-- `vendor/` contains vendored Golang dependencies.
+- `pkg/`  contains Go packages
+- `vendor/` contains vendored Go dependencies.
 
 ## Makefile Targets
 
