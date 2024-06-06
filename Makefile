@@ -167,6 +167,7 @@ $(foreach template,$(SAM_PACKAGE_TEMPLATES),$(eval  \
 
 $(SAM_PACKAGE_DIRS):
 	mkdir -p $@
+	cp -r static/ $@
 
 $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 ifeq ($(S3_BUCKET_PREFIX),)
