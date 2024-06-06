@@ -109,16 +109,17 @@ Conditions:
       - ','
       - !Ref IncludeResourceTypes
   IncludeResources: !And
+    - !Condition EnableConfig
     - !Not
       - !Condition IncludeAllResources
+  ExcludeResources: !And
+    - !Condition IncludeAllResources
     - !Not
-      - !Condition ExcludeResources
-  ExcludeResources: !Not
-    - !Equals
-      - ''
-      - !Join
-        - ','
-        - !Ref ExcludeResourceTypes
+      - !Equals
+        - ''
+        - !Join
+          - ','
+          - !Ref ExcludeResourceTypes
   AllSupported: !And
     - !Condition IncludeAllResources
     - !Not
@@ -128,6 +129,7 @@ Conditions:
     - !Equals
       - !Ref IncludeGlobalResourceTypes
       - "true"
+
 Resources:
   ConfigurationRecorderRole:
     Type: AWS::IAM::Role
