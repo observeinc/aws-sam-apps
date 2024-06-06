@@ -59,7 +59,6 @@ jobs:
       run: |
         echo "tests=$(ls integration/tests | awk -F. '{print $1}' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
 
-
   tests:
     name: Run integration test
     runs-on: ubuntu-latest
@@ -94,7 +93,6 @@ jobs:
     if: always()
     steps:
     - name: DCE Cleanup
-      if: needs.permission_check.outputs.can-write == 'true'
       uses: observeinc/github-action-dce@1.0.1
       with:
         action-type: 'decommission'

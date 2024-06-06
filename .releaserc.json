@@ -1,12 +1,17 @@
 {
   "branches": [
+    "+([0-9])?(.{+([0-9]),x}).x",
+    "master",
+    "main",
+    "next",
+    "next-major",
     {
-        "name": "main"
+      "name": "beta",
+      "prerelease": true
     },
     {
-        "name": "joao/new-make", 
-        "channel": "beta",
-        "prerelease": "beta"
+      "name": "alpha",
+      "prerelease": true
     }
   ],
   "plugins": [
@@ -16,4 +21,3 @@
     "@semantic-release/github"
   ]
 }
-  

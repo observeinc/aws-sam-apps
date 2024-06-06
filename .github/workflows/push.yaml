@@ -24,7 +24,6 @@ jobs:
 
   integration:
     name: Run integration tests 
-    if: ${{ !inputs.skip_integration_tests }}
     needs: upload
     uses: ./.github/workflows/integration.yaml
     secrets: inherit

@@ -17,8 +17,8 @@ jobs:
     name: Compute release version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.dryrun.outputs.release-version }}
-      tag: ${{ steps.dryrun.outputs.release-channel == 'main' && 'latest' || steps.dryrun.outputs.release-channel }}
+      version: ${{ steps.dryrun.outputs.new_release_version }}
+      tag: ${{ steps.dryrun.outputs.new_release_channel == 'main' && 'latest' || steps.dryrun.outputs.new_release_channel }}
     permissions:
       contents: write
     steps:
@@ -27,23 +27,22 @@ jobs:
 
     - name: dryrun
       id: dryrun
-      uses: ahmadnassri/action-semantic-release@v2
+      uses: cycjimmy/semantic-release-action@v4
       with:
-        config: ${{ github.workspace }}/.releaserc.json
-        dry: true
+        dry_run: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
  
   tests:
     needs: version
-    if: ${{ !inputs.skip_tests }}
+    if: ${{ !inputs.dry_run && !inputs.skip_tests }}
     name: Run tests
     uses: ./.github/workflows/tests.yaml
     secrets: inherit
 
   upload:
     needs: [version, tests]
-    if: always() && !failure() && !cancelled()
+    if: always() && !inputs.dry_run && !failure() && !cancelled()
     name: Upload SAM assets
     uses: ./.github/workflows/upload.yaml
     permissions:
@@ -57,17 +56,18 @@ jobs:
   integration:
     needs: upload
     name: Run integration tests 
-    if: ${{ !inputs.skip_tests }}
+    if: ${{ !inputs.dry_run && !inputs.skip_tests }}
     uses: ./.github/workflows/integration.yaml
     secrets: inherit
     with:
       s3_bucket_prefix: "observeinc-"
-      release_version: ${{ needs.version.outputs.release_version }}
+      release_version: ${{ needs.upload.outputs.release_version }}
 
   publish:
+    name: Publish release
     needs: [version, integration]
-    # allow for integration to be skipped
-    if: always() && !failure() && !cancelled()
+    # always execute after integration, but allow tests to be skipped
+    if: always() && !inputs.dry_run && !failure() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -98,9 +98,7 @@ jobs:
 
     - name: Cut release
       id: release
-      uses: ahmadnassri/action-semantic-release@v2
-      with:
-        config: ${{ github.workspace }}/.releaserc.json
+      uses: cycjimmy/semantic-release-action@v4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
