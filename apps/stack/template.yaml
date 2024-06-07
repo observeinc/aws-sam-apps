@@ -113,6 +113,7 @@ Parameters:
     Description: >-
       A list of bucket names which the forwarder is allowed to read from.
     Default: ""
+    AllowedPattern: "^[a-z0-9-.]*(\\*)?$"
   ContentTypeOverrides:
     Type: CommaDelimitedList
     Description: >-
