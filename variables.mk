@@ -55,7 +55,10 @@ TF_TESTS         ?= $(shell ls integration/tests | awk -F. '{print $$1}')
 TF_TEST_DEBUG    ?= 0
 TF_TEST_ARGS     ?=
 
-RELEASE_TAG      ?= latest
+# Tag is a symlink of sorts to an existing release.
+# Our workflow sets RELEASE_TAG to match the release channel in semantic
+# release. The default channel is '', which should be represented as `latest/`
+TAG              := $(if $(RELEASE_TAG),$(RELEASE_TAG),latest)
 
 # Version should only be overridden in CI. Cannot be empty.
 VERSION          := $(if $(RELEASE_VERSION),$(RELEASE_VERSION),$(shell git describe --tags --always --dirty))
