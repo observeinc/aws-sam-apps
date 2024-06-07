@@ -68,6 +68,7 @@ Parameters:
       files copied to Filedrop, you must also subscribe S3 Bucket Notifications
       to the forwarder.
     Default: ''
+    AllowedPattern: "^[a-z0-9-.]*(\\*)?$"
   SourceTopicArns:
     Type: CommaDelimitedList
     Description: >-
