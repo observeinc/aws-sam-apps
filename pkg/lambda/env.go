@@ -1,4 +1,4 @@
-package handler
+package lambda
 
 import (
 	"context"
@@ -17,6 +17,8 @@ func exportEnvVar(_ context.Context, _, resolvedKey, _, resolvedValue string) (n
 }
 
 // ProcessEnv populates struct from environment variables.
+// In doing so, any defaults for the struct are re-exported as environment
+// variables.
 func ProcessEnv(ctx context.Context, v any) error {
 	err := envconfig.ProcessWith(ctx, &envconfig.Config{
 		Target:   v,

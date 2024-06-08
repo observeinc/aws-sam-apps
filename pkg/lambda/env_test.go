@@ -1,11 +1,11 @@
-package handler_test
+package lambda_test
 
 import (
 	"context"
 	"os"
 	"testing"
 
-	"github.com/observeinc/aws-sam-apps/pkg/handler"
+	"github.com/observeinc/aws-sam-apps/pkg/lambda"
 )
 
 func TestEnv(t *testing.T) {
@@ -20,7 +20,7 @@ func TestEnv(t *testing.T) {
 		t.Fatal("found unexpected environment variable")
 	}
 
-	if err := handler.ProcessEnv(context.Background(), &env); err != nil {
+	if err := lambda.ProcessEnv(context.Background(), &env); err != nil {
 		t.Fatal(err)
 	}
 
