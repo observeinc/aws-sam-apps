@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	ErrUnsupportedContentEncoding = errors.New("content encoding not supported: %w")
-	ErrUnsupportedContentType     = errors.New("content type not supported: %w")
+	ErrUnsupportedContentEncoding = errors.New("content encoding not supported")
+	ErrUnsupportedContentType     = errors.New("content type not supported")
 )
 
 var decoders = map[string]DecoderFactory{
