@@ -44,6 +44,8 @@ type Config struct {
 	OTELTracesExporter       string `env:"OTEL_TRACES_EXPORTER,default=none"`
 	OTELExporterOTLPEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 
+	S3HTTPGzipLevel *int `env:"S3_HTTP_GZIP_LEVEL,default=1"`
+
 	// The following variables are not configurable via environment
 	HTTPInsecureSkipVerify bool     `json:"-"`
 	AWSS3Client            S3Client `json:"-"`
@@ -120,6 +122,7 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		s3Client, err = s3http.New(&s3http.Config{
 			DestinationURI:     cfg.DestinationURI,
 			GetObjectAPIClient: awsS3Client,
+			GzipLevel:          cfg.S3HTTPGzipLevel,
 			HTTPClient: tracing.NewHTTPClient(&tracing.HTTPClientConfig{
 				TracerProvider:     tracerProvider,
 				Logger:             &logger,

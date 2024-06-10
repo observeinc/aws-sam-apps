@@ -1,7 +1,6 @@
 package request
 
 import (
-	"compress/gzip"
 	"errors"
 	"net/http"
 	"net/url"
@@ -38,15 +37,9 @@ func (b *Builder) With(params map[string]string, headers map[string]string) *Han
 		client = http.DefaultClient
 	}
 
-	gzipLevel := gzip.DefaultCompression
-	if v := b.GzipLevel; v != nil {
-		gzipLevel = *v
-	}
-
 	return &Handler{
-		URL:       u.String(),
-		Headers:   headers,
-		GzipLevel: gzipLevel,
-		Client:    client,
+		URL:     u.String(),
+		Headers: headers,
+		Client:  client,
 	}
 }
