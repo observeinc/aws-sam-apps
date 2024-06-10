@@ -31,8 +31,9 @@ type Config struct {
 	LogGroupNamePrefixes        []string `env:"LOG_GROUP_NAME_PREFIXES"`
 	ExcludeLogGroupNamePatterns []string `env:"EXCLUDE_LOG_GROUP_NAME_PATTERNS"`
 	QueueURL                    string   `env:"QUEUE_URL,required"`
-	Verbosity                   int      `env:"VERBOSITY,default=1"`
 	ServiceName                 string   `env:"OTEL_SERVICE_NAME,default=subscriber"`
+
+	Logging *logging.Config
 
 	AWSMaxAttempts string `env:"AWS_MAX_ATTEMPTS,default=7"`
 	AWSRetryMode   string `env:"AWS_RETRY_MODE,default=adaptive"`
@@ -49,10 +50,7 @@ type Lambda struct {
 }
 
 func New(ctx context.Context, cfg *Config) (*Lambda, error) {
-	logger := logging.New(&logging.Config{
-		Verbosity: cfg.Verbosity,
-	})
-
+	logger := logging.New(cfg.Logging)
 	logger.V(4).Info("initialized", "config", cfg)
 
 	tracerProvider, err := tracing.NewTracerProvider(ctx)
