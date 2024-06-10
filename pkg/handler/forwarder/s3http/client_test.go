@@ -17,7 +17,7 @@ import (
 	"github.com/lithammer/dedent"
 
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http"
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func format(s string) string {
@@ -95,7 +95,7 @@ func TestClientPut(t *testing.T) {
 			// upload object
 			client, err := s3http.New(&s3http.Config{
 				DestinationURI:     fmt.Sprintf("%s/%s", s.URL, tt.Path),
-				GetObjectAPIClient: &handlertest.S3Client{},
+				GetObjectAPIClient: &awstest.S3Client{},
 				RequestGzipLevel:   aws.Int(0),
 				HTTPClient:         s.Client(),
 			})

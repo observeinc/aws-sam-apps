@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/go-cmp/cmp"
@@ -22,14 +22,14 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				DestinationARN:       "hello",
 			},
 			ExpectError: subscriber.ErrMissingFilterName,
 		},
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
 				DestinationARN:       "hello",
 			},
@@ -37,14 +37,14 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
 				DestinationARN:       "arn:aws:lambda:us-east-2:123456789012:function:my-function",
 			},
 		},
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
 				RoleARN:              aws.String("arn:aws:iam::123456789012:role/test"),
 			},
@@ -53,7 +53,7 @@ func TestConfig(t *testing.T) {
 
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
 				DestinationARN:       "arn:aws:firehose:us-west-2:123456789012:deliverystream/test",
 				RoleARN:              aws.String("arn:aws:iam::123456789012:role/test"),
@@ -61,7 +61,7 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
 				LogGroupNamePatterns: []string{"!!"},
 			},
@@ -69,7 +69,7 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				FilterName:           "observe-logs-subscription",
 				LogGroupNamePrefixes: []string{"\\"},
 			},
@@ -77,7 +77,7 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			Config: subscriber.Config{
-				CloudWatchLogsClient:        &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient:        &awstest.CloudWatchLogsClient{},
 				FilterName:                  "observe-logs-subscription",
 				ExcludeLogGroupNamePatterns: []string{"\\"},
 			},
@@ -86,7 +86,7 @@ func TestConfig(t *testing.T) {
 		{
 			Config: subscriber.Config{
 				FilterName:           "ok",
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				LogGroupNamePrefixes: []string{"*"},
 			},
 		},

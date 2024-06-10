@@ -1,4 +1,4 @@
-package handlertest_test
+package awstest_test
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func TestCloudWatchLogsDescribeLogGroups(t *testing.T) {
-	client := &handlertest.CloudWatchLogsClient{
+	client := &awstest.CloudWatchLogsClient{
 		LogGroups: []types.LogGroup{
 			{LogGroupName: aws.String("/aws/hello")},
 			{LogGroupName: aws.String("/aws/ello")},
@@ -111,7 +111,7 @@ func TestCloudWatchLogsDescribeLogGroups(t *testing.T) {
 }
 
 func TestCloudWatchLogsDescribeSubscriptionFilters(t *testing.T) {
-	client := &handlertest.CloudWatchLogsClient{
+	client := &awstest.CloudWatchLogsClient{
 		LogGroups: []types.LogGroup{
 			{LogGroupName: aws.String("/aws/hello")},
 		},

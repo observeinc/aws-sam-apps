@@ -1,4 +1,4 @@
-package handlertest
+package awstest
 
 import (
 	"context"

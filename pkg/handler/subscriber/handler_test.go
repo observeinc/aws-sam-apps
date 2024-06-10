@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func TestHandleSQS(t *testing.T) {
@@ -53,7 +53,7 @@ func TestHandleSQS(t *testing.T) {
 			t.Parallel()
 
 			s, err := subscriber.New(&subscriber.Config{
-				CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+				CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 				FilterName:           "test",
 				LogGroupNamePrefixes: []string{"*"},
 			})

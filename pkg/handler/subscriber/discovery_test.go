@@ -11,14 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func TestHandleDiscovery(t *testing.T) {
 	t.Parallel()
 
-	client := &handlertest.CloudWatchLogsClient{
+	client := &awstest.CloudWatchLogsClient{
 		LogGroups: []types.LogGroup{
 			{LogGroupName: aws.String("/aws/hello")},
 			{LogGroupName: aws.String("/aws/ello")},
