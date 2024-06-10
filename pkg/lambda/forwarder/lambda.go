@@ -35,6 +35,9 @@ type Config struct {
 	OTELServiceName          string `env:"OTEL_SERVICE_NAME,default=forwarder"`
 	OTELTracesExporter       string `env:"OTEL_TRACES_EXPORTER,default=none"`
 	OTELExporterOTLPEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+
+	// The following variables are not configurable via environment
+	HTTPInsecureSkipVerify bool
 }
 
 type Lambda struct {
@@ -108,8 +111,9 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 			DestinationURI:     cfg.DestinationURI,
 			GetObjectAPIClient: awsS3Client,
 			HTTPClient: tracing.NewHTTPClient(&tracing.HTTPClientConfig{
-				TracerProvider: tracerProvider,
-				Logger:         &logger,
+				TracerProvider:     tracerProvider,
+				Logger:             &logger,
+				InsecureSkipVerify: cfg.HTTPInsecureSkipVerify,
 			}),
 		})
 		if err != nil {
