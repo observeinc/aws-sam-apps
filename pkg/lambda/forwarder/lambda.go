@@ -24,20 +24,29 @@ const (
 	instrumentationName = "github.com/observeinc/aws-sam-apps/pkg/lambda/forwarder"
 )
 
+type S3Client interface {
+	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
+	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	CopyObject(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
+	s3.HeadBucketAPIClient
+}
+
 type Config struct {
 	DestinationURI       string           `env:"DESTINATION_URI,required"`
-	Verbosity            int              `env:"VERBOSITY,default=1"`
 	MaxFileSize          int64            `env:"MAX_FILE_SIZE"`
 	ContentTypeOverrides []*override.Rule `env:"CONTENT_TYPE_OVERRIDES"`
 	PresetOverrides      []string         `env:"PRESET_OVERRIDES,default=aws/v1,infer/v1"`
 	SourceBucketNames    []string         `env:"SOURCE_BUCKET_NAMES"`
+
+	Logging *logging.Config
 
 	OTELServiceName          string `env:"OTEL_SERVICE_NAME,default=forwarder"`
 	OTELTracesExporter       string `env:"OTEL_TRACES_EXPORTER,default=none"`
 	OTELExporterOTLPEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 
 	// The following variables are not configurable via environment
-	HTTPInsecureSkipVerify bool
+	HTTPInsecureSkipVerify bool     `json:"-"`
+	AWSS3Client            S3Client `json:"-"`
 }
 
 type Lambda struct {
@@ -47,9 +56,7 @@ type Lambda struct {
 }
 
 func New(ctx context.Context, cfg *Config) (*Lambda, error) {
-	logger := logging.New(&logging.Config{
-		Verbosity: cfg.Verbosity,
-	})
+	logger := logging.New(cfg.Logging)
 	logger.V(4).Info("initialized", "config", cfg)
 
 	tracing.SetLogger(logger)
@@ -102,7 +109,10 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		return nil, fmt.Errorf("failed to load presets: %w", err)
 	}
 
-	awsS3Client := s3.NewFromConfig(awsCfg)
+	var awsS3Client = cfg.AWSS3Client
+	if awsS3Client == nil {
+		awsS3Client = s3.NewFromConfig(awsCfg)
+	}
 
 	var s3Client forwarder.S3Client = awsS3Client
 	if strings.HasPrefix(cfg.DestinationURI, "https") {

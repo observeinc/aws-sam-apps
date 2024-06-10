@@ -2,7 +2,10 @@ package awstest
 
 import (
 	"context"
+	"fmt"
+	"os"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -39,4 +42,28 @@ func (c *S3Client) HeadBucket(ctx context.Context, params *s3.HeadBucketInput, o
 		return nil, nil
 	}
 	return c.HeadBucketFunc(ctx, params, optFns...)
+}
+
+// FileGetter is a fake S3 client that grabs files from disk
+type FileGetter struct {
+	S3Client
+	ContentType     *string
+	ContentEncoding *string
+}
+
+func (c *FileGetter) GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	file, err := os.Open(fmt.Sprintf("%s/%s", aws.ToString(params.Bucket), aws.ToString(params.Key)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	fileinfo, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read fileinfo: %w", err)
+	}
+	return &s3.GetObjectOutput{
+		Body:            file,
+		ContentLength:   aws.Int64(fileinfo.Size()),
+		ContentType:     c.ContentType,
+		ContentEncoding: c.ContentEncoding,
+	}, nil
 }
