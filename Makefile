@@ -187,16 +187,19 @@ $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 
 SAM_PULL_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-pull-$(region))
 
+$(foreach target,$(SAM_PULL_REGION_TARGETS),$(eval  \
+	$(target): $(foreach app,$(APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$(target))) \
+))
+
 .PHONY: $(SAM_PULL_REGION_TARGETS)
 $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 	# force ourselves to use the public URLs, verifying ACLs are correctly set
-	mkdir -p $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
-	  cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
-	  for app in $(APPS); do \
-	    curl -fs \
-	      -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
-	      -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \
-	  done
+	cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
+	for app in $(APPS); do \
+	  curl -fs \
+	    -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
+	    -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \
+	done
 
 SAM_PUSH_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-push-$(region))
 
