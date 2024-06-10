@@ -1,4 +1,4 @@
-package handlertest
+package awstest
 
 import (
 	"context"
@@ -10,6 +10,7 @@ type S3Client struct {
 	GetObjectFunc  func(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	CopyObjectFunc func(context.Context, *s3.CopyObjectInput, ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
 	PutObjectFunc  func(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	HeadBucketFunc func(context.Context, *s3.HeadBucketInput, ...func(*s3.Options)) (*s3.HeadBucketOutput, error)
 }
 
 func (c *S3Client) GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
@@ -31,4 +32,11 @@ func (c *S3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, opt
 		return nil, nil
 	}
 	return c.PutObjectFunc(ctx, params, optFns...)
+}
+
+func (c *S3Client) HeadBucket(ctx context.Context, params *s3.HeadBucketInput, optFns ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+	if c.HeadBucketFunc == nil {
+		return nil, nil
+	}
+	return c.HeadBucketFunc(ctx, params, optFns...)
 }

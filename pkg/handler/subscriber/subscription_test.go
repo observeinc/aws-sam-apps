@@ -15,14 +15,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func TestHandleSubscribe(t *testing.T) {
 	t.Parallel()
 
-	client := &handlertest.CloudWatchLogsClient{
+	client := &awstest.CloudWatchLogsClient{
 		LogGroups: []types.LogGroup{
 			{LogGroupName: aws.String("/aws/hello")},
 			{LogGroupName: aws.String("/aws/ello")},
@@ -224,7 +224,7 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 			t.Parallel()
 			s, err := subscriber.New(
 				&subscriber.Config{
-					CloudWatchLogsClient: &handlertest.CloudWatchLogsClient{},
+					CloudWatchLogsClient: &awstest.CloudWatchLogsClient{},
 					FilterName:           aws.ToString(tt.Configure.FilterName),
 					DestinationARN:       aws.ToString(tt.Configure.DestinationArn),
 					RoleARN:              tt.Configure.RoleArn,
@@ -257,7 +257,7 @@ func TestHandleSubscribeConcurrent(t *testing.T) {
 		t.Helper()
 		semaphore := make(chan struct{}, capacity)
 		t.Cleanup(func() { close(semaphore) })
-		return &handlertest.CloudWatchLogsClient{
+		return &awstest.CloudWatchLogsClient{
 			DescribeSubscriptionFiltersFunc: func(context.Context, *cloudwatchlogs.DescribeSubscriptionFiltersInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeSubscriptionFiltersOutput, error) {
 				select {
 				case semaphore <- struct{}{}:

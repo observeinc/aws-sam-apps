@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder"
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func TestConfig(t *testing.T) {
@@ -25,13 +25,13 @@ func TestConfig(t *testing.T) {
 		{
 			Config: forwarder.Config{
 				DestinationURI: "s3://test",
-				S3Client:       &handlertest.S3Client{},
+				S3Client:       &awstest.S3Client{},
 			},
 		},
 		{
 			Config: forwarder.Config{
 				DestinationURI: "ftp://example.com",
-				S3Client:       &handlertest.S3Client{},
+				S3Client:       &awstest.S3Client{},
 			},
 			ExpectError: forwarder.ErrInvalidDestination,
 		},

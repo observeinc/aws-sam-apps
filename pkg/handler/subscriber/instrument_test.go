@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func TestQueuePut(t *testing.T) {
@@ -29,7 +29,7 @@ func TestQueuePut(t *testing.T) {
 		tt := tt
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
-			client := &handlertest.SQSClient{
+			client := &awstest.SQSClient{
 				SendMessageFunc: func(_ context.Context, record *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
 					_, found := record.MessageAttributes["b3"]
 					if found != true {

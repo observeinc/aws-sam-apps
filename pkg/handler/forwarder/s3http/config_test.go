@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http"
-	"github.com/observeinc/aws-sam-apps/pkg/handler/handlertest"
+	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
 func TestConfig(t *testing.T) {
@@ -25,13 +25,13 @@ func TestConfig(t *testing.T) {
 		{
 			Config: s3http.Config{
 				DestinationURI:     "https://test",
-				GetObjectAPIClient: &handlertest.S3Client{},
+				GetObjectAPIClient: &awstest.S3Client{},
 			},
 		},
 		{
 			Config: s3http.Config{
 				DestinationURI:     "s3://test",
-				GetObjectAPIClient: &handlertest.S3Client{},
+				GetObjectAPIClient: &awstest.S3Client{},
 			},
 			// S3 URI not supported
 			ExpectError: s3http.ErrInvalidDestination,
