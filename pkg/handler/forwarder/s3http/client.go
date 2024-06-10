@@ -30,6 +30,7 @@ type GetObjectAPIClient interface {
 type Client struct {
 	GetObjectAPIClient
 	RequestBuilder *request.Builder
+	GzipLevel      *int
 }
 
 func toGetInput(copyInput *s3.CopyObjectInput) (*s3.GetObjectInput, error) {
@@ -149,15 +150,20 @@ func (c *Client) PutObject(ctx context.Context, params *s3.PutObjectInput, _ ...
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
 
+	headers := map[string]string{
+		"Content-Type": "application/x-ndjson",
+	}
+	if c.GzipLevel != nil {
+		headers["Content-Encoding"] = "gzip"
+	}
+
 	err = batch.Run(ctx, &batch.RunInput{
-		Decoder: dec,
+		Decoder:   dec,
+		GzipLevel: c.GzipLevel,
 		Handler: c.RequestBuilder.With(map[string]string{
 			"content-type": aws.ToString(params.ContentType),
 			"key":          aws.ToString(params.Key),
-		}, map[string]string{
-			"Content-Type": "application/x-ndjson",
-		},
-		),
+		}, headers),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to process: %w", err)
@@ -172,10 +178,10 @@ func New(cfg *Config) (*Client, error) {
 
 	return &Client{
 		GetObjectAPIClient: cfg.GetObjectAPIClient,
+		GzipLevel:          cfg.GzipLevel,
 		RequestBuilder: &request.Builder{
-			URL:       cfg.DestinationURI,
-			GzipLevel: cfg.RequestGzipLevel,
-			Client:    cfg.HTTPClient,
+			URL:    cfg.DestinationURI,
+			Client: cfg.HTTPClient,
 		},
 	}, nil
 }

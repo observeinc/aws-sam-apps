@@ -96,7 +96,6 @@ func TestClientPut(t *testing.T) {
 			client, err := s3http.New(&s3http.Config{
 				DestinationURI:     fmt.Sprintf("%s/%s", s.URL, tt.Path),
 				GetObjectAPIClient: &awstest.S3Client{},
-				RequestGzipLevel:   aws.Int(0),
 				HTTPClient:         s.Client(),
 			})
 			if err != nil {

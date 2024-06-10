@@ -11,6 +11,10 @@ import (
 	"github.com/observeinc/aws-sam-apps/pkg/testing/awstest"
 )
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 func TestConfig(t *testing.T) {
 	testcases := []struct {
 		s3http.Config
@@ -35,6 +39,14 @@ func TestConfig(t *testing.T) {
 			},
 			// S3 URI not supported
 			ExpectError: s3http.ErrInvalidDestination,
+		},
+		{
+			Config: s3http.Config{
+				DestinationURI:     "https://test",
+				GzipLevel:   ptr(200),
+				GetObjectAPIClient: &awstest.S3Client{},
+			},
+			ExpectError: s3http.ErrUnsupportedGzipLevel,
 		},
 	}
 

@@ -1,6 +1,7 @@
 package s3http
 
 import (
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"net/http"
@@ -8,15 +9,16 @@ import (
 )
 
 var (
-	ErrInvalidDestination = errors.New("invalid destination URI")
-	ErrMissingS3Client    = errors.New("missing S3 client")
+	ErrInvalidDestination   = errors.New("invalid destination URI")
+	ErrMissingS3Client      = errors.New("missing S3 client")
+	ErrUnsupportedGzipLevel = errors.New("unsupported compression level")
 )
 
 type Config struct {
 	DestinationURI string // HTTP URI to upload data to
 	GetObjectAPIClient
-	HTTPClient       *http.Client
-	RequestGzipLevel *int
+	HTTPClient *http.Client
+	GzipLevel  *int
 }
 
 func (c *Config) Validate() error {
@@ -36,6 +38,12 @@ func (c *Config) Validate() error {
 
 	if c.GetObjectAPIClient == nil {
 		errs = append(errs, ErrMissingS3Client)
+	}
+
+	if c.GzipLevel != nil {
+		if _, err := gzip.NewWriterLevel(nil, *c.GzipLevel); err != nil {
+			errs = append(errs, fmt.Errorf("%w: %w", ErrUnsupportedGzipLevel, err))
+		}
 	}
 
 	return errors.Join(errs...)
