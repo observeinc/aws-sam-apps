@@ -159,6 +159,8 @@ func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) 
 }
 
 func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	resultCh := make(chan *SQSMessage, len(request.Records))
 	defer close(resultCh)
 
@@ -180,6 +182,7 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 			defer releaseToken()
 			result := &SQSMessage{SQSMessage: m}
 			if err := h.ProcessRecord(ctx, &m); err != nil {
+				logger.Error(err, "failed to process record")
 				result.ErrorMessage = err.Error()
 			}
 			resultCh <- result
