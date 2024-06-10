@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -36,10 +37,11 @@ func (l *leveledLogger) Debug(msg string, keysAndValues ...interface{}) {
 }
 
 type HTTPClientConfig struct {
-	RetryWaitMin   *time.Duration // Minimum time to wait on retry
-	RetryWaitMax   *time.Duration // Maximumum time to wait on retry
-	RetryMax       *int           // Maximum number of retries
-	HTTPClient     *http.Client
+	RetryWaitMin       *time.Duration // Minimum time to wait on retry
+	RetryWaitMax       *time.Duration // Maximumum time to wait on retry
+	RetryMax           *int           // Maximum number of retries
+	InsecureSkipVerify bool           // disable TLS verification
+
 	Logger         *logr.Logger
 	TracerProvider trace.TracerProvider
 }
@@ -51,8 +53,12 @@ func NewHTTPClient(cfg *HTTPClientConfig) *http.Client {
 
 	client := retryablehttp.NewClient()
 
-	if cfg.HTTPClient != nil {
-		client.HTTPClient = cfg.HTTPClient
+	if cfg.InsecureSkipVerify {
+		if t, ok := client.HTTPClient.Transport.(*http.Transport); ok {
+			t.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true,
+			}
+		}
 	}
 
 	if cfg.RetryWaitMin != nil {
