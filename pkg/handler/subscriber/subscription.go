@@ -103,8 +103,8 @@ func subscriptionFilterEquals(a, b types.SubscriptionFilter) bool {
 // cloudwatch API in order to converge to our intended configuration state.
 func (h *Handler) SubscriptionFilterDiff(subscriptionFilters []types.SubscriptionFilter) (actions []any) {
 	var (
-		deleted, updated int
-		deleteOnly       = aws.ToString(h.subscriptionFilter.DestinationArn) == ""
+		deleted, found int
+		deleteOnly     = aws.ToString(h.subscriptionFilter.DestinationArn) == ""
 	)
 
 	for _, f := range subscriptionFilters {
@@ -117,18 +117,20 @@ func (h *Handler) SubscriptionFilterDiff(subscriptionFilters []types.Subscriptio
 			actions = append(actions, &cloudwatchlogs.DeleteSubscriptionFilterInput{
 				FilterName: f.FilterName,
 			})
-		} else if !subscriptionFilterEquals(h.subscriptionFilter, f) {
-			updated++
-			actions = append(actions, &cloudwatchlogs.PutSubscriptionFilterInput{
-				FilterName:     h.subscriptionFilter.FilterName,
-				FilterPattern:  h.subscriptionFilter.FilterPattern,
-				DestinationArn: h.subscriptionFilter.DestinationArn,
-				RoleArn:        h.subscriptionFilter.RoleArn,
-			})
+		} else {
+			found++
+			if !subscriptionFilterEquals(h.subscriptionFilter, f) {
+				actions = append(actions, &cloudwatchlogs.PutSubscriptionFilterInput{
+					FilterName:     h.subscriptionFilter.FilterName,
+					FilterPattern:  h.subscriptionFilter.FilterPattern,
+					DestinationArn: h.subscriptionFilter.DestinationArn,
+					RoleArn:        h.subscriptionFilter.RoleArn,
+				})
+			}
 		}
 	}
 
-	if !deleteOnly && updated == 0 && len(subscriptionFilters)-deleted < MaxSubscriptionFilterCount {
+	if !deleteOnly && found == 0 && len(subscriptionFilters)-deleted < MaxSubscriptionFilterCount {
 		actions = append(actions, &cloudwatchlogs.PutSubscriptionFilterInput{
 			FilterName:     h.subscriptionFilter.FilterName,
 			FilterPattern:  h.subscriptionFilter.FilterPattern,
