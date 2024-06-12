@@ -477,7 +477,8 @@ Resources:
     Condition: HasDiscoveryRate
     DependsOn: Subscriber
     Properties:
-      Description: "Subscribe new log groups"
+      Description: >-
+        Subscribe new log groups. Requires CloudTrail in target region.
       State: ENABLED
       EventPattern:
         source:

@@ -185,9 +185,6 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 			},
 		},
 		{
-			/*
-				Do nothing if we exceed the two subscription filter limit
-			*/
 			Configure: types.SubscriptionFilter{
 				FilterName:     aws.String("observe"),
 				DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:example"),
@@ -202,6 +199,9 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 			},
 		},
 		{
+			/*
+				Do nothing if we exceed the two subscription filter limit
+			*/
 			Configure: types.SubscriptionFilter{
 				FilterName:     aws.String("observe"),
 				DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:example"),
@@ -212,6 +212,24 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 				},
 				{
 					FilterName: aws.String("bar"),
+				},
+			},
+			// no expected actions
+		},
+		{
+			// Do nothing if filter already matches.
+			Configure: types.SubscriptionFilter{
+				FilterName:     aws.String("observe"),
+				DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:example"),
+			},
+			Existing: []types.SubscriptionFilter{
+				{
+					FilterName:     aws.String("observe"),
+					DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:example"),
+				},
+				{
+					FilterName:     aws.String("something-else"),
+					DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:another"),
 				},
 			},
 			// no expected actions

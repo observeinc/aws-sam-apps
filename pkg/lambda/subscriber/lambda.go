@@ -53,6 +53,8 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 	logger := logging.New(cfg.Logging)
 	logger.V(4).Info("initialized", "config", cfg)
 
+	tracing.SetLogger(logger)
+
 	tracerProvider, err := tracing.NewTracerProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize tracing: %w", err)
