@@ -10,24 +10,28 @@
     source: '/cloudwatchmetrics/[a-z\d-]+/json/\d{4}/\d{2}/\d{2}/\d{2}'
   override:
     content-type: 'application/x-aws-cloudwatchmetrics'
+    # note, cloudwatchmetrics payloads are _not_ gzipped
 
 - id: configSnapshot
   match:
     source: '\d{12}_Config_[a-z\d-]+_ConfigSnapshot_\d{8}T\d{6}Z_[a-f\d-]+\.json\.gz$'
   override:
     content-type: 'application/x-aws-config'
+    content-encoding: 'gzip'
 
 - id: configHistory
   match:
     source: '\d{12}_Config_[a-z\d-]+_ConfigHistory_[^\.]+.json\.gz$'
   override:
     content-type: 'application/x-aws-config'
+    content-encoding: 'gzip'
 
 - id: configChangeNotification
   match:
     source: '\d{12}_Config_[a-z\d-]+_ChangeNotification_AWS\S+_\d{8}T\d{6}Z_[a-f\d-]+\.json\.gz$'
   override:
     content-type: 'application/x-aws-change'
+    content-encoding: 'gzip'
 
 - id: cloudtrail
   match:
@@ -40,6 +44,7 @@
     source: '\d{12}_vpcflowlogs_[a-z\d-]+_[a-zA-Z0-9-]+_\d{8}T\d{4}Z_[a-zA-Z0-9-]+\.log\.gz$'
   override:
     content-type: 'application/x-aws-vpcflowlogs'
+    content-encoding: 'gzip'
 
 - id: awsTestObject
   match:
@@ -52,3 +57,4 @@
     source: '\d{12}_elasticloadbalancing_[a-z\d-]+_[a-zA-Z0-9-]+_\d{8}T\d{4}Z_[0-9.]+_[a-zA-Z0-9]+\.log\.gz$'
   override:
     content-type: 'application/x-aws-elasticloadbalancing'
+    content-encoding: 'gzip'
