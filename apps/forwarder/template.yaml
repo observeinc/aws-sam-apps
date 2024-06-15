@@ -159,6 +159,8 @@ Conditions:
       - ''
       - !Ref SourceBucketNames
     - ''
+  EnableSourceS3: !Not
+    - !Condition DisableSourceS3
   DisableKMSDecrypt: !Equals
     - !Join
       - ''
@@ -234,17 +236,19 @@ Resources:
         - !Ref Queue
   Rule:
     Type: AWS::Events::Rule
+    Condition: EnableSourceS3
     Properties:
       Description: "Trigger copy for object created events"
-      EventPattern:
-        source:
-          - "aws.s3"
-        detail-type:
-          - "Object Created"
-      # NOTE: it would be nice to filter events to match source buckets only.
-      # SourceBucketArns however allows for wildcards, which aren't easily
-      # converted into the appropriate EventBridge filter. We instead filter
-      # within the lambda.
+      EventPattern: !Sub
+        - |
+          {
+            "source": ["aws.s3"],
+            "detail-type": ["Object Created"],
+            "detail.bucket.name": [{"wildcard": "${wildcards}"}]
+          }
+        - wildcards: !Join
+            - '"}, {"wildcard":"'
+            - !Ref SourceBucketNames
       Targets:
         - Arn: !GetAtt Queue.Arn
           Id: "Forwarder"
