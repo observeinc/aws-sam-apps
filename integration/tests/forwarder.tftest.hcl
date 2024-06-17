@@ -120,9 +120,10 @@ run "install_forwarder" {
     setup = run.setup
     app   = "forwarder"
     parameters = {
-      DataAccessPointArn   = run.target_bucket.access_point.arn
-      DestinationUri       = "s3://${run.target_bucket.access_point.alias}/"
-      SourceBucketNames    = "${join(",", [for k, v in run.sources.buckets : v.id])}"
+      DataAccessPointArn = run.target_bucket.access_point.arn
+      DestinationUri     = "s3://${run.target_bucket.access_point.alias}/"
+      # all bucket names share the same prefix, this should just work.
+      SourceBucketNames    = "${run.setup.short}*"
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
       SourceKMSKeyArns     = "${join(",", [for k, v in run.sources.buckets : v.kms_key.arn if v.kms_key != null])}"
