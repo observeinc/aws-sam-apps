@@ -25,6 +25,7 @@ Metadata:
           default: Data Sources
         Parameters:
           - SourceBucketNames
+          - SourceObjectKeys
           - SourceTopicArns
           - SourceKMSKeyArns
           - ContentTypeOverrides
@@ -69,6 +70,12 @@ Parameters:
       to the forwarder.
     Default: ''
     AllowedPattern: "^[a-z0-9-.]*(\\*)?$"
+  SourceObjectKeys:
+    Type: CommaDelimitedList
+    Description: >-
+      A list of object keys which the forwarder should process. This list
+      applies across all source buckets, and supports wildcards.
+    Default: '*'
   SourceTopicArns:
     Type: CommaDelimitedList
     Description: >-
@@ -154,11 +161,17 @@ Conditions:
   UseDefaultVerbosity: !Equals
     - !Ref Verbosity
     - ''
-  DisableSourceS3: !Equals
-    - !Join
+  DisableSourceS3: !Or
+    - !Equals
+      - !Join
+        - ''
+        - !Ref SourceBucketNames
       - ''
-      - !Ref SourceBucketNames
-    - ''
+    - !Equals
+      - !Join
+        - ''
+        - !Ref SourceObjectKeys
+      - ''
   EnableSourceS3: !Not
     - !Condition DisableSourceS3
   DisableKMSDecrypt: !Equals
@@ -244,11 +257,15 @@ Resources:
           {
             "source": ["aws.s3"],
             "detail-type": ["Object Created"],
-            "detail.bucket.name": [{"wildcard": "${wildcards}"}]
+            "detail.bucket.name": [{"wildcard": "${buckets}"}],
+            "detail.object.key": [{"wildcard": "${objects}"}]
           }
-        - wildcards: !Join
+        - buckets: !Join
             - '"}, {"wildcard":"'
             - !Ref SourceBucketNames
+          objects: !Join
+            - '"}, {"wildcard":"'
+            - !Ref SourceObjectKeys
       Targets:
         - Arn: !GetAtt Queue.Arn
           Id: "Forwarder"
@@ -343,6 +360,14 @@ Resources:
                   Action:
                     - s3:GetObject
                     - s3:GetObjectTagging
+                  # NOTE: ideally we'd filter the resource list to the set of
+                  # source object keys. That would require taking the cross
+                  # product of SourceBucketNames and SourceObjectKeys, which
+                  # can not be natively expressed in CloudFormation.
+                  #
+                  # We rely instead on filtering within the Lambda function,
+                  # assisted by filtering at the event subscription layer to
+                  # reduce the chances of false positives.
                   Resource: !Split
                     - ","
                     - !Sub
@@ -435,6 +460,9 @@ Resources:
           SOURCE_BUCKET_NAMES: !Join
             - ','
             - !Ref SourceBucketNames
+          SOURCE_OBJECT_KEYS: !Join
+            - ','
+            - !Ref SourceObjectKeys
           OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
           OTEL_TRACES_EXPORTER: !If [DisableOTEL, "none", "otlp"]
 Outputs:

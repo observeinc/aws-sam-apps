@@ -35,6 +35,7 @@ run "install_forwarder" {
     parameters = {
       DestinationUri    = "s3://${run.target_bucket.id}/"
       SourceBucketNames = "${join(",", [for k, v in run.sources.buckets : v.id])}"
+      SourceObjectKeys  = "*/allowed/*"
       SourceTopicArns   = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       NameOverride      = run.setup.id
     }
@@ -66,13 +67,34 @@ run "check_sqs" {
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.sources.buckets["sqs"].id
-      DESTINATION = run.target_bucket.id
+      SOURCE        = run.sources.buckets["sqs"].id
+      DESTINATION   = run.target_bucket.id
+      OBJECT_PREFIX = "test/allowed/"
     }
   }
 
   assert {
     condition     = output.exitcode == 0
     error_message = "Failed to copy object using SQS"
+  }
+}
+
+run "check_disallowed" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.9.0"
+  }
+
+  variables {
+    command = "./scripts/check_object_diff"
+    env_vars = {
+      SOURCE      = run.sources.buckets["sqs"].id
+      DESTINATION = run.target_bucket.id
+    }
+  }
+
+  assert {
+    condition     = output.exitcode != 0
+    error_message = "Succeeded copying object not in source object keys"
   }
 }

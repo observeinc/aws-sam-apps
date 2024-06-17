@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,13 +36,13 @@ type Override interface {
 
 type Handler struct {
 	handler.Mux
-	MaxFileSize       int64
-	DestinationURI    *url.URL
-	S3Client          S3Client
-	Override          Override
-	SourceBucketNames []string
-	Now               func() time.Time
-	MaxConcurrency    int
+	MaxFileSize    int64
+	DestinationURI *url.URL
+	S3Client       S3Client
+	Override       Override
+	ObjectPolicy   interface{ Allow(string) bool }
+	Now            func() time.Time
+	MaxConcurrency int
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -131,18 +130,19 @@ func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) 
 			continue
 		}
 
-		if !h.isBucketAllowed(sourceURL.Host) {
-			logger.Info("Received event from a bucket not in the allowed list; skipping", "bucket", sourceURL.Host)
+		copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
+
+		if !h.ObjectPolicy.Allow(aws.ToString(copyInput.CopySource)) {
+			logger.Info("Ignoring object not in allowed sources", "bucket", copyInput.Bucket, "key", copyInput.Key)
 			continue
 		}
+
 		if copyRecord.Size != nil && h.MaxFileSize > 0 && *copyRecord.Size > h.MaxFileSize {
 			logger.V(1).Info("object size exceeds the maximum file size limit; skipping copy",
 				"max", h.MaxFileSize, "size", *copyRecord.Size, "uri", copyRecord.URI)
 			// Log a warning and skip this object by continuing to the next iteration
 			continue
 		}
-
-		copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
 
 		if h.Override != nil {
 			if h.Override.Apply(ctx, copyInput) && copyInput.Key == nil {
@@ -210,16 +210,6 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 	return
 }
 
-// isBucketAllowed checks if the given bucket is in the allowed list or matches a pattern.
-func (h *Handler) isBucketAllowed(bucket string) bool {
-	for _, pattern := range h.SourceBucketNames {
-		if match, _ := filepath.Match(pattern, bucket); match {
-			return true
-		}
-	}
-	return false
-}
-
 func New(cfg *Config) (h *Handler, err error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -227,14 +217,16 @@ func New(cfg *Config) (h *Handler, err error) {
 
 	u, _ := url.ParseRequestURI(cfg.DestinationURI)
 
+	objectFilter, _ := NewObjectFilter(cfg.SourceBucketNames, cfg.SourceObjectKeys)
+
 	h = &Handler{
-		DestinationURI:    u,
-		S3Client:          cfg.S3Client,
-		MaxFileSize:       cfg.MaxFileSize,
-		Override:          cfg.Override,
-		SourceBucketNames: cfg.SourceBucketNames,
-		Now:               time.Now,
-		MaxConcurrency:    cfg.MaxConcurrency,
+		DestinationURI: u,
+		S3Client:       cfg.S3Client,
+		MaxFileSize:    cfg.MaxFileSize,
+		Override:       cfg.Override,
+		ObjectPolicy:   objectFilter,
+		Now:            time.Now,
+		MaxConcurrency: cfg.MaxConcurrency,
 	}
 
 	return h, nil

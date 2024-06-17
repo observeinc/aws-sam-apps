@@ -37,6 +37,7 @@ type Config struct {
 	ContentTypeOverrides []*override.Rule `env:"CONTENT_TYPE_OVERRIDES"`
 	PresetOverrides      []string         `env:"PRESET_OVERRIDES,default=aws/v1,infer/v1"`
 	SourceBucketNames    []string         `env:"SOURCE_BUCKET_NAMES"`
+	SourceObjectKeys     []string         `env:"SOURCE_OBJECT_KEYS"`
 
 	Logging *logging.Config
 
@@ -140,6 +141,7 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		S3Client:          s3Client,
 		Override:          append(override.Sets{customOverrides}, presets...),
 		SourceBucketNames: cfg.SourceBucketNames,
+		SourceObjectKeys:  cfg.SourceObjectKeys,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handler: %w", err)
