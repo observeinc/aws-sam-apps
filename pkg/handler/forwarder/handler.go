@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"runtime"
 	"strings"
 	"time"
 
@@ -36,13 +37,14 @@ type Override interface {
 
 type Handler struct {
 	handler.Mux
-	MaxFileSize    int64
-	DestinationURI *url.URL
-	S3Client       S3Client
-	Override       Override
-	ObjectPolicy   interface{ Allow(string) bool }
-	Now            func() time.Time
-	MaxConcurrency int
+
+	MaxFileSize        int64
+	DestinationURI     *url.URL
+	S3Client           S3Client
+	Override           Override
+	ObjectPolicy       interface{ Allow(string) bool }
+	Now                func() time.Time
+	MaxConcurrentTasks int
 }
 
 // GetCopyObjectInput constructs the input struct for CopyObject.
@@ -169,8 +171,8 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 		releaseToken = func() {}
 	)
 
-	if h.MaxConcurrency > 0 {
-		limitCh := make(chan struct{}, h.MaxConcurrency)
+	if h.MaxConcurrentTasks > 0 {
+		limitCh := make(chan struct{}, h.MaxConcurrentTasks)
 		defer close(limitCh)
 		acquireToken = func() { limitCh <- struct{}{} }
 		releaseToken = func() { <-limitCh }
@@ -217,16 +219,21 @@ func New(cfg *Config) (h *Handler, err error) {
 
 	u, _ := url.ParseRequestURI(cfg.DestinationURI)
 
+	maxConcurrentTasks := cfg.MaxConcurrentTasks
+	if maxConcurrentTasks == 0 {
+		maxConcurrentTasks = runtime.NumCPU()
+	}
+
 	objectFilter, _ := NewObjectFilter(cfg.SourceBucketNames, cfg.SourceObjectKeys)
 
 	h = &Handler{
-		DestinationURI: u,
-		S3Client:       cfg.S3Client,
-		MaxFileSize:    cfg.MaxFileSize,
-		Override:       cfg.Override,
-		ObjectPolicy:   objectFilter,
-		Now:            time.Now,
-		MaxConcurrency: cfg.MaxConcurrency,
+		DestinationURI:     u,
+		S3Client:           cfg.S3Client,
+		MaxFileSize:        cfg.MaxFileSize,
+		Override:           cfg.Override,
+		ObjectPolicy:       objectFilter,
+		Now:                time.Now,
+		MaxConcurrentTasks: maxConcurrentTasks,
 	}
 
 	return h, nil

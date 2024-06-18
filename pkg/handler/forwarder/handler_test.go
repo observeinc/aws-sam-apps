@@ -275,7 +275,7 @@ func TestHandler(t *testing.T) {
 						return nil, errSentinel
 					},
 				},
-				MaxConcurrency: 1, // ensure ordering
+				MaxConcurrentTasks: 1, // ensure ordering
 			},
 			ExpectedCopyCalls: 3, // Expect three unsuccessful calls to CopyObjectFunc
 			ExpectResponse: events.SQSEventResponse{

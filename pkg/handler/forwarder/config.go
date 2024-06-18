@@ -15,14 +15,14 @@ var (
 )
 
 type Config struct {
-	DestinationURI    string // S3 URI to write messages and copy files to
-	MaxFileSize       int64  // maximum file size in bytes for the files to be processed
-	SourceBucketNames []string
-	SourceObjectKeys  []string
-	Override          Override
-	S3Client          S3Client
-	GetTime           func() *time.Time
-	MaxConcurrency    int // fan out limit
+	DestinationURI     string // S3 URI to write messages and copy files to
+	MaxFileSize        int64  // maximum file size in bytes for the files to be processed
+	SourceBucketNames  []string
+	SourceObjectKeys   []string
+	Override           Override
+	S3Client           S3Client
+	GetTime            func() *time.Time
+	MaxConcurrentTasks int // fan out limit
 }
 
 func (c *Config) Validate() error {

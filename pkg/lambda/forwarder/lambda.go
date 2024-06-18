@@ -38,6 +38,7 @@ type Config struct {
 	PresetOverrides      []string         `env:"PRESET_OVERRIDES,default=aws/v1,infer/v1"`
 	SourceBucketNames    []string         `env:"SOURCE_BUCKET_NAMES"`
 	SourceObjectKeys     []string         `env:"SOURCE_OBJECT_KEYS"`
+	MaxConcurrentTasks   int              `env:"MAX_CONCURRENT_TASKS"`
 
 	Logging *logging.Config
 
@@ -136,12 +137,13 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 	}
 
 	f, err := forwarder.New(&forwarder.Config{
-		DestinationURI:    cfg.DestinationURI,
-		MaxFileSize:       cfg.MaxFileSize,
-		S3Client:          s3Client,
-		Override:          append(override.Sets{customOverrides}, presets...),
-		SourceBucketNames: cfg.SourceBucketNames,
-		SourceObjectKeys:  cfg.SourceObjectKeys,
+		DestinationURI:     cfg.DestinationURI,
+		MaxFileSize:        cfg.MaxFileSize,
+		S3Client:           s3Client,
+		Override:           append(override.Sets{customOverrides}, presets...),
+		SourceBucketNames:  cfg.SourceBucketNames,
+		SourceObjectKeys:   cfg.SourceObjectKeys,
+		MaxConcurrentTasks: cfg.MaxConcurrentTasks,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handler: %w", err)
