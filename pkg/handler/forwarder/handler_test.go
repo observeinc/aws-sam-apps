@@ -123,6 +123,7 @@ func TestHandler(t *testing.T) {
 				MaxFileSize:       20,
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
+				SourceObjectKeys:  []string{"*"},
 				S3Client: &awstest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
@@ -141,6 +142,7 @@ func TestHandler(t *testing.T) {
 				MaxFileSize:       1,
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
+				SourceObjectKeys:  []string{"*"},
 				S3Client: &awstest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
@@ -158,6 +160,7 @@ func TestHandler(t *testing.T) {
 			Config: forwarder.Config{
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
+				SourceObjectKeys:  []string{"*"},
 				S3Client: &awstest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, errSentinel
@@ -177,6 +180,7 @@ func TestHandler(t *testing.T) {
 			Config: forwarder.Config{
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
+				SourceObjectKeys:  []string{"*"},
 				S3Client: &awstest.S3Client{
 					PutObjectFunc: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 						return nil, errSentinel
@@ -192,6 +196,25 @@ func TestHandler(t *testing.T) {
 			Config: forwarder.Config{
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"doesntexist"},
+				SourceObjectKeys:  []string{"*"},
+				S3Client: &awstest.S3Client{
+					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+						return nil, nil
+					},
+				},
+			},
+			ExpectedCopyCalls: 0,
+			ExpectResponse:    events.SQSEventResponse{
+				// Expect no batch item failures as the file should be skipped, not failed
+			},
+		},
+		{
+			// Source key isn't in source object keys
+			RequestFile: "testdata/event.json",
+			Config: forwarder.Config{
+				DestinationURI:    "s3://my-bucket",
+				SourceBucketNames: []string{"*"},
+				SourceObjectKeys:  []string{"nope"},
 				S3Client: &awstest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil
@@ -210,6 +233,7 @@ func TestHandler(t *testing.T) {
 				MaxFileSize:       50, // Adjust size limit to allow the file to be copied
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"doesntexist", "observeinc-filedrop-hoho-us-west-2-7xmjt"}, // List includes the exact bucket name
+				SourceObjectKeys:  []string{"ds*"},
 				S3Client: &awstest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil // Mock successful copy
@@ -227,6 +251,7 @@ func TestHandler(t *testing.T) {
 			Config: forwarder.Config{
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
+				SourceObjectKeys:  []string{"*"},
 				S3Client: &awstest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, nil // Mock successful copy
@@ -244,6 +269,7 @@ func TestHandler(t *testing.T) {
 			Config: forwarder.Config{
 				DestinationURI:    "s3://my-bucket",
 				SourceBucketNames: []string{"observeinc*"},
+				SourceObjectKeys:  []string{"*"},
 				S3Client: &awstest.S3Client{
 					CopyObjectFunc: func(_ context.Context, _ *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 						return nil, errSentinel

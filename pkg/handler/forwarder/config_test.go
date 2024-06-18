@@ -35,6 +35,14 @@ func TestConfig(t *testing.T) {
 			},
 			ExpectError: forwarder.ErrInvalidDestination,
 		},
+		{
+			Config: forwarder.Config{
+				DestinationURI:    "https://example.com",
+				S3Client:          &awstest.S3Client{},
+				SourceBucketNames: []string{"bucket*"},
+				SourceObjectKeys:  []string{"*/te?t/*"},
+			},
+		},
 	}
 
 	for i, tc := range testcases {

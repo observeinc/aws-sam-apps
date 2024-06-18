@@ -40,6 +40,7 @@ The forwarder stack can be configured with the following parameters:
 | `DataAccessPointArn` | String | The access point ARN for your Filedrop. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This name will also be applied to the SQS Queue and Lambda Function processing events. In the absence of a value, the stack name will be used. |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from.  This list only affects permissions, and supports wildcards. In order to have files copied to Filedrop, you must also subscribe S3 Bucket Notifications to the forwarder. |
+| `SourceObjectKeys` | CommaDelimitedList | A list of object keys which the forwarder should process. This list applies across all source buckets, and supports wildcards. |
 | `SourceTopicArns` | CommaDelimitedList | A list of SNS topics the forwarder is allowed to be subscribed to. |
 | `SourceKMSKeyArns` | CommaDelimitedList | A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
@@ -78,7 +79,8 @@ These parameters must be used to configure the Forwarder stack:
 To forward files from an S3 bucket to the Filedrop:
 
 1. Include the bucket name in `SourceBucketNames` or use a wildcard pattern.
-2. Configure S3 Event Notifications to trigger the Forwarder's SQS queue.
+2. Ensure any object key you want to forward matches the patterns in `SourceObjectKeys`.
+3. Configure S3 Event Notifications to trigger the Forwarder's SQS queue.
 
 **Note**: The Forwarder stack does not manage source buckets. You must manually set up the event notifications using one of the following methods:
 
@@ -153,6 +155,16 @@ In order to grant the Forwarder lambda function permission to use the KMS key fo
 
 1. **Update your Forwarder stack**: include your KMS Key ARN in `SourceKMSKeyArns` in your forwarder stack.
 2. **Update your KMS key policy**: your key policy must grant the Forwarder Lambda function permission to call `kms:Decrypt`. The [default KMS key policy](https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html) is sufficient to satisfy this constraint, since it will delegate access to the KMS key to IAM.
+
+## Filtering Object Keys
+
+The forwarder will only attempt to forward files for which it receives events. As a result, to ensure a subset of objects is not forwarded you should filter out bucket notifications delivered to the forwarder:
+- S3 bucket notifications can be filtered by object [prefix or suffix](https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-filtering.html)
+- SNS topic subscriptions allow for [event filtering](https://docs.aws.amazon.com/sns/latest/dg/sns-message-filtering.html)
+- EventBridge supports filtering events according to [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html)
+
+Given it is not always possible to filter events at their source, the Forwarder function restricts processing to objects that match a set of key patterns provided through the `SourceObjectKeys` parameter.This set of patterns supports any valid S3 object wildcard. For example, to only ingest data for a subset of account IDs that dump data to a logging account, we could set `SourceObjectKeys=*/AWSLogs/123456789012/*,*/AWSLogs/98987654321098/*`.
+
 
 ## HTTP destination
 
