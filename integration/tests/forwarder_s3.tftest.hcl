@@ -53,7 +53,7 @@ run "subscribe_sources" {
 
   variables {
     sources   = run.sources
-    queue_arn = run.install_forwarder.stack.outputs["Queue"]
+    queue_arn = run.install_forwarder.stack.outputs["QueueArn"]
   }
 }
 

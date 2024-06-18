@@ -30,12 +30,12 @@ The flow for copying objects from a _source bucket_ into Observe is as follows:
 
 5. Logs are written the Lambda function's CloudWatch Log Group. This is the best place to start debugging task failures.
 
-## Configuration Parameters
+## Template Configuration
+
+### Parameters
 
 The forwarder stack can be configured with the following parameters:
 
-| Parameter       | Type    | Description |
-|-----------------|---------|-------------|
 | **`DestinationUri`** | String | The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must end in a forward slash. |
 | `DataAccessPointArn` | String | The access point ARN for your Filedrop. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This name will also be applied to the SQS Queue and Lambda Function processing events. In the absence of a value, the stack name will be used. |
@@ -49,6 +49,15 @@ The forwarder stack can be configured with the following parameters:
 | `Timeout` | String | The amount of time that Lambda allows a function to run before stopping it. The maximum allowed value is 900 seconds. |
 | `DebugEndpoint` | String | Endpoint to send additional debug telemetry to. |
 | `Verbosity` | String | Logging verbosity for Lambda. Highest log verbosity is 9. |
+
+### Outputs
+
+| Output       |  Description |
+|-----------------|-------------|
+| QueueArn | Forwarder Queue ARN. Events sent to this queue will be forwarded to Observe. s3:ObjectCreated events will initiate an object copy to destination. |
+| ForwarderArn | Forwarder Function ARN. This is the Lambda function responsible for forwarding objects to Observe. |
+| RoleArn | Forwarder Role ARN. This role will be assumed by the Forwarder Lambda Function in order to write data to destination. |
+| LogGroupName | Forwarder Log Group Name. This log group contains useful information for debugging the Forwarder Lambda. |
 
 ## Installation
 
@@ -164,7 +173,6 @@ The forwarder will only attempt to forward files for which it receives events. A
 - EventBridge supports filtering events according to [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html)
 
 Given it is not always possible to filter events at their source, the Forwarder function restricts processing to objects that match a set of key patterns provided through the `SourceObjectKeys` parameter.This set of patterns supports any valid S3 object wildcard. For example, to only ingest data for a subset of account IDs that dump data to a logging account, we could set `SourceObjectKeys=*/AWSLogs/123456789012/*,*/AWSLogs/98987654321098/*`.
-
 
 ## HTTP destination
 

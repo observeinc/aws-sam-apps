@@ -16,19 +16,25 @@ The stack provisions the following resources:
 
 Once deployed, AWS Config will start recording configurations for supported AWS resources and resource relationships. It will store the configuration history in the specified S3 bucket and deliver configuration snapshots at the specified frequency.
 
-## Configuration Parameters
+## Template Configuration
+
+### Parameters
 
 The following parameters are required for stack configuration:
 
 | Parameter       | Type    | Description |
 |-----------------|---------|-------------|
 | **`BucketName`** | String | The name of the S3 bucket used to store the configuration history. |
-| `TopicARN` | String | The ARN of the SNS topic that AWS Config delivers notifications to. |
+| `TopicArn` | String | The ARN of the SNS topic that AWS Config delivers notifications to. |
 | `IncludeResourceTypes` | CommaDelimitedList | Resources to collect using AWS Config. Use a wildcard to collect all supported resource types. If set to blank, installing this stack will have no effect. |
 | `ExcludeResourceTypes` | CommaDelimitedList | Exclude a subset of resource types from configuration collection. This parameter can only be set if IncludeResourceTypes is wildcarded. |
 | `IncludeGlobalResourceTypes` | String | Specifies whether AWS Config includes all supported types of global resources with the resources that it records. This field only takes effect if all resources are included for collection. IncludeResourceTypes must be set to *, and ExcludeResourceTypes must not be set. |
 | `Prefix` | String | The prefix for the specified Amazon S3 bucket. |
 | `DeliveryFrequency` | String | The frequency with which AWS Config delivers configuration snapshots. |
+
+### Outputs
+
+No outputs
 
 ## Filtering resource types
 

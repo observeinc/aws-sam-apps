@@ -178,7 +178,7 @@ run "check_sqs" {
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.install.stack.outputs["Bucket"]
+      SOURCE      = run.install.stack.outputs["BucketName"]
       DESTINATION = run.create_bucket.id
     }
   }

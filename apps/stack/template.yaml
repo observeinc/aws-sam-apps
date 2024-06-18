@@ -252,7 +252,7 @@ Resources:
     Properties:
       Endpoint: !GetAtt
         - Forwarder
-        - Outputs.Queue
+        - Outputs.QueueArn
       Protocol: sqs
       TopicArn: !Ref Topic
   Config:
@@ -265,7 +265,7 @@ Resources:
         - !Ref Topic
       Parameters:
         BucketName: !Ref Bucket
-        TopicARN: !Ref Topic
+        TopicArn: !Ref Topic
         IncludeResourceTypes: !Join [",", !Ref IncludeResourceTypes]
         ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
   ConfigSubscription:
@@ -276,9 +276,9 @@ Resources:
       NotificationARNs:
         - !Ref Topic
       Parameters:
-        TargetARN: !GetAtt
+        TargetArn: !GetAtt
           - Forwarder
-          - Outputs.Queue
+          - Outputs.QueueArn
   LogWriter:
     Type: AWS::Serverless::Application
     Properties:
@@ -286,7 +286,7 @@ Resources:
       NotificationARNs:
         - !Ref Topic
       Parameters:
-        BucketARN: !GetAtt Bucket.Arn
+        BucketArn: !GetAtt Bucket.Arn
         DebugEndpoint: !Ref DebugEndpoint
         LogGroupNamePrefixes: !Join [",", !Ref LogGroupNamePrefixes]
         LogGroupNamePatterns: !Join [",", !Ref LogGroupNamePatterns]
@@ -307,19 +307,94 @@ Resources:
       NotificationARNs:
         - !Ref Topic
       Parameters:
-        BucketARN: !GetAtt Bucket.Arn
-        FilterURI: !Ref MetricStreamFilterUri
+        BucketArn: !GetAtt Bucket.Arn
+        FilterUri: !Ref MetricStreamFilterUri
         NameOverride: !If
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
 Outputs:
-  Bucket:
-    Description: "S3 Bucket Name"
+  BucketName:
+    Description: >-
+      Collection Bucket Name. Objects written to this bucket will be forwarded
+      to your destination. This bucket has a strict expiration policy.
     Value: !Ref Bucket
-  BucketARN:
-    Description: "S3 Bucket ARN"
-    Value: !GetAtt Bucket.Arn
-  Topic:
-    Description: "SNS Topic ARN"
+  TopicArn:
+    Description: >-
+      Collection Topic ARN. Events written to this SNS Topic will be forwarded
+      to your destination. S3 Object Created events may trigger an object copy
+      towards destination.
     Value: !Ref Topic
+  ForwarderArn:
+    Description: >-
+      Forwarder Function ARN. This is the Lambda function responsible for
+      forwarding objects to Observe.
+    Value: !GetAtt
+      - Forwarder
+      - Outputs.ForwarderArn
+  ForwarderQueueArn:
+    Description: >-
+      Forwarder Queue ARN. Events sent to this queue will be forwarded to
+      Observe. s3:ObjectCreated events will initiate an object copy to
+      destination.
+    Value: !GetAtt
+      - Forwarder
+      - Outputs.QueueArn
+  ForwarderRoleArn:
+    Description: >-
+      Forwarder Role ARN. This role will be assumed by the Forwarder Lambda
+      Function in order to write data to destination.
+    Value: !GetAtt
+      - Forwarder
+      - Outputs.RoleArn
+  ForwarderLogGroupName:
+    Description: >-
+      Forwarder Log Group Name. This log group contains useful information for
+      debugging the Forwarder Lambda.
+    Value: !GetAtt
+      - Forwarder
+      - Outputs.LogGroupName
+  LogWriterFirehoseArn:
+    Description: >-
+      LogWriter Kinesis Firehose Delivery Stream ARN. CloudWatch Log Groups
+      subscribed to this Firehose will have their logs batched and written to
+      S3.
+    Value: !GetAtt
+      - LogWriter
+      - Outputs.FirehoseArn
+  LogWriterDestinationRoleArn:
+    Description: >-
+      ARN for IAM Role to be assumed by CloudWatch for log delivery. This value
+      is required when configuring a subscription towards the Firehose Delivery
+      Stream.
+    Value: !GetAtt
+      - LogWriter
+      - Outputs.DestinationRoleArn
+  LogWriterFirehoseLogGroupName:
+    Description: >-
+      LogWriter Firehose Log Group Name. These logs may contain useful
+      information for debugging Firehose delivery to S3.
+    Value: !GetAtt
+      - LogWriter
+      - Outputs.FirehoseLogGroupName
+  LogWriterSubscriberArn:
+    Description: >-
+      Subscriber Function ARN. This function is responsible for log group
+      discovery, filtering and subscription.
+    Value: !GetAtt
+      - LogWriter
+      - Outputs.SubscriberArn
+  LogWriterSubscriberQueueArn:
+    Description: >-
+      LogWriter Subscriber Queue ARN. This queue is used by the subscriber
+      function to fan out execution of subscription requests.
+    Value: !GetAtt
+      - LogWriter
+      - Outputs.SubscriberQueueArn
+  SubscriberLogGroupName:
+    Description: >-
+      LogWriter Subscriber Log Group Name. This log group contains useful
+      information for debugging the Subscriber function.
+    Value: !GetAtt
+      - LogWriter
+      - Outputs.SubscriberLogGroupName

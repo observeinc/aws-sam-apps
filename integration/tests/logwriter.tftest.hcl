@@ -99,7 +99,7 @@ run "install" {
     setup = run.setup
     app   = "logwriter"
     parameters = {
-      BucketARN            = run.create_bucket.arn
+      BucketArn            = run.create_bucket.arn
       LogGroupNamePatterns = "*"
       DiscoveryRate        = "24 hours"
       NameOverride         = run.setup.id
@@ -121,7 +121,7 @@ run "check_eventbridge_invoked" {
   variables {
     command = "./scripts/check_subscriber"
     env_vars = {
-      FUNCTION_ARN = run.install.stack.outputs["Function"]
+      FUNCTION_ARN = run.install.stack.outputs["SubscriberArn"]
     }
   }
 

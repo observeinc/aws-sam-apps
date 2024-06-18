@@ -10,10 +10,16 @@ This stack installs EventBridge rules which process events from AWS Config:
 - forward change notification events 
 
 
-## Configuration Parameters
+## Template Configuration
+
+### Parameters
 
 The stack supports the following parameters:
 
 | Parameter       | Type    | Description |
 |-----------------|---------|-------------|
-| **`TargetARN`** | String | Where to forward EventBridge events. |
+| **`TargetArn`** | String | Where to forward EventBridge events. |
+
+### Outputs
+
+No outputs
