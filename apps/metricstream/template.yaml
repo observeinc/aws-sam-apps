@@ -13,7 +13,7 @@ Metadata:
     SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
 
 Parameters:
-  BucketARN:
+  BucketArn:
     Type: String
     Description: >-
       S3 Bucket ARN to write log records to.
@@ -23,7 +23,7 @@ Parameters:
     Description: >-
       Optional prefix to write metrics to.
     Default: ''
-  FilterURI:
+  FilterUri:
     Type: String
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
@@ -104,8 +104,8 @@ Resources:
                   - s3:ListBucketMultipartUploads
                   - s3:PutObject
                 Resource:
-                  - !Ref BucketARN
-                  - !Sub '${BucketARN}/${Prefix}*'
+                  - !Ref BucketArn
+                  - !Sub '${BucketArn}/${Prefix}*'
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -131,7 +131,7 @@ Resources:
         - !Ref NameOverride
       DeliveryStreamType: DirectPut
       S3DestinationConfiguration:
-        BucketARN: !Ref BucketARN
+        BucketARN: !Ref BucketArn
         RoleARN: !GetAtt DeliveryStreamRole.Arn
         # yamllint disable-line rule:line-length
         Prefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchmetrics/${AWS::Region}/${OutputFormat}/'
@@ -185,14 +185,19 @@ Resources:
       'Fn::Transform':
         Name: "AWS::Include"
         Parameters:
-          Location: !Ref FilterURI
+          Location: !Ref FilterUri
       # end of processable content for include
       OutputFormat: !Ref OutputFormat
 
 Outputs:
-  Firehose:
-    Description: 'Firehose ARN'
+  FirehoseArn:
+    Description: >-
+      Kinesis Firehose Delivery Stream ARN. CloudWatch Metric Streams
+      subscribed to this Firehose will have their metrics batched and written
+      to S3.
     Value: !GetAtt 'DeliveryStream.Arn'
   LogGroupName:
-    Description: "Log Group Name"
+    Description: >-
+      Firehose Log Group Name. This log group will contain debugging
+      information if Firehose fails to deliver data to S3.
     Value: !Ref LogGroup

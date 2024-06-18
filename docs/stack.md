@@ -20,11 +20,13 @@ The Observe stack provisions the following components:
     - c) a [Config stack](config.md) is responsible for setting up AWS Config to write snapshots to S3 and stream changes to SNS.
 
 
-## Configuration Parameters
+## Template Configuration
+
+### Parameters
 
 | Parameter       | Type    | Description |
 |-----------------|---------|-------------|
-| **`DestinationUri`** | String | The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must end in a forward slash. |
+| **`DestinationUri`** | String | The URI for your destination, e.g. `s3://bucket-alias/ds101/`. S3 URIs must end in a forward slash. |
 | `DataAccessPointArn` | String | The access point ARN for your Filedrop. |
 | `ConfigDeliveryBucketName` | String | If AWS Config is already enabled in this account and region, provide the S3 bucket snapshots are written to. |
 | `IncludeResourceTypes` | CommaDelimitedList | If AWS Config is not enabled in this account and region, provide a list of resource types to collect. Use a wildcard to collect all supported resource types. |
@@ -37,3 +39,20 @@ The Observe stack provisions the following components:
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This role will be created as part of this stack, and must therefore be unique within the account. |
 | `DebugEndpoint` | String | OpenTelemetry endpoint to send additional telemetry to. |
+
+### Outputs
+
+| Output       |  Description |
+|-----------------|-------------|
+| BucketName | Collection Bucket Name. Objects written to this bucket will be forwarded to your destination. This bucket has a strict expiration policy. |
+| TopicArn | Collection Topic ARN. Events written to this SNS Topic will be forwarded to your destination. S3 Object Created events may trigger an object copy towards destination. |
+| ForwarderArn | Forwarder Function ARN. This is the Lambda function responsible for forwarding objects to Observe. |
+| ForwarderQueueArn | Forwarder Queue ARN. Events sent to this queue will be forwarded to Observe. s3:ObjectCreated events will initiate an object copy to destination. |
+| ForwarderRoleArn | Forwarder Role ARN. This role will be assumed by the Forwarder Lambda Function in order to write data to destination. |
+| ForwarderLogGroupName | Forwarder Log Group Name. This log group contains useful information for debugging the Forwarder Lambda. |
+| LogWriterFirehoseArn | LogWriter Kinesis Firehose Delivery Stream ARN. CloudWatch Log Groups subscribed to this Firehose will have their logs batched and written to S3 bucket. |
+| LogWriterDestinationRoleArn | ARN for IAM Role to be assumed by CloudWatch for log delivery. This value is required when configuring a subscription towards the Firehose Delivery Stream. |
+| LogWriterFirehoseLogGroupName | LogWriter Firehose Log Group Name. These logs may contain useful information for debugging Firehose delivery to S3. |
+| LogWriterSubscriberArn | Subscriber Function ARN. This function is responsible for log group discovery, filtering and subscription. |
+| LogWriterSubscriberQueueArn | LogWriter Subscriber Queue ARN. This queue is used by the subscriber function to fan out execution of subscription requests. |
+| SubscriberLogGroupName | LogWriter Subscriber Log Group Name. This log group contains useful information for debugging the Subscriber function. |

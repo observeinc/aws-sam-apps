@@ -16,7 +16,7 @@ Metadata:
     SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
 
 Parameters:
-  TargetARN:
+  TargetArn:
     Type: String
     Description: >-
       Where to forward EventBridge events.
@@ -38,7 +38,7 @@ Resources:
             - "ConfigurationHistoryDeliveryCompleted"
             - "ConfigurationSnapshotDeliveryCompleted"
       Targets:
-        - Arn: !Ref TargetARN
+        - Arn: !Ref TargetArn
           Id: "AWSConfigDelivery"
           InputTransformer:
             InputPathsMap:
@@ -57,7 +57,7 @@ Resources:
           messageType:
             - "OversizedConfigurationItemChangeNotification"
       Targets:
-        - Arn: !Ref TargetARN
+        - Arn: !Ref TargetArn
           Id: "AWSConfigOversizedDelivery"
           InputTransformer:
             InputPathsMap:
@@ -74,5 +74,5 @@ Resources:
         detail-type:
           - "Config Configuration Item Change"
       Targets:
-        - Arn: !Ref TargetARN
+        - Arn: !Ref TargetArn
           Id: "AWSConfigChange"

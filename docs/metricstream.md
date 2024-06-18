@@ -2,19 +2,27 @@
 
 The Observe CloudWatch Metrics Stream application delivers CloudWatch Metrics to an Amazon S3 Bucket.
 
-## Configuration Parameters
+## Template Configuration
+
+### Parameters
 
 The application is configurable through several parameters that determine how data is buffered and delivered:
 
-| Parameter       | Type    | Description |
 |-----------------|---------|-------------|
-| **`BucketARN`** | String | S3 Bucket ARN to write log records to. |
+| **`BucketArn`** | String | S3 Bucket ARN to write log records to. |
 | `Prefix` | String | Optional prefix to write metrics to. |
-| `FilterURI` | String | A file hosted in S3 containing list of metrics to stream. |
+| `FilterUri` | String | A file hosted in S3 containing list of metrics to stream. |
 | `OutputFormat` | String | The output format for CloudWatch Metrics. |
 | `NameOverride` | String | Set Firehose Delivery Stream name. In the absence of a value, the stack name will be used. |
-| `BufferingInterval` | Number | Buffer incoming data for the specified period of time, in seconds, before delivering it to the destination. |
-| `BufferingSize` | Number | Buffer incoming data to the specified size, in MiBs, before delivering it to the destination. |
+| `BufferingInterval` | Number | Buffer incoming data for the specified period of time, in seconds, before delivering it to the destination.  |
+| `BufferingSize` | Number | Buffer incoming data to the specified size, in MiBs, before delivering it to the destination.  |
+
+### Outputs
+
+| Output       |  Description |
+|-----------------|-------------|
+| FirehoseArn | Kinesis Firehose Delivery Stream ARN. CloudWatch Metric Streams subscribed to this Firehose will have their metrics batched and written to S3. |
+| LogGroupName | Firehose Log Group Name. This log group will contain debugging information if Firehose fails to deliver data to S3. |
 
 ## Resources Created
 
@@ -42,22 +50,3 @@ curl https://observeinc.s3.us-west-2.amazonaws.com/cloudwatchmetrics/filters/rec
 ```
 
 You can host your own definition, so long as it conforms with the schema for [AWS::CloudWatch::MetricStream](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-metricstream.html). 
-
-## Deployment
-
-Deploy the CloudWatch Metrics Stream application using the AWS Management Console, AWS CLI, or through your CI/CD pipeline using infrastructure as code practices. Be sure to provide all necessary parameters during deployment.
-
-## Usage
-
-After deployment, the Firehose delivery stream will be active. It will start capturing data sent to it and automatically deliver the data to the specified S3 bucket, following the configured buffering hints.
-
-## Monitoring
-
-You can monitor the Firehose delivery stream through the provisioned CloudWatch Log Group. This can help you troubleshoot and understand the performance of your data streaming.
-
-## Outputs
-
-The stack provides no outputs.
-
-- **Firehose**: The ARN of the Firehose delivery stream.
-- **LogGroupName**: The log group used by the Firehose delivery stream.

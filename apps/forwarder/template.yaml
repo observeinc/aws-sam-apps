@@ -466,15 +466,24 @@ Resources:
           OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
           OTEL_TRACES_EXPORTER: !If [DisableOTEL, "none", "otlp"]
 Outputs:
-  Function:
-    Description: "Lambda Function ARN"
-    Value: !GetAtt Forwarder.Arn
-  Queue:
-    Description: "SQS Queue ARN"
+  QueueArn:
+    Description: >-
+      Forwarder Queue ARN. Events sent to this queue will be forwarded to
+      Observe. s3:ObjectCreated events will initiate an object copy to
+      destination.
     Value: !GetAtt Queue.Arn
-  Role:
-    Description: "IAM Role ARN"
+  ForwarderArn:
+    Description: >-
+      Forwarder Function ARN. This is the Lambda function responsible for
+      forwarding objects to Observe.
+    Value: !GetAtt Forwarder.Arn
+  RoleArn:
+    Description: >-
+      Forwarder Role ARN. This role will be assumed by the Forwarder Lambda
+      Function in order to write data to destination.
     Value: !GetAtt Role.Arn
   LogGroupName:
-    Description: "Log Group Name"
+    Description: >-
+      Forwarder Log Group Name. This log group contains useful information for
+      debugging the Forwarder Lambda.
     Value: !Ref LogGroup

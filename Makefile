@@ -306,6 +306,13 @@ parameters-%:
 	@echo "|-----------------|---------|-------------|"
 	@python3 -c 'import sys, yaml, json; y=yaml.safe_load(sys.stdin.read()); print(json.dumps(y))' < $(SAM_BUILD_DIR)/regions/$(AWS_REGION)/$(lastword $(subst -, , $@)).yaml | jq -r '.Parameters | to_entries[] | "| \(if .value.Default then "" else "**" end)`\(.key)`\(if .value.Default then "" else "**" end) | \(.value.Type) | \(.value.Description |  gsub("[\\n\\t]"; " ")) |"'
 
+
+.PHONY: parameters
+outputs-%:
+	@echo "| Output       |  Description |"
+	@echo "|-----------------|-------------|"
+	@python3 -c 'import sys, yaml, json; y=yaml.safe_load(sys.stdin.read()); print(json.dumps(y))' < $(SAM_BUILD_DIR)/regions/$(AWS_REGION)/$(lastword $(subst -, , $@)).yaml | jq -r '.Outputs | to_entries[] | "| \(.key) | \(.value.Description |  gsub("[\\n\\t]"; " ")) |"'
+
 help: # @HELP displays this message.
 help:
 	echo "VARIABLES:"

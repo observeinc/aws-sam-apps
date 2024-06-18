@@ -84,7 +84,7 @@ run "install" {
     setup = run.setup
     app   = "metricstream"
     parameters = {
-      BucketARN    = run.create_bucket.arn
+      BucketArn    = run.create_bucket.arn
       NameOverride = run.setup.id
     }
     capabilities = [
@@ -99,7 +99,7 @@ run "update" {
     setup = run.setup
     app   = "metricstream"
     parameters = {
-      BucketARN    = run.create_bucket.arn
+      BucketArn    = run.create_bucket.arn
       NameOverride = run.setup.id
       OutputFormat = "opentelemetry1.0"
     }

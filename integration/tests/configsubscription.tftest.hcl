@@ -44,7 +44,7 @@ run "install" {
     setup = run.setup
     app   = "configsubscription"
     parameters = {
-      TargetARN = run.target.queue.arn
+      TargetArn = run.target.queue.arn
     }
     capabilities = [
       "CAPABILITY_AUTO_EXPAND",

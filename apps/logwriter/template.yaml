@@ -20,7 +20,7 @@ Metadata:
       - Label:
           default: Destination settings
         Parameters:
-          - BucketARN
+          - BucketArn
           - Prefix
       - Label:
           default: Subscription settings
@@ -45,7 +45,7 @@ Metadata:
           - DebugEndpoint
           - Verbosity
 Parameters:
-  BucketARN:
+  BucketArn:
     Type: String
     Description: >-
       S3 Bucket ARN to write log records to.
@@ -234,8 +234,8 @@ Resources:
                   - s3:ListBucketMultipartUploads
                   - s3:PutObject
                 Resource:
-                  - !Ref BucketARN
-                  - !Sub '${BucketARN}/${Prefix}*'
+                  - !Ref BucketArn
+                  - !Sub '${BucketArn}/${Prefix}*'
   FirehoseLogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -261,7 +261,7 @@ Resources:
         - !Ref NameOverride
       DeliveryStreamType: DirectPut
       S3DestinationConfiguration:
-        BucketARN: !Ref BucketARN
+        BucketARN: !Ref BucketArn
         RoleARN: !GetAtt FirehoseRole.Arn
         # yamllint disable-line rule:line-length
         Prefix: !Sub '${Prefix}AWSLogs/${AWS::AccountId}/cloudwatchlogs/${AWS::Region}/'
@@ -544,10 +544,37 @@ Resources:
               - !Ref LogGroupNamePrefixes
               - []
 Outputs:
-  Function:
-    Description: "Lambda Function ARN"
+  FirehoseArn:
+    Description: >-
+      Kinesis Firehose Delivery Stream ARN. CloudWatch Log Groups subscribed to
+      this Firehose will have their logs batched and written to S3.
+    Value: !GetAtt DeliveryStream.Arn
+  DestinationRoleArn:
+    Description: >-
+      ARN for IAM Role to be assumed by CloudWatch for log delivery. This value
+      is required when configuring a subscription towards the Firehose Delivery
+      Stream.
+    Value: !GetAtt DestinationRole.Arn
+  FirehoseLogGroupName:
+    Description: >-
+      Firehose Log Group Name. These logs may contain useful information for
+      debugging Firehose delivery to S3.
+    Value: !Ref FirehoseLogGroup
+  SubscriberArn:
+    Description: >-
+      Subscriber Function ARN. This function is responsible for log group
+      discovery, filtering and subscription.
     Condition: EnableSubscription
     Value: !GetAtt Subscriber.Arn
-  Firehose:
-    Description: "Kinesis Firehose Delivery Stream ARN"
-    Value: !GetAtt DeliveryStream.Arn
+  SubscriberQueueArn:
+    Description: >-
+      Subscriber Queue ARN. This queue is used by the subscriber function to
+      fan out execution of subscription requests.
+    Condition: EnableSubscription
+    Value: !GetAtt Queue.Arn
+  SubscriberLogGroupName:
+    Description: >-
+      Subscriber Log Group Name. This log group contains useful information for
+      debugging the Subscriber function.
+    Condition: EnableSubscription
+    Value: !Ref SubscriberLogGroup

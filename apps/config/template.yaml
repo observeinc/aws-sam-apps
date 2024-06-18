@@ -29,7 +29,7 @@ Metadata:
         Parameters:
           - BucketName
           - Prefix
-          - TopicARN
+          - TopicArn
       - Label:
           default: How often
         Parameters:
@@ -40,7 +40,7 @@ Parameters:
     Type: String
     Description: >-
       The name of the S3 bucket used to store the configuration history.
-  TopicARN:
+  TopicArn:
     Type: String
     Description: >-
       The ARN of the SNS topic that AWS Config delivers notifications to.
@@ -91,7 +91,7 @@ Parameters:
 
 Conditions:
   DisableSNS: !Equals
-    - !Ref TopicARN
+    - !Ref TopicArn
     - ""
   EnableConfig: !Not
     - !Equals
@@ -170,7 +170,7 @@ Resources:
                 - Effect: Allow
                   Action:
                     - sns:Publish
-                  Resource: !Ref TopicARN
+                  Resource: !Ref TopicArn
   ConfigurationRecorder:
     Type: AWS::Config::ConfigurationRecorder
     Condition: EnableConfig
@@ -217,4 +217,4 @@ Resources:
       SnsTopicARN: !If
         - DisableSNS
         - !Ref AWS::NoValue
-        - !Ref TopicARN
+        - !Ref TopicArn
