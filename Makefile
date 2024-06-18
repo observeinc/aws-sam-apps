@@ -300,6 +300,12 @@ version: # @HELP display version
 version:
 	echo "$(VERSION)"
 
+.PHONY: parameters
+parameters-%:
+	@echo "| Parameter       | Type    | Description |"
+	@echo "|-----------------|---------|-------------|"
+	@python3 -c 'import sys, yaml, json; y=yaml.safe_load(sys.stdin.read()); print(json.dumps(y))' < $(SAM_BUILD_DIR)/regions/$(AWS_REGION)/$(lastword $(subst -, , $@)).yaml | jq -r '.Parameters | to_entries[] | "| \(if .value.Default then "" else "**" end)`\(.key)`\(if .value.Default then "" else "**" end) | \(.value.Type) | \(.value.Description |  gsub("[\\n\\t]"; " ")) |"'
+
 help: # @HELP displays this message.
 help:
 	echo "VARIABLES:"
