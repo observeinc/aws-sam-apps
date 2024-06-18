@@ -61,8 +61,8 @@ func TestHandleSubscribe(t *testing.T) {
 			ExpectJSONResponse: `{
 				"subscription":	{
 					"deleted": 1,
-					"updated": 0,
-					"skipped": 1,
+					"updated": 1,
+					"skipped": 0,
 					"processed": 2
 				}
 			}`,
@@ -77,6 +77,7 @@ func TestHandleSubscribe(t *testing.T) {
 			s, err := subscriber.New(&subscriber.Config{
 				CloudWatchLogsClient: client,
 				FilterName:           "test",
+				DestinationARN:       "arn:aws:lambda:us-west-2:123456789012:function:example",
 				LogGroupNamePrefixes: []string{"/aws/h"},
 			})
 			if err != nil {
@@ -110,6 +111,7 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 	testcases := []struct {
 		Configure       types.SubscriptionFilter
 		Existing        []types.SubscriptionFilter
+		Exclude         bool
 		ExpectedActions []any
 	}{
 		{
@@ -234,6 +236,38 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 			},
 			// no expected actions
 		},
+		{
+			Configure: types.SubscriptionFilter{
+				FilterName:     aws.String("observe"),
+				DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:example"),
+			},
+			Exclude:  true,
+			Existing: []types.SubscriptionFilter{},
+			// no expected actions
+		},
+		{
+			// Exclude filter if requested
+			Configure: types.SubscriptionFilter{
+				FilterName:     aws.String("observe"),
+				DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:example"),
+			},
+			Exclude: true,
+			Existing: []types.SubscriptionFilter{
+				{
+					FilterName:     aws.String("observe"),
+					DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:example"),
+				},
+				{
+					FilterName:     aws.String("something-else"),
+					DestinationArn: aws.String("arn:aws:lambda:us-west-2:123456789012:function:another"),
+				},
+			},
+			ExpectedActions: []any{
+				&cloudwatchlogs.DeleteSubscriptionFilterInput{
+					FilterName: aws.String("observe"),
+				},
+			},
+		},
 	}
 
 	for i, tt := range testcases {
@@ -251,7 +285,7 @@ func TestSubscriptionFilterDiff(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			output := s.SubscriptionFilterDiff(tt.Existing)
+			output := s.SubscriptionFilterDiff(tt.Existing, !tt.Exclude)
 
 			opts := cmpopts.IgnoreUnexported(
 				cloudwatchlogs.PutSubscriptionFilterInput{},

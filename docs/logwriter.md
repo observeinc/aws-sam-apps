@@ -4,6 +4,37 @@ The Observe LogWriter application is an AWS SAM application that writes CloudWat
 
 Additionally, the stack is capable of subscribing log groups and provides a method for automatically triggering subscription through Eventbridge rules.
 
+## How it works
+
+This app allows for collecting CloudWatch logs. The LogWriter app provisions the following resources:
+
+![LogWriter](images/logwriter.png)
+
+
+1. A Kinesis Firehose Delivery Stream which is responsible for writing data to the provided S3 Bucket.
+2. An IAM Role which grants the Firehose permission to write to S3.
+3. A CloudWatch Log Group where Firehose errors are written to.
+4. An IAM Role which grants CloudWatch permission to write to the Firehose.
+
+Once this app is installed, you can configure a subscription filter on a
+CloudWatch Log Group which assumes the destination IAM role (4) to forward logs
+to the Firehose (1). Logs will be batched and written out to S3.
+
+### Subscription
+
+You can optionally enable automatic log group subscription. Configuring either `LogGroupNamePatterns` or `LogGroupNamePrefixes` parameters will configure these additional resources:
+
+
+![Subscriber](images/subscriber.png)
+
+
+1. A Subscriber Lambda Function that is responsible for querying the CloudWatch API and configuring Log Group Subscription Filters towards the LogWriter Firehose on your behalf.
+2. An IAM Role which grants the Subscriber function permission to subscribe Log Groups.
+3. A CloudWatch Log Group where function logs are written to.
+4. A periodic trigger that requests the Subscriber function to discovery and subscribe applicable log groups, as well as an EventBridge rule to trigger the function on Log Group creation (requires CloudTrail).
+5. A Queue to fan out Subscriber execution. During log group discovery, the Subscriber function lists matching log groups and pushes results into SQS. Each subsequent task is processed by a separate function invocation. This allows the subscriber to scale to thousands of log groups without timing out.
+6. A Dead Letter Queue captures any failed invocations.
+
 ## Configuration parameters
 
 | Parameter       | Type    | Description |
@@ -134,3 +165,11 @@ If this parameter is set, two EventBridge rules are installed:
 - a subscription request will be fired on log group creation. This rule will only fire if CloudTrail is configured within the account and region our subscriber is running in.
 
 Both rules will send requests to the SQS queue, which in turn are consumed by the subscriber lambda.
+
+
+## Deleting existing subscriptions on uninstall
+
+Uninstalling this app will not clean up configured subscription filters. This is because the time required to uninstall subscription filters varies according to the number of log groups. For a sufficient number of log groups the uninstall timeout would be systematically exceeded, making the app uninstall very brittle.
+
+Given the Firehose will be deleted on uninstall, any existing subscription filters which reference the Firehose will have no effect. If you wish to delete these subscription filters, you should delete them prior to uninstall by setting `ExcludeLogGroupMatches` to `*` and updating your stack. This will work because the inclusion filters `LogGroupPrefixes` and `LogGroupPatterns` determine the set of log groups the Subscriber is allowed to operate on, whereas the exclusion set `ExcludeLogGroupMatches` determines the subset of log groups which cannot have our filter set.
+

@@ -44,12 +44,6 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 	logger.V(6).Info("describing subscription filters")
 	stats.Processed.Add(1)
 
-	if h.logGroupNameFilter != nil && !h.logGroupNameFilter(logGroup.LogGroupName) {
-		logger.V(6).Info("log group does not match filter")
-		stats.Skipped.Add(1)
-		return nil
-	}
-
 	output, err := h.Client.DescribeSubscriptionFilters(ctx, &cloudwatchlogs.DescribeSubscriptionFiltersInput{
 		LogGroupName: &logGroup.LogGroupName,
 	})
@@ -63,7 +57,8 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 		return fmt.Errorf("failed to retrieve subscription filters: %w", err)
 	}
 
-	for _, action := range h.SubscriptionFilterDiff(output.SubscriptionFilters) {
+	shouldExist := h.logGroupNameFilter(logGroup.LogGroupName)
+	for _, action := range h.SubscriptionFilterDiff(output.SubscriptionFilters, shouldExist) {
 		switch v := action.(type) {
 		case *cloudwatchlogs.DeleteSubscriptionFilterInput:
 			v.LogGroupName = &logGroup.LogGroupName
@@ -101,36 +96,34 @@ func subscriptionFilterEquals(a, b types.SubscriptionFilter) bool {
 
 // SubscriptionFilterDiff returns a list of actions to execute against
 // cloudwatch API in order to converge to our intended configuration state.
-func (h *Handler) SubscriptionFilterDiff(subscriptionFilters []types.SubscriptionFilter) (actions []any) {
-	var (
-		deleted, found int
-		deleteOnly     = aws.ToString(h.subscriptionFilter.DestinationArn) == ""
-	)
+func (h *Handler) SubscriptionFilterDiff(subscriptionFilters []types.SubscriptionFilter, shouldExist bool) (actions []any) {
+	var exists bool
 
 	for _, f := range subscriptionFilters {
-		if !strings.HasPrefix(aws.ToString(f.FilterName), aws.ToString(h.subscriptionFilter.FilterName)) {
+		switch {
+		case !strings.HasPrefix(aws.ToString(f.FilterName), aws.ToString(h.subscriptionFilter.FilterName)):
 			// subscription filter not managed by this handler
 			continue
-		}
-		if deleteOnly || aws.ToString(h.subscriptionFilter.FilterName) != aws.ToString(f.FilterName) {
-			deleted++
+		case subscriptionFilterEquals(h.subscriptionFilter, f):
+			exists = true
+		default:
 			actions = append(actions, &cloudwatchlogs.DeleteSubscriptionFilterInput{
 				FilterName: f.FilterName,
 			})
-		} else {
-			found++
-			if !subscriptionFilterEquals(h.subscriptionFilter, f) {
-				actions = append(actions, &cloudwatchlogs.PutSubscriptionFilterInput{
-					FilterName:     h.subscriptionFilter.FilterName,
-					FilterPattern:  h.subscriptionFilter.FilterPattern,
-					DestinationArn: h.subscriptionFilter.DestinationArn,
-					RoleArn:        h.subscriptionFilter.RoleArn,
-				})
-			}
 		}
 	}
 
-	if !deleteOnly && found == 0 && len(subscriptionFilters)-deleted < MaxSubscriptionFilterCount {
+	switch {
+	case exists && !shouldExist:
+		actions = append(actions, &cloudwatchlogs.DeleteSubscriptionFilterInput{
+			FilterName: h.subscriptionFilter.FilterName,
+		})
+	case exists == shouldExist:
+		// nothing left to do here, we already have what we need
+	case aws.ToString(h.subscriptionFilter.DestinationArn) == "":
+		// nothing to subscribe too, ignore
+	case len(subscriptionFilters)-len(actions) < MaxSubscriptionFilterCount:
+		// we can only add filter if there is space
 		actions = append(actions, &cloudwatchlogs.PutSubscriptionFilterInput{
 			FilterName:     h.subscriptionFilter.FilterName,
 			FilterPattern:  h.subscriptionFilter.FilterPattern,
