@@ -66,10 +66,10 @@ For more comprehensive testing instructions, please refer to `DEVELOPER.md`.
 Each SAM application has its own documentation, providing specific details and usage instructions:
 
 - [Stack](docs/stack.md)
-- [Config](docs/config.md)
-- [Firehose](docs/firehose.md)
 - [Forwarder](docs/forwarder.md)
+- [MetricStream](docs/metricstream.md)
 - [LogWriter](docs/logwriter.md)
+- [Config](docs/config.md)
 
 For development practices, build and release processes, and testing workflows, see the `DEVELOPER.md` file.
 

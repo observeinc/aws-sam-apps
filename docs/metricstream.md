@@ -8,6 +8,7 @@ The Observe CloudWatch Metrics Stream application delivers CloudWatch Metrics to
 
 The application is configurable through several parameters that determine how data is buffered and delivered:
 
+| Parameter       | Type    | Description |
 |-----------------|---------|-------------|
 | **`BucketArn`** | String | S3 Bucket ARN to write log records to. |
 | `Prefix` | String | Optional prefix to write metrics to. |

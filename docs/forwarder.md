@@ -36,6 +36,8 @@ The flow for copying objects from a _source bucket_ into Observe is as follows:
 
 The forwarder stack can be configured with the following parameters:
 
+| Parameter       | Type    | Description |
+|-----------------|---------|-------------|
 | **`DestinationUri`** | String | The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must end in a forward slash. |
 | `DataAccessPointArn` | String | The access point ARN for your Filedrop. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This name will also be applied to the SQS Queue and Lambda Function processing events. In the absence of a value, the stack name will be used. |
