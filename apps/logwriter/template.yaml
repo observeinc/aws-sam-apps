@@ -564,17 +564,23 @@ Outputs:
     Description: >-
       Subscriber Function ARN. This function is responsible for log group
       discovery, filtering and subscription.
-    Condition: EnableSubscription
-    Value: !GetAtt Subscriber.Arn
+    Value: !If
+      - EnableSubscription
+      - !GetAtt Subscriber.Arn
+      - !Ref AWS::NoValue
   SubscriberQueueArn:
     Description: >-
       Subscriber Queue ARN. This queue is used by the subscriber function to
       fan out execution of subscription requests.
-    Condition: EnableSubscription
-    Value: !GetAtt Queue.Arn
+    Value: !If
+      - EnableSubscription
+      - !GetAtt Queue.Arn
+      - !Ref AWS::NoValue
   SubscriberLogGroupName:
     Description: >-
       Subscriber Log Group Name. This log group contains useful information for
       debugging the Subscriber function.
-    Condition: EnableSubscription
-    Value: !Ref SubscriberLogGroup
+    Value: !If
+      - EnableSubscription
+      - !Ref SubscriberLogGroup
+      - !Ref AWS::NoValue
