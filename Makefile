@@ -252,11 +252,11 @@ $(foreach target,$(TAG_REGION_TARGETS),$(eval  \
 ))
 
 $(TAG_REGION_TARGETS):
-	$(call check_var,RELEASE_TAG)
+	$(call check_var,TAG)
 	aws s3 sync \
 	  --acl public-read \
 	  --delete \
-	  $(SAM_BUILD_DIR)/regions/$(subst tag-,,$@)/ s3://$(S3_BUCKET_PREFIX)$(subst tag-,,$@)/aws-sam-apps/$(RELEASE_TAG)/
+	  $(SAM_BUILD_DIR)/regions/$(subst tag-,,$@)/ s3://$(S3_BUCKET_PREFIX)$(subst tag-,,$@)/aws-sam-apps/$(TAG)/
 
 .PHONY: sam-package
 sam-package: # @HELP package all SAM templates.
