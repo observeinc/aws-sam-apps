@@ -25,6 +25,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
+const otelExporterOTLPMetricsProtoEnvKey = "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL"
+
 // MetricOption applies an autoexport configuration option.
 type MetricOption = option[metric.Reader]
 
@@ -50,6 +52,9 @@ func WithFallbackMetricReader(metricReaderFactory func(ctx context.Context) (met
 //   - "http/protobuf" (default) -  protobuf-encoded data over HTTP connection;
 //     see: [go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp]
 //
+// OTEL_EXPORTER_OTLP_METRICS_PROTOCOL defines OTLP exporter's transport protocol for the metrics signal;
+// supported values are the same as OTEL_EXPORTER_OTLP_PROTOCOL.
+//
 // OTEL_EXPORTER_PROMETHEUS_HOST (defaulting to "localhost") and
 // OTEL_EXPORTER_PROMETHEUS_PORT (defaulting to 9464) define the host and port for the
 // Prometheus exporter's HTTP server.
@@ -65,7 +70,7 @@ func WithFallbackMetricReader(metricReaderFactory func(ctx context.Context) (met
 // Use [WithFallbackMetricReader] option to change the returned exporter
 // when OTEL_METRICS_EXPORTER is unset or empty.
 //
-// Use [IsNoneMetricReader] to check if the retured exporter is a "no operation" exporter.
+// Use [IsNoneMetricReader] to check if the returned exporter is a "no operation" exporter.
 func NewMetricReader(ctx context.Context, opts ...MetricOption) (metric.Reader, error) {
 	return metricsSignal.create(ctx, opts...)
 }
@@ -106,7 +111,12 @@ func init() {
 			readerOpts = append(readerOpts, metric.WithProducer(producer))
 		}
 
-		proto := os.Getenv(otelExporterOTLPProtoEnvKey)
+		proto := os.Getenv(otelExporterOTLPMetricsProtoEnvKey)
+		if proto == "" {
+			proto = os.Getenv(otelExporterOTLPProtoEnvKey)
+		}
+
+		// Fallback to default, http/protobuf.
 		if proto == "" {
 			proto = "http/protobuf"
 		}
@@ -172,7 +182,7 @@ func init() {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
 		server := http.Server{
-			// Timeouts are necessary to make a server resilent to attacks, but ListenAndServe doesn't set any.
+			// Timeouts are necessary to make a server resilient to attacks, but ListenAndServe doesn't set any.
 			// We use values from this example: https://blog.cloudflare.com/exposing-go-on-the-internet/#:~:text=There%20are%20three%20main%20timeouts
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 10 * time.Second,
@@ -193,7 +203,7 @@ func init() {
 		}
 
 		go func() {
-			if err := server.Serve(lis); err != nil && err != http.ErrServerClosed {
+			if err := server.Serve(lis); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				otel.Handle(fmt.Errorf("the Prometheus HTTP server exited unexpectedly: %w", err))
 			}
 		}()
