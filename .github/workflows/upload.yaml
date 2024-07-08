@@ -28,27 +28,8 @@ env:
   SAM_CLI_TELEMETRY: 0
 
 jobs:
-  check_permission:
-    name: Check permissions
-    runs-on: ubuntu-latest
-    outputs:
-      can-write: ${{ steps.check.outputs.can-write }}
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    steps:
-    - id: check
-      run: |
-        # If the AWS_ACCESS_KEY_ID secret is MIA we can't run tests
-        if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
-            echo "can-write=false" >> $GITHUB_OUTPUT
-        else
-            echo "can-write=true" >> $GITHUB_OUTPUT
-        fi
-
   upload:
     name: Package and upload SAM apps
-    needs: [check_permission]
-    if: needs.check_permission.outputs.can-write == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
