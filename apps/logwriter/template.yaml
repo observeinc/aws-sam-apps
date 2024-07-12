@@ -64,6 +64,7 @@ Parameters:
       `DescribeLogGroups` action for more information.
       To subscribe to all log groups, use the wildcard operator *.
     Default: ''
+    AllowedPattern: '^(\*|[a-zA-Z0-9-_\/]*)$'
   LogGroupNamePrefixes:
     Type: CommaDelimitedList
     Description: >-
@@ -71,6 +72,7 @@ Parameters:
       log groups that start with a provided string. To subscribe to all log
       groups, use the wildcard operator *.
     Default: ''
+    AllowedPattern: '^(\*|[a-zA-Z0-9-_\/]*)$'
   ExcludeLogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
