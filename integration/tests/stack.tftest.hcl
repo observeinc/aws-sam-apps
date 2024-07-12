@@ -64,6 +64,7 @@ variables {
           "lambda:GetFunction",
           "lambda:GetFunctionCodeSigningConfig",
           "lambda:GetRuntimeManagementConfig",
+          "lambda:InvokeFunction",
           "lambda:ListEventSourceMappings",
           "lambda:ListTags",
           "lambda:TagResource",

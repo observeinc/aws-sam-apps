@@ -27,6 +27,7 @@ Metadata:
         Parameters:
           - LogGroupNamePatterns
           - LogGroupNamePrefixes
+          - ExcludeLogGroupNamePatterns
           - DiscoveryRate
           - FilterName
           - FilterPattern
@@ -74,7 +75,7 @@ Parameters:
   ExcludeLogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
-      Comma separated list of patterns. This paramter is used to filter out log
+      Comma separated list of patterns. This parameter is used to filter out log
       groups from subscription, and supports the use of regular expressions.
     Default: ''
   DiscoveryRate:
@@ -543,6 +544,31 @@ Resources:
               - HasLogGroupNamePrefixes
               - !Ref LogGroupNamePrefixes
               - []
+  Trigger:
+    Type: Custom::Trigger
+    Condition: HasDiscoveryRate
+    DependsOn:
+      - DiscoverySchedule
+    Properties:
+      ServiceTimeout: 60
+      ServiceToken: !GetAtt Subscriber.Arn
+      # List all parameters here, any change will trigger update
+      BucketArn: !Ref BucketArn
+      Prefix: !Ref Prefix
+      LogGroupNamePatterns: !Ref LogGroupNamePatterns
+      LogGroupNamePrefixes: !Ref LogGroupNamePrefixes
+      ExcludeLogGroupNamePatterns: !Ref ExcludeLogGroupNamePatterns
+      DiscoveryRate: !Ref DiscoveryRate
+      FilterName: !Ref FilterName
+      FilterPattern: !Ref FilterPattern
+      NameOverride: !Ref NameOverride
+      BufferingInterval: !Ref BufferingInterval
+      BufferingSize: !Ref BufferingSize
+      NumWorkers: !Ref NumWorkers
+      MemorySize: !Ref MemorySize
+      Timeout: !Ref Timeout
+      DebugEndpoint: !Ref DebugEndpoint
+      Verbosity: !Ref Verbosity
 Outputs:
   FirehoseArn:
     Description: >-
