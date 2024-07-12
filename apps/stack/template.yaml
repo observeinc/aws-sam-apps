@@ -89,12 +89,14 @@ Parameters:
       only apply to log groups that have names that match one of the provided
       strings based on a case-sensitive substring search.
     Default: ''
+    AllowedPattern: '^(\*|[a-zA-Z0-9-_\/]*)$'
   LogGroupNamePrefixes:
     Type: CommaDelimitedList
     Description: >-
       Comma separated list of prefixes. If not empty, the lambda function will
       only apply to log groups that start with a provided string.
     Default: ''
+    AllowedPattern: '^(\*|[a-zA-Z0-9-_\/]*)$'
   ExcludeLogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
