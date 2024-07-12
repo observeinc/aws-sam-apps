@@ -13,6 +13,7 @@ import (
 
 	"github.com/observeinc/aws-sam-apps/pkg/handler"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
+	subscribertracing "github.com/observeinc/aws-sam-apps/pkg/handler/subscriber/tracing"
 	"github.com/observeinc/aws-sam-apps/pkg/logging"
 	"github.com/observeinc/aws-sam-apps/pkg/tracing"
 	"github.com/observeinc/aws-sam-apps/pkg/version"
@@ -85,7 +86,11 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		span.End()
 	}()
 
-	awsCfg, err := tracing.AWSLoadDefaultConfig(ctx, tracerProvider)
+	awsCfg, err := tracing.AWSLoadDefaultConfig(ctx, &tracing.AWSConfig{
+		Logger:           logger,
+		TracerProvider:   tracerProvider,
+		AttributeSetters: subscribertracing.AttributeSetters,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
