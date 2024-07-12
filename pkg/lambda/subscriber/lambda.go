@@ -126,7 +126,7 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		Logger: logger,
 	}
 
-	if err := mux.Register(is.HandleRequest, is.HandleSQS); err != nil {
+	if err := mux.Register(is.HandleRequest, is.HandleSQS, is.HandleCloudFormation); err != nil {
 		return nil, fmt.Errorf("failed to register functions: %w", err)
 	}
 

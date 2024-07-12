@@ -45,10 +45,14 @@ variables {
           "lambda:DeleteFunction",
           "lambda:GetEventSourceMapping",
           "lambda:GetFunction",
+          "lambda:InvokeFunction",
           "lambda:ListEventSourceMappings",
+          "lambda:ListTags",
           "lambda:TagResource",
           "lambda:UntagResource",
           "lambda:UpdateEventSourceMapping",
+          "lambda:UpdateFunctionCode",
+          "lambda:UpdateFunctionConfiguration",
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:DeleteLogGroup",
@@ -128,5 +132,23 @@ run "check_eventbridge_invoked" {
   assert {
     condition     = output.error == ""
     error_message = "Failed to verify subscriber invocation"
+  }
+}
+
+run "update" {
+  variables {
+    setup = run.setup
+    app   = "logwriter"
+    parameters = {
+      BucketArn            = run.create_bucket.arn
+      LogGroupNamePatterns = "*"
+      DiscoveryRate        = "24 hours"
+      NameOverride         = run.setup.id
+      Verbosity            = 4
+    }
+    capabilities = [
+      "CAPABILITY_IAM",
+      "CAPABILITY_AUTO_EXPAND",
+    ]
   }
 }

@@ -1,5 +1,6 @@
 # github.com/aws/aws-lambda-go v1.47.0
 ## explicit; go 1.18
+github.com/aws/aws-lambda-go/cfn
 github.com/aws/aws-lambda-go/events
 github.com/aws/aws-lambda-go/lambda
 github.com/aws/aws-lambda-go/lambda/handlertrace

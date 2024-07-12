@@ -43,7 +43,7 @@ You can optionally enable automatic log group subscription. Configuring either `
 | `Prefix` | String | Optional prefix to write log records to. |
 | `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. We will only subscribe to log groups that have names matching any of the provided strings based on a case-sensitive substring search. See the AWS `DescribeLogGroups` action for more information. To subscribe to all log groups, use the wildcard operator *. |
 | `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. The lambda function will only apply to log groups that start with a provided string. To subscribe to all log groups, use the wildcard operator *. |
-| `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This paramter is used to filter out log groups from subscription, and supports the use of regular expressions. |
+| `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This parameter is used to filter out log groups from subscription, and supports the use of regular expressions. |
 | `DiscoveryRate` | String | EventBridge rate expression for periodically triggering discovery. If not set, no eventbridge rules are configured. |
 | `FilterName` | String | Subscription filter name. Existing filters that have this name as a prefix will be removed. |
 | `FilterPattern` | String | Subscription filter pattern. |
