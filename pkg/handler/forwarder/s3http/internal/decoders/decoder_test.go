@@ -22,6 +22,7 @@ func TestDecoders(t *testing.T) {
 		ContentType     string
 		ContentEncoding string
 		InputFile       string
+		DisableRawJSON  bool
 	}{
 		{
 			ContentType: "application/json",
@@ -53,8 +54,9 @@ func TestDecoders(t *testing.T) {
 			InputFile:   "testdata/example.txt",
 		},
 		{
-			ContentType: "application/x-aws-cloudwatchlogs",
-			InputFile:   "testdata/cloudwatchlogs.json",
+			ContentType:    "application/x-aws-cloudwatchlogs",
+			InputFile:      "testdata/cloudwatchlogs.json",
+			DisableRawJSON: true,
 		},
 	}
 
@@ -70,12 +72,22 @@ func TestDecoders(t *testing.T) {
 			var buf bytes.Buffer
 
 			enc := json.NewEncoder(&buf)
-			for dec.More() {
-				var v json.RawMessage
-				if err := dec.Decode(&v); err != nil {
-					t.Fatal(err)
+
+			process := func(v any) error {
+				if err := dec.Decode(v); err != nil {
+					return err
 				}
-				if err := enc.Encode(v); err != nil {
+				return enc.Encode(v)
+			}
+
+			for dec.More() {
+				if tt.DisableRawJSON {
+					err = process(new(any))
+				} else {
+					err = process(new(json.RawMessage))
+				}
+
+				if err != nil {
 					t.Fatal(err)
 				}
 			}
