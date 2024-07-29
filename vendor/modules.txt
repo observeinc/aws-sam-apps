@@ -201,6 +201,12 @@ github.com/hashicorp/go-retryablehttp
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
+# github.com/klauspost/compress v1.17.9
+## explicit; go 1.20
+github.com/klauspost/compress/flate
+# github.com/klauspost/pgzip v1.2.6
+## explicit
+github.com/klauspost/pgzip
 # github.com/lithammer/dedent v1.1.0
 ## explicit
 github.com/lithammer/dedent

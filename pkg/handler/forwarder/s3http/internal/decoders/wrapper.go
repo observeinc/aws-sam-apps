@@ -1,9 +1,10 @@
 package decoders
 
 import (
-	"compress/gzip"
 	"fmt"
 	"io"
+
+	gzip "github.com/klauspost/pgzip"
 )
 
 var wrappers = map[string]Wrapper{
@@ -21,7 +22,14 @@ func GzipWrapper(fn DecoderFactory) DecoderFactory {
 		if err != nil {
 			return &errorDecoder{fmt.Errorf("failed to read gzip: %w", err)}
 		}
-		defer gr.Close()
-		return fn(gr, params)
+
+		pr, pw := io.Pipe()
+		go func() {
+			defer gr.Close()
+			_, err := io.Copy(pw, gr)
+			pw.CloseWithError(err)
+		}()
+
+		return fn(pr, params)
 	}
 }
