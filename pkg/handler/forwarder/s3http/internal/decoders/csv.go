@@ -51,6 +51,7 @@ type CSVDecoder struct {
 	*csv.Reader
 	buffered *bufio.Reader
 	header   []string
+	maxSize  int
 	sync.Once
 }
 
@@ -74,7 +75,7 @@ func (dec *CSVDecoder) Decode(v any) error {
 		return fmt.Errorf("failed to decode record: %w", err)
 	}
 
-	var buf bytes.Buffer
+	buf := bytes.NewBuffer(make([]byte, 0, dec.maxSize))
 
 	buf.WriteString(`{`)
 	for i, colName := range dec.header {
@@ -82,12 +83,27 @@ func (dec *CSVDecoder) Decode(v any) error {
 			if buf.Len() != 1 {
 				buf.WriteString(`,`)
 			}
-			buf.WriteString(colName + `:` + strconv.Quote(record[i]))
+
+			buf.WriteString(colName + `:`)
+
+			// it is cheaper to verify if naive quoting is enough
+			if value := []byte(`"` + record[i] + `"`); json.Valid(value) {
+				buf.Write(value)
+			} else {
+				buf.WriteString(strconv.Quote(record[i]))
+			}
 		}
 	}
 	buf.WriteString(`}`)
 
-	if err := json.Unmarshal(buf.Bytes(), v); err != nil {
+	if buf.Len() > dec.maxSize {
+		dec.maxSize = buf.Len()
+	}
+
+	// avoid unmarshalling if possible
+	if r, ok := v.(*json.RawMessage); ok {
+		*r = buf.Bytes()
+	} else if err := json.Unmarshal(buf.Bytes(), v); err != nil {
 		return fmt.Errorf("failed to decode CSV: %w", err)
 	}
 	return nil
