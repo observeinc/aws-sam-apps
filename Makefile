@@ -301,14 +301,14 @@ version:
 	echo "$(VERSION)"
 
 .PHONY: parameters
-parameters-%:
+parameters-%: # @HELP generate parameters list for documentation purposes.
 	@echo "| Parameter       | Type    | Description |"
 	@echo "|-----------------|---------|-------------|"
 	@python3 -c 'import sys, yaml, json; y=yaml.safe_load(sys.stdin.read()); print(json.dumps(y))' < $(SAM_BUILD_DIR)/regions/$(AWS_REGION)/$(lastword $(subst -, , $@)).yaml | jq -r '.Parameters | to_entries[] | "| \(if .value.Default then "" else "**" end)`\(.key)`\(if .value.Default then "" else "**" end) | \(.value.Type) | \(.value.Description |  gsub("[\\n\\t]"; " ")) |"'
 
 
-.PHONY: parameters
-outputs-%:
+.PHONY: outputs
+outputs-%: # @HELP generate outputs list for documentation purposes.
 	@echo "| Output       |  Description |"
 	@echo "|-----------------|-------------|"
 	@python3 -c 'import sys, yaml, json; y=yaml.safe_load(sys.stdin.read()); print(json.dumps(y))' < $(SAM_BUILD_DIR)/regions/$(AWS_REGION)/$(lastword $(subst -, , $@)).yaml | jq -r '.Outputs | to_entries[] | "| \(.key) | \(.value.Description |  gsub("[\\n\\t]"; " ")) |"'
