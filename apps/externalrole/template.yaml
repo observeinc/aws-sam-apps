@@ -1,0 +1,86 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Allow external entity to execute AWS actions.'
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-poller
+    Description: Allow external entity to execute AWS actions.
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-apps
+    SemanticVersion: '0.0.5'
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Role Configuration
+        Parameters:
+          - ObserveAwsAccountId
+          - AllowedActions
+          - DatastreamIds
+          - NameOverride
+Parameters:
+  ObserveAwsAccountId:
+    Type: String
+    Description: >-
+      Observe AWS Account ID which will be allowed to assume role.
+    AllowedPattern: '\d+'
+  AllowedActions:
+    Type: CommaDelimitedList
+    Description: >-
+      IAM actions that Observe account is allowed to execute.
+  DatastreamIds:
+    Type: CommaDelimitedList
+    Description: >-
+      Datastream IDs where data will be ingested to. This ensures Observe
+      cannot assume this role outside of this context.
+    AllowedPattern: '\d+'
+  NameOverride:
+    Type: String
+    Description: >-
+      Name of IAM role expected by Poller. In the absence of a value, the stack
+      name will be used.
+    Default: ''
+    MaxLength: 64
+Conditions:
+  UseStackName: !Equals
+    - !Ref NameOverride
+    - ''
+
+Resources:
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${ObserveAwsAccountId}:root"
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref DatastreamIds
+      Path: /
+      Policies:
+        - PolicyName: AllowedActions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: !Ref AllowedActions
+                Resource: '*'
+Outputs:
+  RoleArn:
+    Description: >-
+      IAM Role ARN. This role will be assumed by Observe in order to pull data.
+    Value: !GetAtt Role.Arn
