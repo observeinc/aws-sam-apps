@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/subscriber"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
@@ -14,11 +15,11 @@ import (
 var payloadKey = attribute.Key("payload")
 
 func NewLambdaHandler(handler lambda.Handler, tp *sdktrace.TracerProvider) lambda.Handler {
-	return otellambda.WrapHandler(
+	return subscriber.WrapHandlerSQSCheck(otellambda.WrapHandler(
 		&LambdaHandler{handler},
 		otellambda.WithTracerProvider(tp),
 		otellambda.WithFlusher(tp),
-	)
+	))
 }
 
 type LambdaHandler struct {
