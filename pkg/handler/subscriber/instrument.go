@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/observeinc/aws-sam-apps/pkg/tracing"
+
 	"github.com/go-logr/logr"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel/codes"
@@ -25,8 +27,6 @@ func (h *InstrumentedHandler) HandleSQS(ctx context.Context, request events.SQSE
 	for _, record := range request.Records {
 		var req Request
 		var err error
-		logger.V(3).Info("Getting context from message attributes")
-		ctx = NewSQSCarrier().Extract(ctx, record.MessageAttributes)
 
 		if err = json.Unmarshal([]byte(record.Body), &req); err == nil {
 			_, err = h.HandleRequest(ctx, &req)
@@ -66,7 +66,7 @@ func (q *InstrumentedSQSClient) SendMessage(ctx context.Context, msg *sqs.SendMe
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.V(3).Info("Injecting context into message attributes")
 	msg.MessageAttributes = make(map[string]types.MessageAttributeValue)
-	if err := NewSQSCarrier().Inject(ctx, msg.MessageAttributes); err != nil {
+	if err := tracing.NewSQSCarrier().Inject(ctx, msg.MessageAttributes); err != nil {
 		return nil, fmt.Errorf("failed to inject context into message attributes: %w", err)
 	}
 	logger.V(3).Info("sending message %s", msg.MessageBody)
