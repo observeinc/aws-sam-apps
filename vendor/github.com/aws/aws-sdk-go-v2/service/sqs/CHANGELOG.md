@@ -1,3 +1,16 @@
+# v1.34.6 (2024-08-30)
+
+* **Bug Fix**: Fix issue where SDK could not send a VisibilityTimeout of 0 in a ChangeMessageVisibilityBatchRequestEntry.
+
+# v1.34.5 (2024-08-22)
+
+* No change notes available for this release.
+
+# v1.34.4 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.34.3 (2024-07-10.2)
 
 * **Dependency Update**: Updated to the latest SDK module versions
