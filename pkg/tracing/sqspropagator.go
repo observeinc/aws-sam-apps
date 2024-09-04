@@ -1,4 +1,4 @@
-package subscriber
+package tracing
 
 import (
 	"context"

@@ -130,6 +130,6 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		return nil, fmt.Errorf("failed to register functions: %w", err)
 	}
 
-	l.Entrypoint = tracing.NewLambdaHandler(mux, tracerProvider)
+	l.Entrypoint = tracing.WrapHandlerSQSContext(tracing.NewLambdaHandler(mux, tracerProvider))
 	return l, nil
 }
