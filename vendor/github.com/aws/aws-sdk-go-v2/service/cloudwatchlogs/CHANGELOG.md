@@ -1,3 +1,24 @@
+# v1.39.0 (2024-09-04)
+
+* **Feature**: Update to support new APIs for delivery of logs from AWS services.
+
+# v1.38.1 (2024-09-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.0 (2024-08-30)
+
+* **Feature**: This release introduces a new optional parameter: Entity, in PutLogEvents request
+
+# v1.37.5 (2024-08-22)
+
+* No change notes available for this release.
+
+# v1.37.4 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.37.3 (2024-07-10.2)
 
 * **Dependency Update**: Updated to the latest SDK module versions
