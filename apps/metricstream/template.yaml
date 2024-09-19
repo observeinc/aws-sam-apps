@@ -1,5 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
 Description: 'Stream CloudWatch Metrics to S3.'
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -16,7 +17,7 @@ Parameters:
   BucketArn:
     Type: String
     Description: >-
-      S3 Bucket ARN to write log records to.
+      S3 Bucket ARN to write metrics.
     AllowedPattern: "^arn:.*$"
   Prefix:
     Type: String
@@ -27,7 +28,7 @@ Parameters:
     Type: String
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
-    Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
+    Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
     AllowedPattern: "^s3:\/\/.*"
   OutputFormat:
     Type: String
@@ -66,6 +67,9 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
+  EmptyFilterUri: !Equals
+    - !Ref FilterUri
+    - ""
 
 Resources:
   DeliveryStreamRole:
@@ -106,6 +110,19 @@ Resources:
                 Resource:
                   - !Ref BucketArn
                   - !Sub '${BucketArn}/${Prefix}*'
+  LambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+      RetentionInDays: 365
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -188,7 +205,69 @@ Resources:
           Location: !Ref FilterUri
       # end of processable content for include
       OutputFormat: !Ref OutputFormat
-
+  MetricsRecorderExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3andMetricStreamPutPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricStream
+                Resource: !GetAtt MetricStream.Arn
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt MetricStreamRole.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LambdaLogGroup.Arn
+  MetricsRecorder:
+    Type: AWS::Serverless::Function
+    Condition: EmptyFilterUri
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      Role: !GetAtt MetricsRecorderExecutionRole.Arn
+      CodeUri: ../../bin/linux_arm64
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          VERBOSITY: 6
+          # fields needed for accessing gql
+          BEARER_TOKEN: "rlA6DnekcdW8OYxyuoaBoRhWXkOec1tC"
+          ACCOUNT_NUMBER: 124375634991
+          # fields are necessary to update the metric stream
+          METRIC_STREAM_NAME: !Ref MetricStream
+          FIREHOSE_ARN: !GetAtt DeliveryStream.Arn
+          ROLE_ARN: !GetAtt MetricStreamRole.Arn
+          OUTPUT_FORMAT: !Ref OutputFormat
+  StackCreationUpdateCustomResource:
+    Type: Custom::StackCreationUpdateTrigger
+    Condition: EmptyFilterUri
+    Properties:
+      ServiceToken: !GetAtt MetricsRecorder.Arn
+      StackName: !Ref AWS::StackName
+      AccessToken: "rlA6DnekcdW8OYxyuoaBoRhWXkOec1tC"
 Outputs:
   FirehoseArn:
     Description: >-

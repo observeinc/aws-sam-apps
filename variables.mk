@@ -29,7 +29,7 @@ OS              := $(if $(GOOS),$(GOOS),linux)
 ARCH            := $(if $(GOARCH),$(GOARCH),arm64)
 
 # Names of binaries to compile as lambda functions
-GO_BINS         := forwarder subscriber
+GO_BINS         := forwarder subscriber metricsrecorder
 # Directories that we need created to build/test.
 GO_BUILD_DIRS   := bin/$(OS)_$(ARCH)                   \
                 .go/bin/$(OS)_$(ARCH)               \

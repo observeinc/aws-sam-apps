@@ -108,7 +108,7 @@ Parameters:
     Description: >-
       S3 URI containing filters for metrics to be collected by CloudWatch
       Metrics Stream. If empty, no metrics will be collected.
-    Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
+    Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
     AllowedPattern: "^(s3:\/\/.*)?$"
   SourceBucketNames:
     Type: CommaDelimitedList
