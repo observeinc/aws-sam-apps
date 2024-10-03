@@ -38,6 +38,12 @@ Metadata:
         Parameters:
           - MetricStreamFilterUri
       - Label:
+          default: Cloudwatch Metrics Poller
+        Parameters:
+          - ObserveAwsAccountId
+          - AllowedActions
+          - DatastreamIds
+      - Label:
           default: Forwarder Options
         Parameters:
           - SourceBucketNames
@@ -110,6 +116,22 @@ Parameters:
       Metrics Stream. If empty, no metrics will be collected.
     Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
     AllowedPattern: "^(s3:\/\/.*)?$"
+  ObserveAwsAccountId:
+    Type: String
+    Description: Observe AWS Account ID which will be allowed to assume role.
+    AllowedPattern: \d*
+  AllowedActions:
+    Type: CommaDelimitedList
+    Description: IAM actions that Observe account is allowed to execute.
+  DatastreamIds:
+    Type: CommaDelimitedList
+    Description: Datastream IDs where data will be ingested to.
+      This ensures Observe cannot assume this role outside
+      of this context.
+    AllowedPattern: \d*
+    # making this match zero numbers in case none are provided
+    # if an account is provided, this field must be provided,
+    # but then, the metrics poller stack will fail
   SourceBucketNames:
     Type: CommaDelimitedList
     Description: >-
@@ -165,7 +187,10 @@ Conditions:
     - !Equals
       - !Ref MetricStreamFilterUri
       - ""
-
+  EnableMetricsPoller: !Not
+    - !Equals
+      - !Ref ObserveAwsAccountId
+      - ""
 Resources:
   Topic:
     Type: "AWS::SNS::Topic"
@@ -315,6 +340,21 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
+  MetricsPoller:
+    Type: AWS::Serverless::Application
+    Condition: EnableMetricsPoller
+    Properties:
+      Location: ../externalrole/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        ObserveAwsAccountId: !Ref ObserveAwsAccountId
+        AllowedActions: !Join [",", !Ref AllowedActions]
+        DatastreamIds: !Join [",", !Ref DatastreamIds]
+        NameOverride: !If
+          - UseStackName
+          - !Sub "${AWS::StackName}-MetricsPoller"
+          - !Sub "${NameOverride}-MetricsPoller"
 Outputs:
   BucketName:
     Description: >-
