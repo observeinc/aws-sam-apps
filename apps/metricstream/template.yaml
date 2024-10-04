@@ -29,11 +29,7 @@ Parameters:
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
     Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
-<<<<<<< HEAD
     AllowedPattern: "^(s3:\/\/.*)?$"
-=======
-    AllowedPattern: "^s3:\/\/.*"
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
   OutputFormat:
     Type: String
     Description: >-
@@ -97,16 +93,10 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
-<<<<<<< HEAD
   DeployLambda: !Not
     - !Equals
       - !Ref DatasourceID
       - ""
-=======
-  EmptyFilterUri: !Equals
-    - !Ref FilterUri
-    - ""
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
 
 Resources:
   DeliveryStreamRole:
@@ -157,7 +147,6 @@ Resources:
             - UseStackName
             - !Ref AWS::StackName
             - !Ref NameOverride
-<<<<<<< HEAD
           - '-'
           - !Select [2, !Split ["/", !Ref "AWS::StackId"]]
           # This grabs the unique id part of the stack id.
@@ -166,8 +155,6 @@ Resources:
           # if the stack is destroyed and created again.
           # If the log group name is the same on recreation,
           # an error will be thrown.
-=======
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
       RetentionInDays: 365
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
@@ -258,14 +245,9 @@ Resources:
       # filterURI is decided in the parent stack becauseAWS does not
       # allow an !If function inside an AWS::Include.
       OutputFormat: !Ref OutputFormat
-<<<<<<< HEAD
   MetricsConfiguratorRole:
     Type: AWS::IAM::Role
     Condition: DeployLambda
-=======
-  MetricsRecorderExecutionRole:
-    Type: AWS::IAM::Role
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -275,11 +257,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-<<<<<<< HEAD
         - PolicyName: MetricsConfiguratorPolicy
-=======
-        - PolicyName: S3andMetricStreamPutPolicy
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -297,7 +275,6 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !GetAtt LambdaLogGroup.Arn
-<<<<<<< HEAD
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
@@ -305,11 +282,6 @@ Resources:
   MetricsConfigurator:
     Type: AWS::Serverless::Function
     Condition: DeployLambda
-=======
-  MetricsRecorder:
-    Type: AWS::Serverless::Function
-    Condition: EmptyFilterUri
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -317,17 +289,12 @@ Resources:
         - UseStackName
         - !Ref AWS::StackName
         - !Ref NameOverride
-<<<<<<< HEAD
       Role: !GetAtt MetricsConfiguratorRole.Arn
-=======
-      Role: !GetAtt MetricsRecorderExecutionRole.Arn
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
       CodeUri: ../../bin/linux_arm64
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:
         - arm64
-<<<<<<< HEAD
       LoggingConfig:
         LogGroup: !Ref LambdaLogGroup
       Environment:
@@ -337,20 +304,11 @@ Resources:
           OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
           DATASOURCE_ID: !Ref DatasourceID
           SECRET_NAME: !Ref GQLTokenSecret
-=======
-      Environment:
-        Variables:
-          VERBOSITY: 6
-          # fields needed for accessing gql
-          BEARER_TOKEN: "rlA6DnekcdW8OYxyuoaBoRhWXkOec1tC"
-          ACCOUNT_NUMBER: 124375634991
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
           # fields are necessary to update the metric stream
           METRIC_STREAM_NAME: !Ref MetricStream
           FIREHOSE_ARN: !GetAtt DeliveryStream.Arn
           ROLE_ARN: !GetAtt MetricStreamRole.Arn
           OUTPUT_FORMAT: !Ref OutputFormat
-<<<<<<< HEAD
   GQLTokenSecret:
     Type: AWS::SecretsManager::Secret
     Condition: DeployLambda
@@ -365,15 +323,6 @@ Resources:
       ServiceToken: !GetAtt MetricsConfigurator.Arn
       StackName: !Ref AWS::StackName
       UpdateTimestamp: !Ref UpdateTimestamp
-=======
-  StackCreationUpdateCustomResource:
-    Type: Custom::StackCreationUpdateTrigger
-    Condition: EmptyFilterUri
-    Properties:
-      ServiceToken: !GetAtt MetricsRecorder.Arn
-      StackName: !Ref AWS::StackName
-      AccessToken: "rlA6DnekcdW8OYxyuoaBoRhWXkOec1tC"
->>>>>>> f12c866 (OB-36691 feat: add lambda and s3 bucket to record push metrics config)
 Outputs:
   FirehoseArn:
     Description: >-
