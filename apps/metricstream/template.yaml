@@ -29,7 +29,7 @@ Parameters:
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
     Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
-    AllowedPattern: "^s3:\/\/.*"
+    AllowedPattern: "^(s3:\/\/.*)?$"
   OutputFormat:
     Type: String
     Description: >-
@@ -62,14 +62,41 @@ Parameters:
     Description: |
       Buffer incoming data to the specified size, in MiBs, before delivering it
       to the destination.
-
+  ObserveAccountID:
+    Type: String
+    Description: Observe Account ID
+    AllowedPattern: '\d*'
+    Default: ''
+  ObserveDomainName:
+    Type: String
+    Description: >-
+      The domain name we will retrieve metric configuration from.
+    Default: ''
+  UpdateTimestamp:
+    Type: String
+    Description: Timestamp when the metric stream was created or updated.
+    Default: ''
+    AllowedPattern: '^[0-9]*$'
+  DatasourceID:
+    Type: String
+    Description: >-
+      The datasource for this metric stream.
+    Default: ''
+    AllowedPattern: '\d*'
+  GQLToken:
+    Type: String
+    NoEcho: true
+    Description: >-
+      The token used to retrieve metric configuration.
+    Default: ''
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
-  EmptyFilterUri: !Equals
-    - !Ref FilterUri
-    - ""
+  DeployLambda: !Not
+    - !Equals
+      - !Ref DatasourceID
+      - ""
 
 Resources:
   DeliveryStreamRole:
@@ -120,6 +147,14 @@ Resources:
             - UseStackName
             - !Ref AWS::StackName
             - !Ref NameOverride
+          - '-'
+          - !Select [2, !Split ["/", !Ref "AWS::StackId"]]
+          # This grabs the unique id part of the stack id.
+          # This part is unique every time the stack is created.
+          # the reason we have this is to avoid an error
+          # if the stack is destroyed and created again.
+          # If the log group name is the same on recreation,
+          # an error will be thrown.
       RetentionInDays: 365
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
@@ -203,10 +238,16 @@ Resources:
         Name: "AWS::Include"
         Parameters:
           Location: !Ref FilterUri
-      # end of processable content for include
+      # End of processable content for include.
+      # AWS::Include will be replaced with the file FilterUri references.
+      # This macro always runs, so we must always provide it with a valid
+      # S3 file, even if we overwrite it with a lambda.
+      # filterURI is decided in the parent stack becauseAWS does not
+      # allow an !If function inside an AWS::Include.
       OutputFormat: !Ref OutputFormat
-  MetricsRecorderExecutionRole:
+  MetricsConfiguratorRole:
     Type: AWS::IAM::Role
+    Condition: DeployLambda
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -216,7 +257,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: S3andMetricStreamPutPolicy
+        - PolicyName: MetricsConfiguratorPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -234,9 +275,13 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !GetAtt LambdaLogGroup.Arn
-  MetricsRecorder:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref GQLTokenSecret
+  MetricsConfigurator:
     Type: AWS::Serverless::Function
-    Condition: EmptyFilterUri
+    Condition: DeployLambda
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -244,30 +289,40 @@ Resources:
         - UseStackName
         - !Ref AWS::StackName
         - !Ref NameOverride
-      Role: !GetAtt MetricsRecorderExecutionRole.Arn
+      Role: !GetAtt MetricsConfiguratorRole.Arn
       CodeUri: ../../bin/linux_arm64
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:
         - arm64
+      LoggingConfig:
+        LogGroup: !Ref LambdaLogGroup
       Environment:
         Variables:
           VERBOSITY: 6
-          # fields needed for accessing gql
-          BEARER_TOKEN: "rlA6DnekcdW8OYxyuoaBoRhWXkOec1tC"
-          ACCOUNT_NUMBER: 124375634991
+          ACCOUNT_ID: !Ref ObserveAccountID
+          OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
+          DATASOURCE_ID: !Ref DatasourceID
+          SECRET_NAME: !Ref GQLTokenSecret
           # fields are necessary to update the metric stream
           METRIC_STREAM_NAME: !Ref MetricStream
           FIREHOSE_ARN: !GetAtt DeliveryStream.Arn
           ROLE_ARN: !GetAtt MetricStreamRole.Arn
           OUTPUT_FORMAT: !Ref OutputFormat
+  GQLTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: DeployLambda
+    Properties:
+      Description: GQL Token Secret
+      Name: !Sub "observe-gql-token-${AWS::StackName}"
+      SecretString: !Ref GQLToken
   StackCreationUpdateCustomResource:
     Type: Custom::StackCreationUpdateTrigger
-    Condition: EmptyFilterUri
+    Condition: DeployLambda
     Properties:
-      ServiceToken: !GetAtt MetricsRecorder.Arn
+      ServiceToken: !GetAtt MetricsConfigurator.Arn
       StackName: !Ref AWS::StackName
-      AccessToken: "rlA6DnekcdW8OYxyuoaBoRhWXkOec1tC"
+      UpdateTimestamp: !Ref UpdateTimestamp
 Outputs:
   FirehoseArn:
     Description: >-

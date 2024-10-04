@@ -1,4 +1,4 @@
-package metricsrecorder
+package metricsconfigurator
 
 // N.B. This is the response that the custom resource returns to cloudformation
 type CfResponse struct {

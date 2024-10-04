@@ -1,4 +1,4 @@
-package metricsrecorder
+package metricsconfigurator
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/go-logr/logr"
-	"github.com/observeinc/aws-sam-apps/pkg/handler/metricsrecorder"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/metricsconfigurator"
 	"github.com/observeinc/aws-sam-apps/pkg/logging"
 )
 
@@ -16,7 +16,7 @@ type Lambda struct {
 	Shutdown   func()
 }
 
-func New(ctx context.Context, cfg *metricsrecorder.Config) (*Lambda, error) {
+func New(ctx context.Context, cfg *metricsconfigurator.Config) (*Lambda, error) {
 	logger := logging.New(cfg.Logging)
 	logger.V(4).Info("initialized", "config", cfg)
 
@@ -27,11 +27,11 @@ func New(ctx context.Context, cfg *metricsrecorder.Config) (*Lambda, error) {
 		},
 	}
 
-	metricsRecorderHandler, err := metricsrecorder.New(cfg, logger)
+	metricsConfiguratorHandler, err := metricsconfigurator.New(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handler: %w", err)
 	}
 
-	l.Entrypoint = metricsRecorderHandler
+	l.Entrypoint = metricsConfiguratorHandler
 	return l, nil
 }

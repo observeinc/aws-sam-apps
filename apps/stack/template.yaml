@@ -107,13 +107,53 @@ Parameters:
     Type: String
     Description: >-
       S3 URI containing filters for metrics to be collected by CloudWatch
-      Metrics Stream. If empty, no metrics will be collected.
+      Metrics Stream. If neither this nor DatasourceID is provided, no metrics
+      will be collected.
     Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
+    # the empty.yaml file functions as a sentinel value: it lists a namespace
+    # that does not exist, and this causes no metrics to be collected.
     AllowedPattern: "^(s3:\/\/.*)?$"
+  ObserveAccountID:
+    # this and the field below are necessary for us to be able to make a
+    # request to Observe's GraphQL API - we use them to form the URL we
+    # make the request to.
+    Type: String
+    Description: Observe Account ID
+    AllowedPattern: '\d*'
+    Default: ''
+  ObserveDomainName:
+    Type: String
+    Description: >-
+      The domain name we will retrieve metric configuration from.
+    Default: ''
+  UpdateTimestamp:
+    # Used to trigger a stack update when the lambda is used to update the
+    # metric stream. The change in timestamp is used to trigger an update
+    # of the custom resource. Without a change, the custom resource will
+    # not be updated, and the lambda will not run.
+    Type: String
+    Description: Unix timestamp when metric stream was created or updated.
+    Default: ''
+    AllowedPattern: "^[0-9]*$"
+  DatasourceID:
+    Type: String
+    Description: >-
+      The datasource for this metric stream.
+    AllowedPattern: '\d*'
+    Default: ''
+  GQLToken:
+    # The token for making a request to Observe's
+    # GraphQL API. It is stored in Secrets Manager.
+    # noEcho prevents it from being displayed in the console.
+    Type: String
+    NoEcho: true
+    Description: >-
+      The token used to retrieve metric configuration.
+    Default: ''
   SourceBucketNames:
     Type: CommaDelimitedList
     Description: >-
-      A list of bucket names which the forwarder is allowed to read from.
+      A list of bucket names which the forwarder will read from.
     Default: ""
     AllowedPattern: "^[a-z0-9-.]*(\\*)?$"
   ContentTypeOverrides:
@@ -161,9 +201,18 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ""
-  EnableMetricStream: !Not
+  EnableMetricStream: !Or
+    - !Not
+      - !Equals
+        - !Ref MetricStreamFilterUri
+        - ""
+    - !Not
+      - !Equals
+        - !Ref DatasourceID
+        - ""
+  DeployLambda: !Not
     - !Equals
-      - !Ref MetricStreamFilterUri
+      - !Ref DatasourceID
       - ""
 
 Resources:
@@ -310,7 +359,21 @@ Resources:
         - !Ref Topic
       Parameters:
         BucketArn: !GetAtt Bucket.Arn
-        FilterUri: !Ref MetricStreamFilterUri
+        FilterUri: !If
+          - DeployLambda
+          - 's3://observeinc/cloudwatchmetrics/filters/default.yaml'
+          - !Ref MetricStreamFilterUri
+          # We provide a yaml file URI here where the contents are a sentinel
+          # value that the user would never enter. Then the lambda modifies
+          # the metricstream to reflect the actual config provided. We need
+          # this sentinel value here initially so that if we switch back to the
+          # yaml based approach, the cloudformation stack will recognize that
+          # the value from the yaml file has changed and will update.
+        ObserveAccountID: !Ref ObserveAccountID
+        ObserveDomainName: !Ref ObserveDomainName
+        UpdateTimestamp: !Ref UpdateTimestamp
+        GQLToken: !Ref GQLToken
+        DatasourceID: !Ref DatasourceID
         NameOverride: !If
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
