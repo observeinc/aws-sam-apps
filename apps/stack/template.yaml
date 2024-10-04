@@ -110,6 +110,29 @@ Parameters:
       Metrics Stream. If empty, no metrics will be collected.
     Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
     AllowedPattern: "^(s3:\/\/.*)?$"
+  ObserveAccountID:
+    Type: String
+    Description: Observe Account Number
+    AllowedPattern: \d*
+  Timestamp:
+    Type: String
+    Description: Time when metric stream was created
+    Default: ''
+    AllowedPattern: "^[0-9]*$"
+  DatasourceID:
+    Type: String
+    Description: >-
+      The datastream for this metric stream.
+    AllowedPattern: '\d*'
+  DomainName:
+    Type: String
+    Description: >-
+      The domain name this request is coming from.
+  GQLToken:
+    Type: String
+    NoEcho: true
+    Description: >-
+      The token used to retrieve metric configuration.
   SourceBucketNames:
     Type: CommaDelimitedList
     Description: >-
@@ -161,10 +184,15 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ""
-  EnableMetricStream: !Not
-    - !Equals
-      - !Ref MetricStreamFilterUri
-      - ""
+  EnableMetricStream: !Or
+    - !Not
+      - !Equals
+        - !Ref MetricStreamFilterUri
+        - ""
+    - !Not
+      - !Equals
+        - !Ref DatasourceID
+        - ""
 
 Resources:
   Topic:
@@ -311,6 +339,11 @@ Resources:
       Parameters:
         BucketArn: !GetAtt Bucket.Arn
         FilterUri: !Ref MetricStreamFilterUri
+        ObserveAccountID: !Ref ObserveAccountID
+        Timestamp: !Ref Timestamp
+        GQLToken: !Ref GQLToken
+        DatasourceID: !Ref DatasourceID
+        DomainName: !Ref DomainName
         NameOverride: !If
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"

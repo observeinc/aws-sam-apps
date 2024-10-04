@@ -6,13 +6,13 @@ import (
 
 	awslambda "github.com/aws/aws-lambda-go/lambda"
 
-	handler "github.com/observeinc/aws-sam-apps/pkg/handler/metricsrecorder"
+	handler "github.com/observeinc/aws-sam-apps/pkg/handler/metricsconfigurer"
 	"github.com/observeinc/aws-sam-apps/pkg/lambda"
-	"github.com/observeinc/aws-sam-apps/pkg/lambda/metricsrecorder"
+	"github.com/observeinc/aws-sam-apps/pkg/lambda/metricsconfigurer"
 )
 
 var (
-	rec *metricsrecorder.Lambda
+	rec *metricsconfigurer.Lambda
 )
 
 func init() {
@@ -24,7 +24,7 @@ func init() {
 		panic(fmt.Errorf("failed to initialize config: %w", err))
 	}
 
-	rec, err = metricsrecorder.New(ctx, &config)
+	rec, err = metricsconfigurer.New(ctx, &config)
 	if err != nil {
 		panic(fmt.Errorf("failed to configure entrypoint: %w", err))
 	}

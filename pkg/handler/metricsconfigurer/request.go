@@ -1,6 +1,6 @@
-package metricsrecorder
+package metricsconfigurer
 
-// Request for metricsrecorder handler
+// Request for metricsconfigurer handler
 type Request struct {
 	RequestId          string             `json:"RequestId"`
 	StackId            string             `json:"StackId"`
