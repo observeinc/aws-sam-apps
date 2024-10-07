@@ -1,3 +1,36 @@
+# v1.34.9 (2024-09-09)
+
+* **Documentation**: Doc-only update for DynamoDB. Added information about async behavior for TagResource and UntagResource APIs and updated the description of ResourceInUseException.
+
+# v1.34.8 (2024-09-04)
+
+* No change notes available for this release.
+
+# v1.34.7 (2024-09-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.6 (2024-08-22)
+
+* No change notes available for this release.
+
+# v1.34.5 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.4 (2024-07-24)
+
+* **Documentation**: DynamoDB doc only update for July
+
+# v1.34.3 (2024-07-10.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.2 (2024-07-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.34.1 (2024-06-28)
 
 * **Dependency Update**: Updated to the latest SDK module versions
