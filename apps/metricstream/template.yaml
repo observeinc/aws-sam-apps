@@ -1,5 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
 Description: 'Stream CloudWatch Metrics to S3.'
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -16,7 +17,7 @@ Parameters:
   BucketArn:
     Type: String
     Description: >-
-      S3 Bucket ARN to write log records to.
+      S3 Bucket ARN to write metrics.
     AllowedPattern: "^arn:.*$"
   Prefix:
     Type: String
@@ -27,8 +28,8 @@ Parameters:
     Type: String
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
-    Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
-    AllowedPattern: "^s3:\/\/.*"
+    Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
+    AllowedPattern: "^(s3:\/\/.*)?$"
   OutputFormat:
     Type: String
     Description: >-
@@ -61,11 +62,37 @@ Parameters:
     Description: |
       Buffer incoming data to the specified size, in MiBs, before delivering it
       to the destination.
-
+  ObserveAccountID:
+    Type: String
+    Description: Observe Account Number
+    AllowedPattern: \d*
+  Timestamp:
+    Type: String
+    Description: Timestamp for the metric stream.
+    Default: ''
+    AllowedPattern: "^[0-9]*$"
+  DatasourceID:
+    Type: String
+    Description: >-
+      The datastream for this metric stream.
+    AllowedPattern: '\d*'
+  DomainName:
+    Type: String
+    Description: >-
+      The domain name this request is coming from.
+  GQLToken:
+    Type: String
+    NoEcho: true
+    Description: >-
+      The token used to retrieve metric configuration.
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
+  DeployLambda: !Not
+    - !Equals
+      - !Ref DatasourceID
+      - ""
 
 Resources:
   DeliveryStreamRole:
@@ -106,6 +133,19 @@ Resources:
                 Resource:
                   - !Ref BucketArn
                   - !Sub '${BucketArn}/${Prefix}*'
+  LambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+      RetentionInDays: 365
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -188,7 +228,82 @@ Resources:
           Location: !Ref FilterUri
       # end of processable content for include
       OutputFormat: !Ref OutputFormat
-
+  MetricsConfigurerRole:
+    Type: AWS::IAM::Role
+    Condition: DeployLambda
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MetricsConfigurerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricStream
+                Resource: !GetAtt MetricStream.Arn
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt MetricStreamRole.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LambdaLogGroup.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref GQLTokenSecret
+  MetricsConfigurer:
+    Type: AWS::Serverless::Function
+    Condition: DeployLambda
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      Role: !GetAtt MetricsConfigurerRole.Arn
+      CodeUri: ../../bin/linux_arm64
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          VERBOSITY: 6
+          ACCOUNT_NUMBER: !Ref ObserveAccountID
+          DATASOURCE_ID: !Ref DatasourceID
+          DOMAIN_NAME: !Ref DomainName
+          SECRET_NAME: !Ref GQLTokenSecret
+          # fields are necessary to update the metric stream
+          METRIC_STREAM_NAME: !Ref MetricStream
+          FIREHOSE_ARN: !GetAtt DeliveryStream.Arn
+          ROLE_ARN: !GetAtt MetricStreamRole.Arn
+          OUTPUT_FORMAT: !Ref OutputFormat
+  GQLTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: DeployLambda
+    Properties:
+      Description: GQL Token Secret
+      Name: !Sub "observe-gql-token-${AWS::StackName}"
+      SecretString: !Ref GQLToken
+  StackCreationUpdateCustomResource:
+    Type: Custom::StackCreationUpdateTrigger
+    Condition: DeployLambda
+    Properties:
+      ServiceToken: !GetAtt MetricsConfigurer.Arn
+      StackName: !Ref AWS::StackName
+      Timestamp: !Ref Timestamp
 Outputs:
   FirehoseArn:
     Description: >-
