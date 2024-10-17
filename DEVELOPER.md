@@ -37,7 +37,7 @@ and the most important variables, run `make help`, e.g:
 VARIABLES:
   APPS          = config configsubscription firehose forwarder logwriter metricstream stack
   AWS_REGION    = us-west-2
-  GO_BINS       = forwarder subscriber
+  GO_BINS       = forwarder subscriber metricsconfigurator
   GO_BUILD_DIRS = bin/linux_arm64 .go/bin/linux_arm64 .go/cache .go/pkg
   TF_TESTS      = config configsubscription firehose forwarder forwarder_s3 logwriter metricstream simple stack
   VERSION       = v1.19.2-4-gb1238b5-dirty
