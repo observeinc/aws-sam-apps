@@ -35,6 +35,8 @@ The Observe stack provisions the following components:
 | `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. If not empty, the lambda function will only apply to log groups that start with a provided string. |
 | `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This paramter is used to filter out log groups from subscription, and supports the use of regular expressions. |
 | `MetricStreamFilterUri` | String | S3 URI containing filters for metrics to be collected by CloudWatch Metrics Stream. If empty, no metrics will be collected. |
+| `ObserveAwsAccountId` | String | Observe AWS Account ID which will be allowed to assume role. |
+| `DatastreamIds` | CommaDelimitedList | Datastream IDs where data will be ingested to. This ensures Observe cannot assume this role outside of this context. |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This role will be created as part of this stack, and must therefore be unique within the account. |
