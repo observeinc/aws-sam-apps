@@ -12,9 +12,9 @@ import (
 )
 
 // Use this operation to suppress anomaly detection for a specified anomaly or
-// pattern. If you suppress an anomaly, CloudWatch Logs won’t report new
+// pattern. If you suppress an anomaly, CloudWatch Logs won't report new
 // occurrences of that anomaly and won't update that anomaly with new data. If you
-// suppress a pattern, CloudWatch Logs won’t report any anomalies related to that
+// suppress a pattern, CloudWatch Logs won't report any anomalies related to that
 // pattern.
 //
 // You must specify either anomalyId or patternId , but you can't specify both
@@ -121,6 +121,9 @@ func (c *Client) addOperationUpdateAnomalyMiddlewares(stack *middleware.Stack, o
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -158,6 +161,18 @@ func (c *Client) addOperationUpdateAnomalyMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

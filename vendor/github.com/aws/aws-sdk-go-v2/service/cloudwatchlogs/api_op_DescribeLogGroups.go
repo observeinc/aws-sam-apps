@@ -14,7 +14,7 @@ import (
 // Lists the specified log groups. You can list all your log groups or filter the
 // results by prefix. The results are ASCII-sorted by log group name.
 //
-// CloudWatch Logs doesn’t support IAM policies that control access to the
+// CloudWatch Logs doesn't support IAM policies that control access to the
 // DescribeLogGroups action by using the aws:ResourceTag/key-name  condition key.
 // Other CloudWatch Logs actions do support the use of the
 // aws:ResourceTag/key-name condition key to control access. For more information
@@ -159,6 +159,9 @@ func (c *Client) addOperationDescribeLogGroupsMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -193,6 +196,18 @@ func (c *Client) addOperationDescribeLogGroupsMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
