@@ -37,9 +37,9 @@ The Observe stack provisions the following components:
 | `MetricStreamFilterUri` | String | S3 URI for a file containing filters for metrics to be collected by CloudWatch Metrics Stream. If neither this nor DatasourceID is provided, no metrics will be collected. |
 | `ObserveAccountID` | String | The observe account id of the user.  |
 | `ObserveDomainName` | String | The domain name (e.g. `observe-eng.com`) that the user is making the request from.  |
-| `DatasourceID` | Number | The datasource for this metric stream. If this is provided, the metric stream will not reflect the config in `MetricStreamFilterUri`, the config in `DatasourceID` will be applied instead.  |
+| `DatasourceID` | String | The datasource for this metric stream. If this is provided, the metric stream will not reflect the config in `MetricStreamFilterUri`, the config in `DatasourceID` will be applied instead.  |
 | `GQLToken` | String | The token used to retrieve metric configuration from the Observe backend.  |
-| `UpdateTimestamp` | Number | Unix timestamp when metric stream was created or updated.  |
+| `UpdateTimestamp` | String | Unix timestamp when metric stream was created or updated.  |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This role will be created as part of this stack, and must therefore be unique within the account. |
