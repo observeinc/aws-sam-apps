@@ -23,6 +23,7 @@ The application is configurable through several parameters that determine how da
 | `GQLToken` | String | The token used to retrieve metric configuration from the Observe backend.  |
 | `UpdateTimestamp` | String | Unix timestamp when metric stream was created or updated.  |
 
+
 ### Outputs
 
 | Output       |  Description |
