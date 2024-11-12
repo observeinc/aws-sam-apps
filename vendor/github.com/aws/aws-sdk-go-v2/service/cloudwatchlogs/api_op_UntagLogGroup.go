@@ -17,7 +17,7 @@ import (
 //
 // To list the tags for a log group, use [ListTagsForResource]. To add tags, use [TagResource].
 //
-// CloudWatch Logs doesn’t support IAM policies that prevent users from assigning
+// CloudWatch Logs doesn't support IAM policies that prevent users from assigning
 // specified tags to log groups using the aws:Resource/key-name  or aws:TagKeys
 // condition keys.
 //
@@ -106,6 +106,9 @@ func (c *Client) addOperationUntagLogGroupMiddlewares(stack *middleware.Stack, o
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -143,6 +146,18 @@ func (c *Client) addOperationUntagLogGroupMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
