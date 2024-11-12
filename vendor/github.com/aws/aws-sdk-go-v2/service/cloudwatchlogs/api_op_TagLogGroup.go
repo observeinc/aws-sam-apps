@@ -19,7 +19,7 @@ import (
 //
 // For more information about tags, see [Tag Log Groups in Amazon CloudWatch Logs] in the Amazon CloudWatch Logs User Guide.
 //
-// CloudWatch Logs doesn’t support IAM policies that prevent users from assigning
+// CloudWatch Logs doesn't support IAM policies that prevent users from assigning
 // specified tags to log groups using the aws:Resource/key-name  or aws:TagKeys
 // condition keys. For more information about using tags to control access, see [Controlling access to Amazon Web Services resources using tags].
 //
@@ -110,6 +110,9 @@ func (c *Client) addOperationTagLogGroupMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -147,6 +150,18 @@ func (c *Client) addOperationTagLogGroupMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

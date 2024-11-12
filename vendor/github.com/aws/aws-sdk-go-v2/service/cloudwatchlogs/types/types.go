@@ -198,6 +198,91 @@ type AnomalyDetector struct {
 	noSmithyDocumentSerde
 }
 
+// A structure containing information about the deafult settings and available
+// settings that you can use to configure a [delivery]or a [delivery destination].
+//
+// [delivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_Delivery.html
+// [delivery destination]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DeliveryDestination.html
+type ConfigurationTemplate struct {
+
+	// The action permissions that a caller needs to have to be able to successfully
+	// create a delivery source on the desired resource type when calling [PutDeliverySource].
+	//
+	// [PutDeliverySource]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliverySource.html
+	AllowedActionForAllowVendedLogsDeliveryForResource *string
+
+	// The valid values that a caller can use as field delimiters when calling [CreateDelivery] or [UpdateDeliveryConfiguration] on
+	// a delivery that delivers in Plain , W3C , or Raw format.
+	//
+	// [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+	// [UpdateDeliveryConfiguration]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_UpdateDeliveryConfiguration.html
+	AllowedFieldDelimiters []string
+
+	// The allowed fields that a caller can use in the recordFields parameter of a [CreateDelivery] or [UpdateDeliveryConfiguration]
+	// operation.
+	//
+	// [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+	// [UpdateDeliveryConfiguration]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_UpdateDeliveryConfiguration.html
+	AllowedFields []RecordField
+
+	// The list of delivery destination output formats that are supported by this log
+	// source.
+	AllowedOutputFormats []OutputFormat
+
+	// The list of variable fields that can be used in the suffix path of a delivery
+	// that delivers to an S3 bucket.
+	AllowedSuffixPathFields []string
+
+	// A mapping that displays the default value of each property within a delivery's
+	// configuration, if it is not specified in the request.
+	DefaultDeliveryConfigValues *ConfigurationTemplateDeliveryConfigValues
+
+	// A string specifying which destination type this configuration template applies
+	// to.
+	DeliveryDestinationType DeliveryDestinationType
+
+	// A string specifying which log type this configuration template applies to.
+	LogType *string
+
+	// A string specifying which resource type this configuration template applies to.
+	ResourceType *string
+
+	// A string specifying which service this configuration template applies to. For
+	// more information about supported services see [Enable logging from Amazon Web Services services.].
+	//
+	// [Enable logging from Amazon Web Services services.]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html
+	Service *string
+
+	noSmithyDocumentSerde
+}
+
+// This structure contains the default values that are used for each configuration
+// parameter when you use [CreateDelivery]to create a deliver under the current service type,
+// resource type, and log type.
+//
+// [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+type ConfigurationTemplateDeliveryConfigValues struct {
+
+	// The default field delimiter that is used in a [CreateDelivery] operation when the field
+	// delimiter is not specified in that operation. The field delimiter is used only
+	// when the final output delivery is in Plain , W3C , or Raw format.
+	//
+	// [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+	FieldDelimiter *string
+
+	// The default record fields that will be delivered when a list of record fields
+	// is not provided in a [CreateDelivery]operation.
+	//
+	// [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+	RecordFields []string
+
+	// The delivery parameters that are used when you create a delivery to a delivery
+	// destination that is an S3 Bucket.
+	S3DeliveryConfiguration *S3DeliveryConfiguration
+
+	noSmithyDocumentSerde
+}
+
 // This structure contains information about one delivery in your account.
 //
 // A delivery is a connection between a logical delivery source and a logical
@@ -205,10 +290,10 @@ type AnomalyDetector struct {
 //
 // For more information, see [CreateDelivery].
 //
-// You can't update an existing delivery. You can only create and delete
-// deliveries.
+// To update an existing delivery configuration, use [UpdateDeliveryConfiguration].
 //
 // [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+// [UpdateDeliveryConfiguration]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_UpdateDeliveryConfiguration.html
 type Delivery struct {
 
 	// The Amazon Resource Name (ARN) that uniquely identifies this delivery.
@@ -224,8 +309,19 @@ type Delivery struct {
 	// The name of the delivery source that is associated with this delivery.
 	DeliverySourceName *string
 
+	// The field delimiter that is used between record fields when the final output
+	// format of a delivery is in Plain , W3C , or Raw format.
+	FieldDelimiter *string
+
 	// The unique ID that identifies this delivery in your account.
 	Id *string
+
+	// The record fields used in this delivery.
+	RecordFields []string
+
+	// This structure contains delivery configurations that apply only when the
+	// delivery destination resource is an S3 bucket.
+	S3DeliveryConfiguration *S3DeliveryConfiguration
 
 	// The tags that have been assigned to this delivery.
 	Tags map[string]string
@@ -384,6 +480,18 @@ type Destination struct {
 	// The Amazon Resource Name (ARN) of the physical target where the log events are
 	// delivered (for example, a Kinesis stream).
 	TargetArn *string
+
+	noSmithyDocumentSerde
+}
+
+// Reserved for internal use.
+type Entity struct {
+
+	// Reserved for internal use.
+	Attributes map[string]string
+
+	// Reserved for internal use.
+	KeyAttributes map[string]string
 
 	noSmithyDocumentSerde
 }
@@ -855,7 +963,7 @@ type OutputLogEvent struct {
 	noSmithyDocumentSerde
 }
 
-// A tructures that contains information about one pattern token related to an
+// A structure that contains information about one pattern token related to an
 // anomaly.
 //
 // For more information about patterns and tokens, see [CreateLogAnomalyDetector].
@@ -871,6 +979,18 @@ type PatternToken struct {
 	// Contains the values found for a dynamic token, and the number of times each
 	// value was found.
 	Enumerations map[string]int64
+
+	// A name that CloudWatch Logs assigned to this dynamic token to make the pattern
+	// more readable. The string part of the inferredTokenName gives you a clearer
+	// idea of the content of this token. The number part of the inferredTokenName
+	// shows where in the pattern this token appears, compared to other dynamic tokens.
+	// CloudWatch Logs assigns the string part of the name based on analyzing the
+	// content of the log events that contain it.
+	//
+	// For example, an inferred token name of IPAddress-3 means that the token
+	// represents an IP address, and this token is the third dynamic token in the
+	// pattern.
+	InferredTokenName *string
 
 	// Specifies whether this is a dynamic token.
 	IsDynamic *bool
@@ -980,6 +1100,37 @@ type QueryStatistics struct {
 	noSmithyDocumentSerde
 }
 
+// A structure that represents a valid record field header and whether it is
+// mandatory.
+type RecordField struct {
+
+	// If this is true , the record field must be present in the recordFields
+	// parameter provided to a [CreateDelivery]or [UpdateDeliveryConfiguration] operation.
+	//
+	// [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+	// [UpdateDeliveryConfiguration]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_UpdateDeliveryConfiguration.html
+	Mandatory *bool
+
+	// The name to use when specifying this record field in a [CreateDelivery] or [UpdateDeliveryConfiguration] operation.
+	//
+	// [CreateDelivery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateDelivery.html
+	// [UpdateDeliveryConfiguration]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_UpdateDeliveryConfiguration.html
+	Name *string
+
+	noSmithyDocumentSerde
+}
+
+// Reserved for internal use.
+type RejectedEntityInfo struct {
+
+	// Reserved for internal use.
+	//
+	// This member is required.
+	ErrorType EntityRejectionErrorType
+
+	noSmithyDocumentSerde
+}
+
 // Represents the rejected events.
 type RejectedLogEventsInfo struct {
 
@@ -1026,6 +1177,23 @@ type ResultField struct {
 
 	// The value of this field.
 	Value *string
+
+	noSmithyDocumentSerde
+}
+
+// This structure contains delivery configurations that apply only when the
+// delivery destination resource is an S3 bucket.
+type S3DeliveryConfiguration struct {
+
+	// This parameter causes the S3 objects that contain delivered logs to use a
+	// prefix structure that allows for integration with Apache Hive.
+	EnableHiveCompatiblePath *bool
+
+	// This string allows re-configuring the S3 object prefix to contain either static
+	// or variable sections. The valid variables to use in the suffix path will vary by
+	// each log source. See ConfigurationTemplate$allowedSuffixPathFields for more
+	// info on what values are supported in the suffix path for each log source.
+	SuffixPath *string
 
 	noSmithyDocumentSerde
 }

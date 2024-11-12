@@ -83,6 +83,10 @@ type CreateExportTaskInput struct {
 
 	// The prefix used as the start of the key for every object exported. If you don't
 	// specify a value, the default is exportedlogs .
+	//
+	// The length of this parameter must comply with the S3 object key name length
+	// limits. The object key name is a sequence of Unicode characters with UTF-8
+	// encoding, and can be up to 1,024 bytes.
 	DestinationPrefix *string
 
 	// Export only log streams that match the provided prefix. If you don't specify a
@@ -149,6 +153,9 @@ func (c *Client) addOperationCreateExportTaskMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -186,6 +193,18 @@ func (c *Client) addOperationCreateExportTaskMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
