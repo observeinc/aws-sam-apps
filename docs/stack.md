@@ -34,7 +34,12 @@ The Observe stack provisions the following components:
 | `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. If not empty, the lambda function will only apply to log groups that have names that match one of the provided strings based on a case-sensitive substring search. |
 | `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. If not empty, the lambda function will only apply to log groups that start with a provided string. |
 | `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This paramter is used to filter out log groups from subscription, and supports the use of regular expressions. |
-| `MetricStreamFilterUri` | String | S3 URI containing filters for metrics to be collected by CloudWatch Metrics Stream. If empty, no metrics will be collected. |
+| `MetricStreamFilterUri` | String | S3 URI for a file containing filters for metrics to be collected by CloudWatch Metrics Stream. If neither this nor DatasourceID is provided, no metrics will be collected. |
+| `ObserveAccountID` | String | The observe account id of the user.  |
+| `ObserveDomainName` | String | The domain name (e.g. `observe-eng.com`) that the user is making the request from.  |
+| `DatasourceID` | String | The datasource for this metric stream. If this is provided, the metric stream will not reflect the config in `MetricStreamFilterUri`, the config in `DatasourceID` will be applied instead.  |
+| `GQLToken` | String | The token used to retrieve metric configuration from the Observe backend.  |
+| `UpdateTimestamp` | String | Unix timestamp when metric stream was created or updated.  |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This role will be created as part of this stack, and must therefore be unique within the account. |

@@ -37,6 +37,11 @@ Metadata:
           default: CloudWatch Metrics
         Parameters:
           - MetricStreamFilterUri
+          - ObserveAccountID
+          - ObserveDomainName
+          - DatasourceID
+          - GQLToken
+          - UpdateTimestamp
       - Label:
           default: Forwarder Options
         Parameters:
@@ -109,9 +114,10 @@ Parameters:
       S3 URI containing filters for metrics to be collected by CloudWatch
       Metrics Stream. If neither this nor DatasourceID is provided, no metrics
       will be collected.
-    Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
-    # the empty.yaml file functions as a sentinel value: it lists a namespace
-    # that does not exist, and this causes no metrics to be collected.
+    Default: 's3://observeinc/cloudwatchmetrics/filters/recommended.yaml'
+    # Not used: if no MetricStreamFilterUri is provided, the Metric Stream
+    # nested stack will not be deployed. This value is used as a sensible
+    # default in case the above changes.
     AllowedPattern: "^(s3:\/\/.*)?$"
   ObserveAccountID:
     # this and the field below are necessary for us to be able to make a
@@ -214,7 +220,21 @@ Conditions:
     - !Equals
       - !Ref DatasourceID
       - ""
-
+  HasLogGroupNamePatterns: !Not
+    - !Equals
+      - !Join
+        - ','
+        - !Ref LogGroupNamePatterns
+      - ''
+  HasLogGroupNamePrefixes: !Not
+    - !Equals
+      - !Join
+        - ','
+        - !Ref LogGroupNamePrefixes
+      - ''
+  EnableSubscription: !Or
+    - !Condition HasLogGroupNamePatterns
+    - !Condition HasLogGroupNamePrefixes
 Resources:
   Topic:
     Type: "AWS::SNS::Topic"
@@ -446,6 +466,7 @@ Outputs:
     Description: >-
       Subscriber Function ARN. This function is responsible for log group
       discovery, filtering and subscription.
+    Condition: EnableSubscription
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberArn
@@ -453,6 +474,7 @@ Outputs:
     Description: >-
       LogWriter Subscriber Queue ARN. This queue is used by the subscriber
       function to fan out execution of subscription requests.
+    Condition: EnableSubscription
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberQueueArn
@@ -460,6 +482,7 @@ Outputs:
     Description: >-
       LogWriter Subscriber Log Group Name. This log group contains useful
       information for debugging the Subscriber function.
+    Condition: EnableSubscription
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberLogGroupName
