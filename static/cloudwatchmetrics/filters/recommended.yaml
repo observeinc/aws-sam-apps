@@ -72,7 +72,7 @@ ExcludeFilters:
       # - DDLThroughput
       - DatabaseConnectionRequests
       - DatabaseConnectionRequestsWithTLS
-      - DatabaseConnections
+      # - DatabaseConnections
       - DatabaseConnectionsBorrowLatency
       - DatabaseConnectionsCurrentlyBorrowed
       - DatabaseConnectionsCurrentlyInTransaction
