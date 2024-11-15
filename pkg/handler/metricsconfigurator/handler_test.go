@@ -194,25 +194,20 @@ func TestParseResponse(t *testing.T) {
 				"data": {
 					"datasource": {
 						"name": "TestDatasource",
-						"variables": [
-							{
-								"name": "Metrics",
-								"details": {
-									"awsCollectionStackConfig": {
-										"awsServiceMetricsList": [
-											{
-												"namespace": "AWS/EC2",
-												"metricNames": ["CPUUtilization", "NetworkIn"]
-											},
-											{
-												"namespace": "AWS/EBS",
-												"metricNames": ["VolumeReadOps", "VolumeWriteOps"]
-											}
-										]
+						"config": {
+							"awsCollectionStackConfig": {
+								"awsServiceMetricsList": [
+									{
+										"namespace": "AWS/EC2",
+										"metricNames": ["CPUUtilization", "NetworkIn"]
+									},
+									{
+										"namespace": "AWS/EBS",
+										"metricNames": ["VolumeReadOps", "VolumeWriteOps"]
 									}
-								}
+								]
 							}
-						]
+						}
 					}
 				}
 			}`),
@@ -307,21 +302,16 @@ func TestGetDatasource(t *testing.T) {
                     "data": {
                         "datasource": {
                             "name": "TestDatasource",
-                            "variables": [
-                                {
-                                    "name": "Metrics",
-                                    "details": {
-                                        "awsCollectionStackConfig": {
-                                            "awsServiceMetricsList": [
-                                                {
-                                                    "namespace": "AWS/EC2",
-                                                    "metricNames": ["CPUUtilization", "NetworkIn"]
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            ]
+							"config": {
+								"awsCollectionStackConfig": {
+									"awsServiceMetricsList": [
+										{
+											"namespace": "AWS/EC2",
+											"metricNames": ["CPUUtilization", "NetworkIn"]
+										}
+									]
+								}
+							}
                         }
                     }
                 }`)),

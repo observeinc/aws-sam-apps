@@ -59,20 +59,15 @@ type AwsCollectionStackConfig struct {
 	AwsServiceMetricsList []MetricsListItem `json:"awsServiceMetricsList"`
 }
 
-type Details struct {
+type MetricsConfig struct {
 	AwsCollectionStackConfig AwsCollectionStackConfig `json:"awsCollectionStackConfig"`
-}
-
-type Variable struct {
-	Name    string  `json:"name"`
-	Details Details `json:"details"`
 }
 
 type GraphQLResponse struct {
 	Data struct {
 		Datasource struct {
-			Name      string     `json:"name"`
-			Variables []Variable `json:"variables"`
+			Name   string        `json:"name"`
+			Config MetricsConfig `json:"config"`
 		} `json:"datasource"`
 	} `json:"data"`
 }
@@ -183,26 +178,7 @@ func (h Handler) parseResponse(bodyBytes []byte) ([]types.MetricStreamFilter, er
 
 	logger.V(4).Info("response from observe api", "result", result)
 
-	var metricSelection []MetricsListItem
-
-	variablesList := result.Data.Datasource.Variables
-
-	var targetVariable *Variable
-
-	// Iterate through the variables and find one with the name "Metrics"
-	// This is where we should find the metrics configuration
-	for _, variable := range variablesList {
-		if variable.Name == "Metrics" {
-			targetVariable = &variable
-			break
-		}
-	}
-
-	if targetVariable == nil {
-		return nil, fmt.Errorf("metrics variable not set in datasource, %+v", result)
-	}
-
-	metricSelection = targetVariable.Details.AwsCollectionStackConfig.AwsServiceMetricsList
+	metricSelection := result.Data.Datasource.Config.AwsCollectionStackConfig.AwsServiceMetricsList
 
 	MetricsFilters := convertToMetricStreamFilters(metricSelection)
 	return MetricsFilters, nil
@@ -243,14 +219,11 @@ func (h Handler) getDatasource(token *string, observeDomainName string, client *
 		{
 			datasource(id: "%s") {
 				name
-				variables {
-					name
-					details {
-						awsCollectionStackConfig {
-							awsServiceMetricsList {
-								namespace
-								metricNames
-							}
+				config {
+					awsCollectionStackConfig {
+						awsServiceMetricsList {
+							namespace
+							metricNames
 						}
 					}
 				}
