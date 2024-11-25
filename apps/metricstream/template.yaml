@@ -292,7 +292,7 @@ Resources:
       Role: !GetAtt MetricsConfiguratorRole.Arn
       CodeUri: ../../bin/linux_arm64
       Handler: bootstrap
-      Runtime: provided.al2
+      Runtime: provided.al2023
       Architectures:
         - arm64
       LoggingConfig:

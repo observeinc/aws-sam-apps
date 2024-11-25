@@ -420,7 +420,7 @@ Resources:
       Role: !GetAtt Role.Arn
       CodeUri: ../../bin/linux_arm64
       Handler: bootstrap
-      Runtime: provided.al2
+      Runtime: provided.al2023
       MemorySize: !If
         - UseDefaultMemorySize
         - !If
