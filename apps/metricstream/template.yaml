@@ -80,7 +80,9 @@ Parameters:
   DatasourceID:
     Type: String
     Description: >-
-      The datasource for this metric stream.
+      The datasource for this metric stream. Providing this will override
+      the MetricStreamFilterUri. The configuration from the datasource
+      will be used instead.
     Default: ''
     AllowedPattern: '\d*'
   GQLToken:

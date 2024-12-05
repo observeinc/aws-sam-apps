@@ -19,7 +19,7 @@ The application is configurable through several parameters that determine how da
 | `BufferingSize` | Number | Buffer incoming data to the specified size, in MiBs, before delivering it to the destination.  |
 | `ObserveAccountID` | String | The observe account id of the user.  |
 | `ObserveDomainName` | String | The domain name (e.g. `observe-eng.com`) that the user is making the request from.  |
-| `DatasourceID` | String | The datasource for this metric stream. If this is provided, the metric stream will not reflect the config in `MetricStreamFilterUri`, the config in `DatasourceID` will be applied instead. |
+| `DatasourceID` | String | The datasource for this metric stream. Providing this will override the `MetricStreamFilterUri`. The configuration from the datasource will be used instead. |
 | `GQLToken` | String | The token used to retrieve metric configuration from the Observe backend.  |
 | `UpdateTimestamp` | String | Unix timestamp when metric stream was created or updated.  |
 
