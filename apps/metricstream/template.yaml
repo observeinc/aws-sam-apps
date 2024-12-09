@@ -97,6 +97,8 @@ Conditions:
     - !Equals
       - !Ref DatasourceID
       - ""
+  NotDeployLambda: !Not
+    - !Condition DeployLambda
 
 Resources:
   DeliveryStreamRole:
@@ -224,6 +226,7 @@ Resources:
                 Resource: !GetAtt 'DeliveryStream.Arn'
   MetricStream:
     Type: AWS::CloudWatch::MetricStream
+    Condition: NotDeployLambda
     Metadata:
       cfn-lint:
         config:
@@ -264,7 +267,8 @@ Resources:
               - Effect: Allow
                 Action:
                   - cloudwatch:PutMetricStream
-                Resource: !GetAtt MetricStream.Arn
+                Resource: !Sub |-
+                  arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:*
               - Effect: Allow
                 Action:
                   - iam:PassRole
@@ -305,7 +309,10 @@ Resources:
           DATASOURCE_ID: !Ref DatasourceID
           SECRET_NAME: !Ref GQLTokenSecret
           # fields are necessary to update the metric stream
-          METRIC_STREAM_NAME: !Ref MetricStream
+          METRIC_STREAM_NAME: !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
           FIREHOSE_ARN: !GetAtt DeliveryStream.Arn
           ROLE_ARN: !GetAtt MetricStreamRole.Arn
           OUTPUT_FORMAT: !Ref OutputFormat

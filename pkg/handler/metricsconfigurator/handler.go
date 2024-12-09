@@ -21,6 +21,7 @@ import (
 )
 
 const bearerTokenFormat = "Bearer %s %s"
+const maxNumMetricNames = 1000
 
 type GraphQLRequest struct {
 	Query string `json:"query"`
@@ -136,18 +137,26 @@ func (h Handler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
 	// Create a cloudwatch client
 	cwClient := cloudwatch.NewFromConfig(cfg)
 
-	// add filters to provided metric stream
-	_, err = cwClient.PutMetricStream(ctx, &cloudwatch.PutMetricStreamInput{
-		FirehoseArn:    &h.FirehoseArn,
-		RoleArn:        &h.RoleArn,
-		OutputFormat:   types.MetricStreamOutputFormat(h.OutputFormat),
-		Name:           &h.MetricStreamName,
-		IncludeFilters: MetricsFilters,
-	})
-	if err != nil {
-		return nil, h.reportAndError("failed to add filters to metric stream", req, err)
+	// AWS limits the number of metrics in a metric stream to 1000
+	// https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricStreamFilter.html
+	// Make multiple metric streams to account for this
+	filterGroups := h.makeMetricGroups(MetricsFilters)
+
+	for idx, filterGroup := range filterGroups {
+		name := fmt.Sprintf("%s-%s-%d", h.MetricStreamName, "metric-stream", idx)
+		_, err = cwClient.PutMetricStream(ctx, &cloudwatch.PutMetricStreamInput{
+			FirehoseArn:    &h.FirehoseArn,
+			RoleArn:        &h.RoleArn,
+			OutputFormat:   types.MetricStreamOutputFormat(h.OutputFormat),
+			Name:           &name,
+			IncludeFilters: filterGroup,
+		})
+		if err != nil {
+			return nil, h.reportAndError("failed to add filter to metric stream", req, err)
+		}
 	}
-	logger.V(4).Info("successfully added filters to metric stream")
+
+	logger.V(4).Info("successfully added all filters to metric stream")
 
 	err = h.reportStatus(*req, true, "successfully wrote metrics to metric stream")
 	if err != nil {
@@ -259,6 +268,26 @@ func (h Handler) getDatasource(token *string, observeDomainName string, client *
 	}
 
 	return bodyBytes, nil
+}
+
+func (h Handler) makeMetricGroups(MetricsFilters []types.MetricStreamFilter) [][]types.MetricStreamFilter {
+	// create appropriate number of metric streams for metrics, assign metrics to streams
+
+	currentNameCount := 0
+	filterGroups := make([][]types.MetricStreamFilter, 0)
+	currentFilterGroup := make([]types.MetricStreamFilter, 0)
+	for _, filter := range MetricsFilters {
+		currentNameCount += len(filter.MetricNames) + 1
+		if currentNameCount > maxNumMetricNames {
+			filterGroups = append(filterGroups, currentFilterGroup)
+			currentFilterGroup = make([]types.MetricStreamFilter, 0)
+			currentNameCount = len(filter.MetricNames) + 1
+		}
+		currentFilterGroup = append(currentFilterGroup, filter)
+	}
+
+	filterGroups = append(filterGroups, currentFilterGroup)
+	return filterGroups
 }
 
 func (h Handler) reportAndError(reason string, request *Request, err error) error {
