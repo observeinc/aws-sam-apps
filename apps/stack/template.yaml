@@ -43,6 +43,12 @@ Metadata:
           - GQLToken
           - UpdateTimestamp
       - Label:
+          default: Enable Observe Metrics Poller
+        Parameters:
+          - MetricsPollerAllowedActions
+          - ObserveAwsAccountId
+          - DatastreamIds
+      - Label:
           default: Forwarder Options
         Parameters:
           - SourceBucketNames
@@ -158,6 +164,24 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+  MetricsPollerAllowedActions:
+    Type: CommaDelimitedList
+    Description: >-
+      List of actions allowed for the metrics poller
+      role. Leave empty to use default actions.
+    Default: cloudwatch:GetMetricData,cloudwatch:ListMetrics,tag:GetResources
+  ObserveAwsAccountId:
+    Type: String
+    Description: Observe AWS Account ID which will be allowed to assume role.
+    AllowedPattern: '\d*'
+    Default: ''
+  DatastreamIds:
+    Type: CommaDelimitedList
+    Description: Datastream IDs where data will be ingested to.
+      This ensures Observe cannot assume this role outside
+      of this context.
+    AllowedPattern: \d*
+    Default: ''
   SourceBucketNames:
     Type: CommaDelimitedList
     Description: >-
@@ -237,6 +261,10 @@ Conditions:
   EnableSubscription: !Or
     - !Condition HasLogGroupNamePatterns
     - !Condition HasLogGroupNamePrefixes
+  EnableMetricsPollerRole: !Not
+    - !Equals
+      - !Ref ObserveAwsAccountId
+      - ""
 Resources:
   Topic:
     Type: "AWS::SNS::Topic"
@@ -400,6 +428,21 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
+  MetricsPollerRole:
+    Type: AWS::Serverless::Application
+    Condition: EnableMetricsPollerRole
+    Properties:
+      Location: ../externalrole/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        ObserveAwsAccountId: !Ref ObserveAwsAccountId
+        AllowedActions: !Join [",", !Ref MetricsPollerAllowedActions]
+        DatastreamIds: !Join [",", !Ref DatastreamIds]
+        NameOverride: !If
+          - UseStackName
+          - !Sub "${AWS::StackName}-metrics-poller"
+          - !Sub "${NameOverride}-metrics-poller"
 Outputs:
   BucketName:
     Description: >-
@@ -488,3 +531,12 @@ Outputs:
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberLogGroupName
+  PollerRoleArn:
+    Description: >-
+      ARN for IAM Role to be assumed by CloudWatch for metric delivery. This
+      value is required when configuring a subscription towards the Firehose
+      Delivery Stream.
+    Condition: EnableMetricsPollerRole
+    Value: !GetAtt
+      - MetricsPollerRole
+      - Outputs.RoleArn
