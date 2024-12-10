@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-var service_list = []string{"AWS/EC2", "AWS/EBS"}
+var service_list = []string{"AWS/EC2", "AWS/EBS", "AWS/S3"}
 var testRequestType = "Create"
 var testStackId = "arn:aws:cloudformation:us-east-1:123456789012:stack/MyStack/guid"
 var testRequestId = "unique_id"
@@ -84,7 +84,82 @@ func TestConvertToMetricStreamFilters(t *testing.T) {
 	}
 }
 
-// test parsePayload
+func TestMakeMetricGroups(t *testing.T) {
+
+	// namespace a: 500 metrics, namespace b: 600 metrics
+	// namespace c: 100 metrics
+
+	// the algorithm should put a in the first stream,
+	// and b and c in the second
+
+	metricsA := make([]string, 500)
+	metricsB := make([]string, 600)
+	metricsC := make([]string, 100)
+
+	for i := range metricsA {
+		metricsA[i] = fmt.Sprintf("metricA-%d", i)
+	}
+
+	for i := range metricsB {
+		metricsB[i] = fmt.Sprintf("metricB-%d", i)
+	}
+
+	for i := range metricsC {
+		metricsC[i] = fmt.Sprintf("metricC-%d", i)
+	}
+
+	namespaceA := types.MetricStreamFilter{
+		Namespace:   &service_list[0],
+		MetricNames: metricsA,
+	}
+
+	namespaceB := types.MetricStreamFilter{
+		Namespace:   &service_list[1],
+		MetricNames: metricsB,
+	}
+
+	namespaceC := types.MetricStreamFilter{
+		Namespace:   &service_list[2],
+		MetricNames: metricsC,
+	}
+
+	expectedStreams := [][]types.MetricStreamFilter{
+		{
+			namespaceA,
+		},
+		{
+			namespaceB,
+			namespaceC,
+		},
+	}
+
+	// Create a mock Handler
+	h := Handler{
+		Logger: logr.Discard(), // Use a discard logger for testing
+	}
+
+	tests := []struct {
+		name        string
+		metricsList []types.MetricStreamFilter
+		expected    [][]types.MetricStreamFilter
+	}{
+		{
+			name:        "multiple namespaces with > 1000 metrics",
+			metricsList: []types.MetricStreamFilter{namespaceA, namespaceB, namespaceC},
+			expected:    expectedStreams,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := h.makeMetricGroups(tt.metricsList)
+
+			if isSame := reflect.DeepEqual(result, tt.expected); !isSame {
+				t.Errorf("makeMetricGroups() returned unexpected result, got: %+v\n, expected: %+v\n", result, tt.expected)
+			}
+		})
+	}
+}
 
 func TestParsePayload(t *testing.T) {
 
