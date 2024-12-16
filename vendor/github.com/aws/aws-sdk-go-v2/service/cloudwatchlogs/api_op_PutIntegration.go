@@ -11,55 +11,64 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This operation returns a paginated list of your saved CloudWatch Logs Insights
-// query definitions. You can retrieve query definitions from the current account
-// or from a source account that is linked to the current account.
+// Creates an integration between CloudWatch Logs and another service in this
+// account. Currently, only integrations with OpenSearch Service are supported, and
+// currently you can have only one integration in your account.
 //
-// You can use the queryDefinitionNamePrefix parameter to limit the results to
-// only the query definitions that have names that start with a certain string.
-func (c *Client) DescribeQueryDefinitions(ctx context.Context, params *DescribeQueryDefinitionsInput, optFns ...func(*Options)) (*DescribeQueryDefinitionsOutput, error) {
+// Integrating with OpenSearch Service makes it possible for you to create curated
+// vended logs dashboards, powered by OpenSearch Service analytics. For more
+// information, see [Vended log dashboards powered by Amazon OpenSearch Service].
+//
+// You can use this operation only to create a new integration. You can't modify
+// an existing integration.
+//
+// [Vended log dashboards powered by Amazon OpenSearch Service]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs-OpenSearch-Dashboards.html
+func (c *Client) PutIntegration(ctx context.Context, params *PutIntegrationInput, optFns ...func(*Options)) (*PutIntegrationOutput, error) {
 	if params == nil {
-		params = &DescribeQueryDefinitionsInput{}
+		params = &PutIntegrationInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "DescribeQueryDefinitions", params, optFns, c.addOperationDescribeQueryDefinitionsMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "PutIntegration", params, optFns, c.addOperationPutIntegrationMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*DescribeQueryDefinitionsOutput)
+	out := result.(*PutIntegrationOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type DescribeQueryDefinitionsInput struct {
+type PutIntegrationInput struct {
 
-	// Limits the number of returned query definitions to the specified number.
-	MaxResults *int32
-
-	// The token for the next set of items to return. The token expires after 24 hours.
-	NextToken *string
-
-	// Use this parameter to filter your results to only the query definitions that
-	// have names that start with the prefix you specify.
-	QueryDefinitionNamePrefix *string
-
-	// The query language used for this query. For more information about the query
-	// languages that CloudWatch Logs supports, see [Supported query languages].
+	// A name for the integration.
 	//
-	// [Supported query languages]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_AnalyzeLogData_Languages.html
-	QueryLanguage types.QueryLanguage
+	// This member is required.
+	IntegrationName *string
+
+	// The type of integration. Currently, the only supported type is OPENSEARCH .
+	//
+	// This member is required.
+	IntegrationType types.IntegrationType
+
+	// A structure that contains configuration information for the integration that
+	// you are creating.
+	//
+	// This member is required.
+	ResourceConfig types.ResourceConfig
 
 	noSmithyDocumentSerde
 }
 
-type DescribeQueryDefinitionsOutput struct {
+type PutIntegrationOutput struct {
 
-	// The token for the next set of items to return. The token expires after 24 hours.
-	NextToken *string
+	// The name of the integration that you just created.
+	IntegrationName *string
 
-	// The list of query definitions that match your request.
-	QueryDefinitions []types.QueryDefinition
+	// The status of the integration that you just created.
+	//
+	// After you create an integration, it takes a few minutes to complete. During
+	// this time, you'll see the status as PROVISIONING .
+	IntegrationStatus types.IntegrationStatus
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -67,19 +76,19 @@ type DescribeQueryDefinitionsOutput struct {
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationPutIntegrationMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeQueryDefinitions{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson11_serializeOpPutIntegration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeQueryDefinitions{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpPutIntegration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeQueryDefinitions"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "PutIntegration"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -131,7 +140,10 @@ func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middlewa
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeQueryDefinitions(options.Region), middleware.Before); err != nil {
+	if err = addOpPutIntegrationValidationMiddleware(stack); err != nil {
+		return err
+	}
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutIntegration(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -164,10 +176,10 @@ func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middlewa
 	return nil
 }
 
-func newServiceMetadataMiddleware_opDescribeQueryDefinitions(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opPutIntegration(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "DescribeQueryDefinitions",
+		OperationName: "PutIntegration",
 	}
 }
