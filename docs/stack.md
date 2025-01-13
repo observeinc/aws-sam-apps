@@ -18,6 +18,7 @@ The Observe stack provisions the following components:
     - a) a [MetricStream stack](metricstream.md) is responsible for writing CloudWatch Metrics to S3,
     - b) a [LogWriter stack](logwriter.md) is responsible for writing CloudWatch Logs data to S3,
     - c) a [Config stack](config.md) is responsible for setting up AWS Config to write snapshots to S3 and stream changes to SNS.
+    - d) an [ExternalRole stack](externalrole.md) is responsible for allowing Observe to poll metrics from CloudWatch.
 
 
 ## Template Configuration
@@ -40,6 +41,9 @@ The Observe stack provisions the following components:
 | `DatasourceID` | String | The datasource for this metric stream. Providing this will override the `MetricStreamFilterUri`. The configuration from the datasource will be used instead. |
 | `GQLToken` | String | The token used to retrieve metric configuration from the Observe backend.  |
 | `UpdateTimestamp` | String | Unix timestamp when metric stream was created or updated.  |
+| `MetricsPollerAllowedActions` | CommaDelimitedList | List of actions allowed for the metrics poller role. Leave empty to use default actions. |
+| `ObserveAwsAccountId` | String | Observe AWS Account ID which will be allowed to assume role. |
+| `DatastreamIds` | CommaDelimitedList | Datastream IDs where data will be ingested to. |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This role will be created as part of this stack, and must therefore be unique within the account. |
@@ -61,3 +65,4 @@ The Observe stack provisions the following components:
 | LogWriterSubscriberArn | Subscriber Function ARN. This function is responsible for log group discovery, filtering and subscription. |
 | LogWriterSubscriberQueueArn | LogWriter Subscriber Queue ARN. This queue is used by the subscriber function to fan out execution of subscription requests. |
 | SubscriberLogGroupName | LogWriter Subscriber Log Group Name. This log group contains useful information for debugging the Subscriber function. |
+| PollerRoleArn | MetricsPoller Role ARN. This role will be assumed by the MetricsPoller Lambda Function in order to poll metrics from CloudWatch. |
