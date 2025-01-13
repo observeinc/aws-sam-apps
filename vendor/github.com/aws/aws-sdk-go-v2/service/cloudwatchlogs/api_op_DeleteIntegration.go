@@ -6,80 +6,70 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This operation returns a paginated list of your saved CloudWatch Logs Insights
-// query definitions. You can retrieve query definitions from the current account
-// or from a source account that is linked to the current account.
-//
-// You can use the queryDefinitionNamePrefix parameter to limit the results to
-// only the query definitions that have names that start with a certain string.
-func (c *Client) DescribeQueryDefinitions(ctx context.Context, params *DescribeQueryDefinitionsInput, optFns ...func(*Options)) (*DescribeQueryDefinitionsOutput, error) {
+// Deletes the integration between CloudWatch Logs and OpenSearch Service. If your
+// integration has active vended logs dashboards, you must specify true for the
+// force parameter, otherwise the operation will fail. If you delete the
+// integration by setting force to true , all your vended logs dashboards powered
+// by OpenSearch Service will be deleted and the data that was on them will no
+// longer be accessible.
+func (c *Client) DeleteIntegration(ctx context.Context, params *DeleteIntegrationInput, optFns ...func(*Options)) (*DeleteIntegrationOutput, error) {
 	if params == nil {
-		params = &DescribeQueryDefinitionsInput{}
+		params = &DeleteIntegrationInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "DescribeQueryDefinitions", params, optFns, c.addOperationDescribeQueryDefinitionsMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "DeleteIntegration", params, optFns, c.addOperationDeleteIntegrationMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*DescribeQueryDefinitionsOutput)
+	out := result.(*DeleteIntegrationOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type DescribeQueryDefinitionsInput struct {
+type DeleteIntegrationInput struct {
 
-	// Limits the number of returned query definitions to the specified number.
-	MaxResults *int32
-
-	// The token for the next set of items to return. The token expires after 24 hours.
-	NextToken *string
-
-	// Use this parameter to filter your results to only the query definitions that
-	// have names that start with the prefix you specify.
-	QueryDefinitionNamePrefix *string
-
-	// The query language used for this query. For more information about the query
-	// languages that CloudWatch Logs supports, see [Supported query languages].
+	// The name of the integration to delete. To find the name of your integration,
+	// use [ListIntegrations].
 	//
-	// [Supported query languages]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_AnalyzeLogData_Languages.html
-	QueryLanguage types.QueryLanguage
+	// [ListIntegrations]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_ListIntegrations.html
+	//
+	// This member is required.
+	IntegrationName *string
+
+	// Specify true to force the deletion of the integration even if vended logs
+	// dashboards currently exist.
+	//
+	// The default is false .
+	Force bool
 
 	noSmithyDocumentSerde
 }
 
-type DescribeQueryDefinitionsOutput struct {
-
-	// The token for the next set of items to return. The token expires after 24 hours.
-	NextToken *string
-
-	// The list of query definitions that match your request.
-	QueryDefinitions []types.QueryDefinition
-
+type DeleteIntegrationOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
 
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationDeleteIntegrationMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeQueryDefinitions{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteIntegration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeQueryDefinitions{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeleteIntegration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeQueryDefinitions"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DeleteIntegration"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -131,7 +121,10 @@ func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middlewa
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeQueryDefinitions(options.Region), middleware.Before); err != nil {
+	if err = addOpDeleteIntegrationValidationMiddleware(stack); err != nil {
+		return err
+	}
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteIntegration(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -164,10 +157,10 @@ func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middlewa
 	return nil
 }
 
-func newServiceMetadataMiddleware_opDescribeQueryDefinitions(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opDeleteIntegration(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "DescribeQueryDefinitions",
+		OperationName: "DeleteIntegration",
 	}
 }
