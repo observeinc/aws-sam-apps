@@ -1,3 +1,32 @@
+# v1.45.6 (2025-01-17)
+
+* **Bug Fix**: Fix bug where credentials weren't refreshed during retry loop.
+
+# v1.45.5 (2025-01-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.4 (2025-01-14)
+
+* No change notes available for this release.
+
+# v1.45.3 (2025-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.2 (2025-01-08)
+
+* No change notes available for this release.
+
+# v1.45.1 (2024-12-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.0 (2024-12-02)
+
+* **Feature**: Adds PutIntegration, GetIntegration, ListIntegrations and DeleteIntegration APIs. Adds QueryLanguage support to StartQuery, GetQueryResults, DescribeQueries, DescribeQueryDefinitions, and PutQueryDefinition APIs.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.44.0 (2024-11-21)
 
 * **Feature**: Adds "Create field indexes to improve query performance and reduce scan volume" and "Transform logs during ingestion". Updates documentation for "PutLogEvents with Entity".

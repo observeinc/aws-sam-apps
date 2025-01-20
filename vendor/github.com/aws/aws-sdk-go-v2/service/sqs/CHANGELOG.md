@@ -1,3 +1,35 @@
+# v1.37.9 (2025-01-17)
+
+* **Bug Fix**: Fix bug where credentials weren't refreshed during retry loop.
+
+# v1.37.8 (2025-01-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.7 (2025-01-14)
+
+* No change notes available for this release.
+
+# v1.37.6 (2025-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.5 (2025-01-08)
+
+* No change notes available for this release.
+
+# v1.37.4 (2025-01-02)
+
+* **Documentation**: In-flight message typo fix from 20k to 120k.
+
+# v1.37.3 (2024-12-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.2 (2024-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.37.1 (2024-11-18)
 
 * **Dependency Update**: Update to smithy-go v1.22.1.
