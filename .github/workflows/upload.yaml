@@ -44,7 +44,7 @@ jobs:
       run: git fetch --prune --unshallow --tags
 
     - name: Setup AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4.0.2
+      uses: aws-actions/configure-aws-credentials@v4.0.3
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: us-west-2
