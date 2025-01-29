@@ -21,6 +21,12 @@ Parameters:
     Description: >-
       Where to forward EventBridge events.
     AllowedPattern: "^(arn:.*)?$"
+  ResourceFilters:
+    Type: CommaDelimitedList
+    Description: >-
+      Filter for resource types to forward change notifications for.
+    AllowedPattern: '^([a-zA-Z0-9]+::[a-zA-Z0-9]+::[a-zA-Z0-9]+)?$'
+    Default: ""
 
 Resources:
   CopyRule:
@@ -37,6 +43,11 @@ Resources:
           messageType:
             - "ConfigurationHistoryDeliveryCompleted"
             - "ConfigurationSnapshotDeliveryCompleted"
+          resourceType:
+            - !If
+              - HasResourceFilters
+              - !Ref ResourceFilters
+              - !Ref AWS::NoValue
       Targets:
         - Arn: !Ref TargetArn
           Id: "AWSConfigDelivery"
@@ -56,6 +67,11 @@ Resources:
         detail:
           messageType:
             - "OversizedConfigurationItemChangeNotification"
+          resourceType:
+            - !If
+              - HasResourceFilters
+              - !Ref ResourceFilters
+              - !Ref AWS::NoValue
       Targets:
         - Arn: !Ref TargetArn
           Id: "AWSConfigOversizedDelivery"
@@ -73,6 +89,19 @@ Resources:
           - "aws.config"
         detail-type:
           - "Config Configuration Item Change"
+        detail:
+          resourceType:
+            - !If
+              - HasResourceFilters
+              - !Ref ResourceFilters
+              - !Ref AWS::NoValue
       Targets:
         - Arn: !Ref TargetArn
           Id: "AWSConfigChange"
+Conditions:
+  HasResourceFilters: !Not
+    - !Equals
+      - !Join
+        - ','
+        - !Ref ResourceFilters
+      - ''
