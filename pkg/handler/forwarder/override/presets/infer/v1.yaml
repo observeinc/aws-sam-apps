@@ -7,7 +7,7 @@
   continue: true
 - id: gzip
   match:
-    source: '.gz$'
+    source: '\.gz$'
     content-encoding: '^$'
   override:
     content-encoding: 'gzip'

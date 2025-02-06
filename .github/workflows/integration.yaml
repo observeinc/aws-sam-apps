@@ -41,6 +41,14 @@ jobs:
     outputs:
       tests: ${{ steps.find_hcl_files.outputs.tests }}
     steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: latest
+
+    - name: Verify Terraform Installation
+      run: terraform version
+
     - name: DCE Provision
       uses: observeinc/github-action-dce@1.0.1
       with:
@@ -49,7 +57,7 @@ jobs:
         budget-amount: ${{ vars.BUDGET_AMOUNT }}
         budget-currency: 'USD'
         expiry: '30m'
-        email: 'joao+gha@observeinc.com'
+        email: 'justin.daines@observeinc.com'
 
     - name: checkout
       uses: actions/checkout@v4
@@ -67,6 +75,14 @@ jobs:
       matrix:
         testfile: ${{fromJson(needs.provision.outputs.tests)}}
     steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: latest
+
+    - name: Verify Terraform Installation
+      run: terraform version
+
     - name: DCE Use
       uses: observeinc/github-action-dce@1.0.1
       with:
