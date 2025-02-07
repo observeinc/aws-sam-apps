@@ -42,7 +42,7 @@ jobs:
       tests: ${{ steps.find_hcl_files.outputs.tests }}
     steps:
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
+      uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: latest
 
@@ -76,7 +76,7 @@ jobs:
         testfile: ${{fromJson(needs.provision.outputs.tests)}}
     steps:
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
+      uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: latest
 
