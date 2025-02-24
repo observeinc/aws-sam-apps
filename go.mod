@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.68.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.37.1
-	github.com/aws/smithy-go v1.22.1
+	github.com/aws/smithy-go v1.22.3
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
