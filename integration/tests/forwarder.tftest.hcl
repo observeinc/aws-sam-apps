@@ -127,7 +127,7 @@ run "install_forwarder" {
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
       SourceKMSKeyArns     = "${join(",", [for k, v in run.sources.buckets : v.kms_key.arn if v.kms_key != null])}"
-      NameOverride         = run.setup.id
+      NameOverride         = run.setup.short
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",

@@ -284,10 +284,12 @@ Resources:
       RoleName: !If
         - NoDataAccessPointArn
         - !Ref AWS::NoValue
-        - !If
-          - UseStackName
-          - !Ref AWS::StackName
-          - !Ref NameOverride
+        - !Sub
+          - '${Name}-filedrop'
+          - Name: !If
+              - UseStackName
+              - !Ref AWS::StackName
+              - !Ref NameOverride
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
