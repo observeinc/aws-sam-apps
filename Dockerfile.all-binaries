@@ -1,0 +1,16 @@
+# Dockerfile used for Orca scanning 
+FROM alpine:3.19
+
+ARG OS
+ARG ARCH
+
+# List of required binaries
+# These should be built ahead of time into .go/bin/${OS}_${ARCH}/
+COPY .go/bin/${OS}_${ARCH}/forwarder /usr/local/bin/forwarder
+COPY .go/bin/${OS}_${ARCH}/subscriber /usr/local/bin/subscriber
+COPY .go/bin/${OS}_${ARCH}/metricsconfigurator /usr/local/bin/metricsconfigurator
+
+RUN chmod +x /usr/local/bin/forwarder /usr/local/bin/subscriber /usr/local/bin/metricsconfigurator
+
+# Optional: provide a default command or entrypoint
+ENTRYPOINT ["/bin/sh"]
