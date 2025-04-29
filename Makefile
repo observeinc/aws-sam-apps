@@ -92,6 +92,18 @@ go-build-bin: | $(GO_BUILD_DIRS)
 	          ./...                                                 \
 	    "
 
+# This command is used for Orca scanning of our binaries 
+docker-build-all-binaries-image: go-build-bin
+	@echo "### Building Docker image with ALL binaries for $(OS)/$(ARCH)"
+	@$(eval IMAGE_NAME=$(or $(IMAGE_NAME),aws-sam-apps-all-binaries))  # Use IMAGE_NAME env var or default to aws-sam-apps-all-binaries
+	docker build \
+		--build-arg OS=$(OS) \
+		--build-arg ARCH=$(ARCH) \
+		--build-arg VERSION=$(VERSION) \
+		-t $(IMAGE_NAME) \
+		-f Dockerfile.all-binaries .
+
+
 go-clean: # @HELP clean Go temp files.
 go-clean:
 	test -d .go && chmod -R u+w .go || true
