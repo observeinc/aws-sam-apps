@@ -96,10 +96,14 @@ go-build-bin: | $(GO_BUILD_DIRS)
 docker-build-all-binaries-image: go-build-bin
 	@echo "### Building Docker image with ALL binaries for $(OS)/$(ARCH)"
 	@$(eval IMAGE_NAME=$(or $(IMAGE_NAME),aws-sam-apps-all-binaries))  # Use IMAGE_NAME env var or default to aws-sam-apps-all-binaries
-	docker build \
+	docker buildx build \
 		--build-arg OS=$(OS) \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILDKIT_INLINE_CACHE=1 \
+		--cache-from=type=gha \
+		--cache-to=type=gha,mode=max \
+		--load \
 		-t $(IMAGE_NAME) \
 		-f Dockerfile.all-binaries .
 
