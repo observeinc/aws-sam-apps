@@ -42,6 +42,7 @@ jobs:
 
   orca-container-scan:
     name: Orca Container Image Scan
+    if: github.event_name == 'push' && github.ref_name == 'main' 
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -66,7 +67,6 @@ jobs:
           aws-region: us-west-2
 
       - name: Log in to Amazon ECR
-        if: github.ref_name == 'main'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Go
@@ -79,7 +79,6 @@ jobs:
             make docker-build-all-binaries-image IMAGE_NAME=${{ env.IMAGE_NAME }}
       
       - name: Tag and Push Docker Image to ECR (main branch only) #Used for Orca ECR Scanning 
-        if: github.ref_name == 'main'
         run: |
           ECR_REPO="723346149663.dkr.ecr.us-west-2.amazonaws.com/aws-sam-apps-orca"
           docker tag ${{ env.IMAGE_NAME }}:latest $ECR_REPO:latest
