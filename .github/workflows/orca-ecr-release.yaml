@@ -1,4 +1,5 @@
-name: Release Image to ECR 
+name: Release Image to ECR for Orca Scanning
+
 on:
   push:
     branches: ["main"]
