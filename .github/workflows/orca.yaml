@@ -42,67 +42,29 @@ jobs:
 
   orca-container-scan:
     name: Orca Container Image Scan
-    if: github.event_name == 'push' && github.ref_name == 'main' 
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
-      contents: write
-      pull-requests: write
-      security-events: write  
+        security-events: write
     env:
       PROJECT_KEY: observeinc-aws-sam-apps
       IMAGE_NAME: aws-sam-apps-all-binaries
-      VERSION: ${{ github.ref_name }}
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: image=moby/buildkit:latest
-          buildkitd-flags: --debug 
-
-      - name: Restore Docker cache
-        if: always()
-        uses: actions/cache@v4
-        with:
-          path: .buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.ref }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ github.ref }}-
-            ${{ runner.os }}-buildx-
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: 1.23.8
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_ENG }} #Use Eng OIDC trusted role 
-          role-session-name: ${{ github.sha }}
-          aws-region: us-west-2
+      - name: Build Docker Image Locally
+        run: | 
+            make docker-build-all-binaries-image IMAGE_NAME=${{ env.IMAGE_NAME }}
 
-      - name: Log in to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2  
-
-
-      - name: Run push-to-ecr script
-        run: |
-          chmod +x push-to-ecr.sh
-          ./push-to-ecr.sh
-
-      - name: Save updated Docker cache
-        if: always()
-        uses: actions/cache@v4
-        with:
-          path: .buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.ref }}-${{ github.sha }}
-
-      - name: Run Orca Container Image Scan #Used for CI Level Scanning (no alerts generated)
+      - name: Run Orca Container Image Scan
         uses: orcasecurity/shiftleft-container-image-action@v1
         with:
           api_token: ${{ secrets.ORCA_SECURITY_API_TOKEN }}
