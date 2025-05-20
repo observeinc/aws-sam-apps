@@ -65,6 +65,7 @@ jobs:
           buildkitd-flags: --debug 
 
       - name: Restore Docker cache
+        if: always()
         uses: actions/cache@v4
         with:
           path: .buildx-cache
@@ -95,6 +96,7 @@ jobs:
           ./push-to-ecr.sh
 
       - name: Save updated Docker cache
+        if: always()
         uses: actions/cache@v4
         with:
           path: .buildx-cache
