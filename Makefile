@@ -93,15 +93,29 @@ go-build-bin: | $(GO_BUILD_DIRS)
 	    "
 
 # This command is used for Orca scanning of our binaries 
-docker-build-all-binaries-image: go-build-bin
+docker-build-all-binaries-image: go-build-bin 
 	@echo "### Building Docker image with ALL binaries for $(OS)/$(ARCH)"
-	@$(eval IMAGE_NAME=$(or $(IMAGE_NAME),aws-sam-apps-all-binaries))  # Use IMAGE_NAME env var or default to aws-sam-apps-all-binaries
-	docker build \
+	@$(eval IMAGE_NAME=$(or $(IMAGE_NAME),aws-sam-apps-all-binaries))
+
+	# Ensure buildx builder exists and switch context correctly
+	@if ! docker buildx inspect reproducible-builder >/dev/null 2>&1; then \
+		echo "🔧 Creating buildx builder using docker-container driver..."; \
+		docker buildx create --use --driver docker-container --name reproducible-builder; \
+	else \
+		echo "🔄 Using existing reproducible-builder"; \
+		docker buildx use reproducible-builder; \
+	fi
+
+	docker buildx build \
 		--build-arg OS=$(OS) \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg VERSION=$(VERSION) \
-		-t $(IMAGE_NAME) \
-		-f Dockerfile.all-binaries .
+		--output type=docker \
+		--cache-from=type=local,src=.buildx-cache \
+		--cache-to=type=local,dest=.buildx-cache \
+		--tag $(IMAGE_NAME) \
+		-f Dockerfile.all-binaries \
+		.
 
 
 go-clean: # @HELP clean Go temp files.
