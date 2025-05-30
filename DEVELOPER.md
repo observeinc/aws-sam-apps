@@ -253,14 +253,31 @@ watch "aws cloudformation describe-stacks --stack-name app-$AWS_REGION --region 
 To run all integration tests:
 
 ```sh
-make integration-test
+make sam-package
+make test-integration
 ```
 
 To run a single test:
 
 ```sh
-export INTEGRATION_TEST=collection
-TEST_ARGS='-filter=tests/$INTEGRATION_TEST.tftest.hcl -verbose' make integration-test
+TF_TESTS="config" make test-integration
+```
+OR call the test target directly:
+```sh
+make test-integration-config
+```
+* Available single test targets:
+```sh
+make test-integration-config
+make test-integration-configsubscription
+make test-integration-externalrole
+make test-integration-forwarder
+make test-integration-forwarder_s3
+make test-integration-logwriter
+make test-integration-metricstream
+make test-integration-simple
+make test-integration-stack
+make test-integration-stack_including_metricspollerrole
 ```
 
 ### Debugging
@@ -268,7 +285,7 @@ TEST_ARGS='-filter=tests/$INTEGRATION_TEST.tftest.hcl -verbose' make integration
 Enable debugging mode for detailed output:
 
 ```sh
-DEBUG=1 make integration-test
+TF_TEST_DEBUG=1 make test-integration
 ```
 
 Every "check" step will dump a `debug.sh` file and pause execution. Be aware this happens
