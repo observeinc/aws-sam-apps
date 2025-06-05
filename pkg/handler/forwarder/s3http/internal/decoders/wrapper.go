@@ -25,10 +25,16 @@ func GzipWrapper(fn DecoderFactory) DecoderFactory {
 
 		pr, pw := io.Pipe()
 		go func() {
-			defer gr.Close()
-			_, err := io.Copy(pw, gr)
-			pw.CloseWithError(err)
-		}()
+			var copyErr error
+            defer func() {
+                if closeErr := gr.Close(); closeErr != nil && copyErr == nil {
+                    pw.CloseWithError(fmt.Errorf("failed to close gzip reader: %w", closeErr))
+                    return
+                }
+                pw.CloseWithError(copyErr)
+            }()
+            _, copyErr = io.Copy(pw, gr)
+        }()
 
 		return fn(pr, params)
 	}

@@ -54,8 +54,8 @@ func TestRunner(t *testing.T) {
 			var batches []string
 			var mu sync.Mutex
 
-			tt.RunInput.Decoder = json.NewDecoder(strings.NewReader(tt.Input))
-			tt.RunInput.Handler = batch.HandlerFunc(func(_ context.Context, r io.Reader) error {
+			tt.Decoder = json.NewDecoder(strings.NewReader(tt.Input))
+			tt.Handler = batch.HandlerFunc(func(_ context.Context, r io.Reader) error {
 				data, err := io.ReadAll(r)
 				if err != nil {
 					return fmt.Errorf("failed to read: %w", err)
