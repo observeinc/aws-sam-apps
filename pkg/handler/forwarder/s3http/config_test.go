@@ -43,7 +43,7 @@ func TestConfig(t *testing.T) {
 		{
 			Config: s3http.Config{
 				DestinationURI:     "https://test",
-				GzipLevel:   ptr(200),
+				GzipLevel:          ptr(200),
 				GetObjectAPIClient: &awstest.S3Client{},
 			},
 			ExpectError: s3http.ErrUnsupportedGzipLevel,

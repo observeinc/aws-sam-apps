@@ -44,7 +44,7 @@ func (h *InstrumentedHandler) HandleSQS(ctx context.Context, request events.SQSE
 }
 
 func (h *InstrumentedHandler) HandleRequest(ctx context.Context, req *Request) (*Response, error) {
-	ctx, span := h.Tracer.Start(ctx, "HandleRequest")
+	ctx, span := h.Start(ctx, "HandleRequest")
 	var err error
 	defer func() {
 		if err != nil {

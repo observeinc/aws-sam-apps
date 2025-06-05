@@ -4,6 +4,10 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   Collect resource, logs and metrics from AWS
 Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - W1030
   AWS::ServerlessRepo::Application:
     Name: observe-aws-collection
     Description: Collect resource, logs and metrics data from AWS
