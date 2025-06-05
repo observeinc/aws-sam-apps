@@ -197,7 +197,7 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 		result := <-resultCh
 		if result.ErrorMessage != "" {
 			response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
-				ItemIdentifier: result.SQSMessage.MessageId,
+				ItemIdentifier: result.MessageId,
 			})
 		}
 		if e := encoder.Encode(result); e != nil {

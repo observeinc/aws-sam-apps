@@ -260,7 +260,11 @@ func (h Handler) getDatasource(token *string, observeDomainName string, client *
 	if err != nil {
 		return nil, fmt.Errorf("error receiving response from graphql: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+        if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+            err = fmt.Errorf("failed to close response body: %w", closeErr)
+        }
+    }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

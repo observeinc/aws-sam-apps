@@ -48,7 +48,11 @@ func (h *Handler) Handle(ctx context.Context, body io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+        if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+            err = fmt.Errorf("failed to close response body: %w", closeErr)
+        }
+    }()
 	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
 	}

@@ -20,7 +20,7 @@ func CSVDecoderFactory(r io.Reader, params map[string]string) Decoder {
 		Reader:   csv.NewReader(buffered),
 		buffered: buffered,
 	}
-	csvDecoder.Reader.FieldsPerRecord = -1
+	csvDecoder.FieldsPerRecord = -1
 
 	var delimiter rune
 	switch params["delimiter"] {
@@ -34,7 +34,7 @@ func CSVDecoderFactory(r io.Reader, params map[string]string) Decoder {
 		err := fmt.Errorf("%w: %q", ErrUnsupportedDelimiter, params["delimiter"])
 		return &errorDecoder{err}
 	}
-	csvDecoder.Reader.Comma = delimiter
+	csvDecoder.Comma = delimiter
 	return csvDecoder
 }
 
@@ -57,14 +57,14 @@ type CSVDecoder struct {
 
 func (dec *CSVDecoder) Decode(v any) error {
 	var err error
-	dec.Once.Do(func() {
+	dec.Do(func() {
 		dec.header, err = dec.Read()
 		for i, h := range dec.header {
 			dec.header[i] = strconv.Quote(h)
 		}
 		// After the header is determined, we can allow the csv.Reader to reuse
 		// a []string for every subsequent record.
-		dec.Reader.ReuseRecord = true
+		dec.ReuseRecord = true
 	})
 	if err != nil {
 		return fmt.Errorf("failed to decode header: %w", err)
