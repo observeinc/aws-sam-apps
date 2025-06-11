@@ -80,7 +80,9 @@ Parameters:
   ForwarderIAMRoleARN:
     Type: String
     Description: >-
-      The ARN of the IAM role to be assumed by the Forwarder Lambda Function. If this parameter is provided, this stack will skip creation for the IAM role.
+      The ARN of the IAM role to be assumed by the Forwarder Lambda Function.
+      This If this parameter is provided, this stack will skip creation for
+      the IAM role.
     AllowedPattern: "^(arn:aws:iam::\\d{12}:.*)?$"
     Default: ''
   ConfigDeliveryBucketName:

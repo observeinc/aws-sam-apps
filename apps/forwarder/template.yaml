@@ -65,7 +65,9 @@ Parameters:
   ForwarderIAMRoleARN:
     Type: String
     Description: >-
-      The ARN of the IAM role to be assumed by the Forwarder Lambda Function. If this parameter is provided, this stack will skip creation for the IAM role.
+      The ARN of the IAM role to be assumed by the Forwarder Lambda Function.
+      If this parameter is provided, this stack will skip creation for the IAM
+      role.
     AllowedPattern: "^(arn:aws:iam::\\d{12}:.*)?$"
     Default: ''
   SourceBucketNames:
@@ -431,7 +433,10 @@ Resources:
         - UseStackName
         - !Ref AWS::StackName
         - !Ref NameOverride
-      Role: !If [CreateForwarderRoleARN, !GetAtt Role.Arn, !Ref ForwarderIAMRoleARN]
+      Role: !If
+        - CreateForwarderRoleARN
+        - !GetAtt Role.Arn
+        - !Ref ForwarderIAMRoleARN
       CodeUri: ../../bin/linux_arm64
       Handler: bootstrap
       Runtime: provided.al2023
@@ -495,7 +500,10 @@ Outputs:
     Description: >-
       Forwarder Role ARN. This role will be assumed by the Forwarder Lambda
       Function in order to write data to destination.
-    Value: !If [CreateForwarderRoleARN, !GetAtt Role.Arn, !Ref ForwarderIAMRoleARN]
+    Value: !If
+      - CreateForwarderRoleARN
+      - !GetAtt Role.Arn
+      - !Ref ForwarderIAMRoleARN
   LogGroupName:
     Description: >-
       Forwarder Log Group Name. This log group contains useful information for
