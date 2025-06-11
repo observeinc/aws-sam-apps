@@ -21,6 +21,7 @@ Metadata:
           - DestinationUri
           - DataAccessPointArn
           - NameOverride
+          - ForwarderIAMRoleARN
       - Label:
           default: Data Sources
         Parameters:
@@ -61,6 +62,12 @@ Parameters:
       value, the stack name will be used.
     Default: ''
     MaxLength: 64
+  ForwarderIAMRoleARN:
+    Type: String
+    Description: >-
+      The ARN of the IAM role to be assumed by the Forwarder Lambda Function. If this parameter is provided, this stack will skip creation for the IAM role.
+    AllowedPattern: "^(arn:aws:iam::\\d{12}:.*)?$"
+    Default: ''
   SourceBucketNames:
     Type: CommaDelimitedList
     Description: >-
@@ -139,7 +146,11 @@ Parameters:
     Description: >-
       Logging verbosity for Lambda. Highest log verbosity is 9.
     AllowedPattern: "^[0-9]?$"
+
 Conditions:
+  CreateForwarderRoleARN: !Equals
+    - !Ref ForwarderIAMRoleARN
+    - ''
   NoDataAccessPointArn: !Equals
     - !Ref DataAccessPointArn
     - ''
@@ -280,6 +291,7 @@ Resources:
             # yamllint enable rule:line-length
   Role:
     Type: 'AWS::IAM::Role'
+    Condition: CreateForwarderRoleARN
     Properties:
       RoleName: !If
         - NoDataAccessPointArn
@@ -419,7 +431,7 @@ Resources:
         - UseStackName
         - !Ref AWS::StackName
         - !Ref NameOverride
-      Role: !GetAtt Role.Arn
+      Role: !If [CreateForwarderRoleARN, !GetAtt Role.Arn, !Ref ForwarderIAMRoleARN]
       CodeUri: ../../bin/linux_arm64
       Handler: bootstrap
       Runtime: provided.al2023
@@ -483,7 +495,7 @@ Outputs:
     Description: >-
       Forwarder Role ARN. This role will be assumed by the Forwarder Lambda
       Function in order to write data to destination.
-    Value: !GetAtt Role.Arn
+    Value: !If [CreateForwarderRoleARN, !GetAtt Role.Arn, !Ref ForwarderIAMRoleARN]
   LogGroupName:
     Description: >-
       Forwarder Log Group Name. This log group contains useful information for

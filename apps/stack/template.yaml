@@ -58,6 +58,7 @@ Metadata:
           - SourceBucketNames
           - ContentTypeOverrides
           - NameOverride
+          - ForwarderIAMRoleARN
       - Label:
           default: Debugging Options
         Parameters:
@@ -75,6 +76,12 @@ Parameters:
     Description: >-
       The access point ARN for your Filedrop.
     AllowedPattern: "^(arn:.*)?$"
+    Default: ''
+  ForwarderIAMRoleARN:
+    Type: String
+    Description: >-
+      The ARN of the IAM role to be assumed by the Forwarder Lambda Function. If this parameter is provided, this stack will skip creation for the IAM role.
+    AllowedPattern: "^(arn:aws:iam::\\d{12}:.*)?$"
     Default: ''
   ConfigDeliveryBucketName:
     Type: String
@@ -351,6 +358,7 @@ Resources:
           - UseStackName
           - !Ref AWS::StackName
           - !Ref NameOverride
+        ForwarderIAMRoleARN: !Ref ForwarderIAMRoleARN
         DebugEndpoint: !Ref DebugEndpoint
   TopicSubscription:
     Type: AWS::SNS::Subscription
