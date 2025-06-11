@@ -14,3 +14,6 @@ tfplan
 .terraform.lock.hcl
 .make.env
 .DS_STORE
+
+.idea
+tftests

@@ -47,7 +47,7 @@ func TestRequestMalformed(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
 
-			err := tt.Request.Validate()
+			err := tt.Validate()
 			if diff := cmp.Diff(tt.ExpectError, err, cmpopts.EquateErrors()); diff != "" {
 				t.Error(diff)
 			}

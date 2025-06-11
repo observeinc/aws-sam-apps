@@ -14,7 +14,11 @@ import (
 
 func TestHandler(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
+		defer func() {
+			if err := r.Body.Close(); err != nil {
+				t.Errorf("failed to close request body: %v", err)
+			}
+		}()
 
 		body := r.Body
 		if r.Header.Get("Content-Encoding") == "gzip" {

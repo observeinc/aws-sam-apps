@@ -3,6 +3,7 @@ package decoders
 import (
 	"fmt"
 	"io"
+	"log"
 
 	gzip "github.com/klauspost/pgzip"
 )
@@ -25,9 +26,11 @@ func GzipWrapper(fn DecoderFactory) DecoderFactory {
 
 		pr, pw := io.Pipe()
 		go func() {
-			defer gr.Close()
-			_, err := io.Copy(pw, gr)
-			pw.CloseWithError(err)
+			_, copyErr := io.Copy(pw, gr)
+			if closeErr := gr.Close(); closeErr != nil {
+				log.Printf("failed to close gzip reader: %v", closeErr)
+			}
+			pw.CloseWithError(copyErr)
 		}()
 
 		return fn(pr, params)

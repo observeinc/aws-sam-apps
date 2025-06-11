@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -69,7 +70,11 @@ func realInit() error {
 			w.WriteHeader(400)
 		}
 		// remove file if it still exists by the end of processing
-		defer os.Remove(f.Name())
+		defer func() {
+			if err := os.Remove(f.Name()); err != nil {
+				log.Printf("Failed to remove file %s: %v", f.Name(), err)
+			}
+		}()
 
 		hasher := sha256.New()
 		body := io.TeeReader(r.Body, hasher)

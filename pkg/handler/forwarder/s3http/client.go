@@ -111,11 +111,15 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 		return nil, fmt.Errorf("failed to copy object: %w", err)
 	}
 
-	getResp, err := c.GetObjectAPIClient.GetObject(ctx, getInput, opts...)
+	getResp, err := c.GetObject(ctx, getInput, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get object: %w", err)
 	}
-	defer getResp.Body.Close()
+	defer func() {
+		if closeErr := getResp.Body.Close(); closeErr != nil && err == nil {
+			logger.Error(closeErr, "failed to close response body")
+		}
+	}()
 
 	if getResp.ContentLength != nil && *getResp.ContentLength == 0 {
 		logger.V(6).Info("skipping empty file")

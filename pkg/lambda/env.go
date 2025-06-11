@@ -12,7 +12,9 @@ import (
 // This is useful for cases where we set a default in our env struct, and need
 // the value to be propagated to other processes.
 func exportEnvVar(_ context.Context, _, resolvedKey, _, resolvedValue string) (newValue string, stop bool, err error) {
-	os.Setenv(resolvedKey, resolvedValue)
+	if err := os.Setenv(resolvedKey, resolvedValue); err != nil {
+		return "", false, fmt.Errorf("failed to set environment variable %s: %w", resolvedKey, err)
+	}
 	return resolvedValue, false, nil
 }
 

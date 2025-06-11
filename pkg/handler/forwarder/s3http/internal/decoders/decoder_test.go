@@ -109,7 +109,11 @@ func readFile(t *testing.T, filename string) io.Reader {
 		t.Fatal("failed to open file:", err)
 	}
 
-	t.Cleanup(func() { file.Close() })
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("failed to close file: %v", err)
+		}
+	})
 	return file
 }
 
