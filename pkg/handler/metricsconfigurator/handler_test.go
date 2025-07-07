@@ -299,6 +299,43 @@ func TestParseResponse(t *testing.T) {
 			expectedError: false,
 		},
 		{
+			name: "Valid response with custom metrics",
+			responseBody: []byte(`{
+				"data": {
+					"datasource": {
+						"name": "TestDatasource",
+						"config": {
+							"awsCollectionStackConfig": {
+								"awsServiceMetricsList": [
+									{
+										"namespace": "AWS/EC2",
+										"metricNames": ["CPUUtilization", "NetworkIn"]
+									}
+								],
+								"customMetricsList": [
+									{
+										"namespace": "Custom/Application",
+										"metricNames": ["RequestCount", "ErrorRate"]
+									}
+								]
+							}
+						}
+					}
+				}
+			}`),
+			expectedResult: []types.MetricStreamFilter{
+				{
+					Namespace:   &service_list[0],
+					MetricNames: []string{"CPUUtilization", "NetworkIn"},
+				},
+				{
+					Namespace:   func() *string { s := "Custom/Application"; return &s }(),
+					MetricNames: []string{"RequestCount", "ErrorRate"},
+				},
+			},
+			expectedError: false,
+		},
+		{
 			name:           "Invalid JSON response",
 			responseBody:   []byte(`{"invalid": json`),
 			expectedResult: nil,

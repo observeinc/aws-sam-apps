@@ -58,6 +58,7 @@ type MetricsListItem struct {
 
 type AwsCollectionStackConfig struct {
 	AwsServiceMetricsList []MetricsListItem `json:"awsServiceMetricsList"`
+	CustomMetricsList     []MetricsListItem `json:"customMetricsList"`
 }
 
 type MetricsConfig struct {
@@ -187,9 +188,13 @@ func (h Handler) parseResponse(bodyBytes []byte) ([]types.MetricStreamFilter, er
 
 	logger.V(4).Info("response from observe api", "result", result)
 
-	metricSelection := result.Data.Datasource.Config.AwsCollectionStackConfig.AwsServiceMetricsList
+	awsServiceMetrics := result.Data.Datasource.Config.AwsCollectionStackConfig.AwsServiceMetricsList
+	customMetrics := result.Data.Datasource.Config.AwsCollectionStackConfig.CustomMetricsList
 
-	MetricsFilters := convertToMetricStreamFilters(metricSelection)
+	// Combine both lists
+	allMetrics := append(awsServiceMetrics, customMetrics...)
+
+	MetricsFilters := convertToMetricStreamFilters(allMetrics)
 	return MetricsFilters, nil
 }
 
@@ -231,6 +236,10 @@ func (h Handler) getDatasource(token *string, observeDomainName string, client *
 				config {
 					awsCollectionStackConfig {
 						awsServiceMetricsList {
+							namespace
+							metricNames
+						}
+						customMetricsList {
 							namespace
 							metricNames
 						}
