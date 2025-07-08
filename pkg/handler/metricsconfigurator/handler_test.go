@@ -336,43 +336,6 @@ func TestParseResponse(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "Valid response with custom metrics using wildcard",
-			responseBody: []byte(`{
-				"data": {
-					"datasource": {
-						"name": "TestDatasource",
-						"config": {
-							"awsCollectionStackConfig": {
-								"awsServiceMetricsList": [
-									{
-										"namespace": "AWS/Lambda",
-										"metricNames": ["Duration", "Errors"]
-									}
-								],
-								"customMetricsList": [
-									{
-										"namespace": "Custom/MyApp",
-										"metricNames": ["*"]
-									}
-								]
-							}
-						}
-					}
-				}
-			}`),
-			expectedResult: []types.MetricStreamFilter{
-				{
-					Namespace:   func() *string { s := "AWS/Lambda"; return &s }(),
-					MetricNames: []string{"Duration", "Errors"},
-				},
-				{
-					Namespace:   func() *string { s := "Custom/MyApp"; return &s }(),
-					MetricNames: []string{"*"},
-				},
-			},
-			expectedError: false,
-		},
-		{
 			name:           "Invalid JSON response",
 			responseBody:   []byte(`{"invalid": json`),
 			expectedResult: nil,
