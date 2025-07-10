@@ -16,6 +16,7 @@ AWS_REGIONS  := us-west-2      \
                 eu-north-1     \
                 eu-central-1   \
                 ca-central-1   \
+                ca-west-1      \
                 ap-southeast-2 \
                 ap-southeast-1 \
                 ap-south-1     \
