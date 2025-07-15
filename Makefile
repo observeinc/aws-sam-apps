@@ -223,7 +223,7 @@ $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 	cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
 	for app in $(APPS); do \
 	  curl -fs \
-	    -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
+	    -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.$(subst sam-pull-,,$@).amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
 	    -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \
 	done
 
