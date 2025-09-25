@@ -1,0 +1,10 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "alew-test-latest"
+resolve_s3 = true
+s3_prefix = "chen-test"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = "DestinationUri=\"s3://175914298205-uzmd8qujctz6j3c5s5cecynzg1y7eusw2a-s3alias/ds1Xs5Vu9plRz9Bxaosk/\" DataAccessPointArn=\"arn:aws:s3:us-west-2:723346149663:accesspoint/175914298205\" ConfigDeliveryBucketName=\"\" IncludeResourceTypes=\"*\" ExcludeResourceTypes=\"\" LogGroupNamePatterns=\"*\" LogGroupNamePrefixes=\"\" ExcludeLogGroupNamePatterns=\"\" MetricStreamFilterUri=\"s3://observeinc/cloudwatchmetrics/filters/recommended.yaml\" ObserveAccountID=\"175914298205\" ObserveDomainName=\"observe-eng.com\" UpdateTimestamp=\"1752267713\" DatasourceID=\"42179776\" MetricsPollerAllowedActions=\"cloudwatch:GetMetricData,cloudwatch:ListMetrics,tag:GetResources\" ObserveAwsAccountId=\"\" DatastreamIds=\"\" SourceBucketNames=\"\" ContentTypeOverrides=\"\" NameOverride=\"\" DebugEndpoint=\"\""
+image_repositories = []
