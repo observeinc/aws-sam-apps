@@ -25,9 +25,11 @@ resource "aws_iam_role" "this" {
       },
     ],
   })
+}
 
-  inline_policy {
-    name   = "allowed"
-    policy = var.install_policy_json
-  }
+resource "aws_iam_role_policy" "this" {
+  count  = var.install_policy_json == null ? 0 : 1
+  name   = "allowed"
+  role   = aws_iam_role.this[0].id
+  policy = var.install_policy_json
 }
