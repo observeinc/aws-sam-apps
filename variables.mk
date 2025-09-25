@@ -23,6 +23,10 @@ AWS_REGIONS  := us-west-2      \
                 ap-northeast-3 \
                 ap-northeast-2 \
                 ap-northeast-1 \
+                me-south-1 \
+                me-central-1 \
+                il-central-1 \
+                mx-central-1 \
 
 # Assume lambda functions are linux/arm64
 # These variables must be defined before GO_BUILD_DIRS
