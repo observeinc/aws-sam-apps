@@ -7,6 +7,8 @@ resource "aws_cloudformation_stack" "this" {
   capabilities  = var.capabilities
   iam_role_arn  = var.install_policy_json == null ? null : aws_iam_role.this[0].arn
   tags          = var.tags
+
+  depends_on = [aws_iam_role_policy.this]
 }
 
 resource "aws_iam_role" "this" {
