@@ -102,7 +102,7 @@ run "install_include" {
     app   = "config"
     parameters = {
       BucketName           = run.create_bucket.id
-      IncludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::Distribution"
+      IncludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot"
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",
@@ -117,7 +117,7 @@ run "install_exclude" {
     app   = "config"
     parameters = {
       BucketName           = run.create_bucket.id
-      ExcludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot,AWS::CloudFront::Distribution"
+      ExcludeResourceTypes = "AWS::Redshift::ClusterSnapshot,AWS::RDS::DBClusterSnapshot"
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",
