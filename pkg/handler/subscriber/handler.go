@@ -55,6 +55,8 @@ func (h *Handler) HandleRequest(ctx context.Context, req *Request) (*Response, e
 		return h.HandleDiscoveryRequest(ctx, req.DiscoveryRequest)
 	case req.SubscriptionRequest != nil:
 		return h.HandleSubscriptionRequest(ctx, req.SubscriptionRequest)
+	case req.CleanupRequest != nil:
+		return h.HandleCleanupRequest(ctx, req.CleanupRequest)
 	default:
 		return nil, ErrNotImplemented
 	}
