@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"runtime"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/go-logr/logr"
+	"golang.org/x/time/rate"
 
 	"github.com/observeinc/aws-sam-apps/pkg/handler"
 )
@@ -38,6 +40,7 @@ type Handler struct {
 	Queue      Queue
 	Client     CloudWatchLogsClient
 	NumWorkers int
+	limiter    *rate.Limiter
 
 	subscriptionFilter types.SubscriptionFilter
 	logGroupNameFilter FilterFunc
@@ -55,6 +58,8 @@ func (h *Handler) HandleRequest(ctx context.Context, req *Request) (*Response, e
 		return h.HandleDiscoveryRequest(ctx, req.DiscoveryRequest)
 	case req.SubscriptionRequest != nil:
 		return h.HandleSubscriptionRequest(ctx, req.SubscriptionRequest)
+	case req.CleanupRequest != nil:
+		return h.HandleCleanupRequest(ctx, req.CleanupRequest)
 	default:
 		return nil, ErrNotImplemented
 	}
@@ -103,5 +108,29 @@ func New(cfg *Config) (*Handler, error) {
 		h.NumWorkers = runtime.NumCPU()
 	}
 
+	rps := cfg.CloudWatchAPIRateLimit
+	if rps <= 0 {
+		rps = 8
+	}
+	burst := cfg.CloudWatchAPIBurst
+	if burst <= 0 {
+		burst = int(math.Ceil(rps * 2))
+		if burst < 1 {
+			burst = 1
+		}
+	}
+	h.limiter = rate.NewLimiter(rate.Limit(rps), burst)
+
 	return h, nil
 }
+
+func (h *Handler) callCloudWatch(ctx context.Context, fn func() error) error {
+	if h.limiter != nil {
+		if err := h.limiter.Wait(ctx); err != nil {
+			return err
+		}
+	}
+	return fn()
+}
+
+

@@ -2,7 +2,6 @@ package subscriber
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -23,24 +22,15 @@ type InstrumentedHandler struct {
 }
 
 func (h *InstrumentedHandler) HandleSQS(ctx context.Context, request events.SQSEvent) (response events.SQSEventResponse, err error) {
-	logger := logr.FromContextOrDiscard(ctx)
-	for _, record := range request.Records {
-		var req Request
-		var err error
-
-		if err = json.Unmarshal([]byte(record.Body), &req); err == nil {
-			_, err = h.HandleRequest(ctx, &req)
-		}
-
+	ctx, span := h.Start(ctx, "HandleSQS")
+	defer func() {
 		if err != nil {
-			// SQS record will be under 256KB, should be ok to log
-			logger.Error(err, "failed to process request", "body", record.Body)
-			response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{
-				ItemIdentifier: record.MessageId,
-			})
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 		}
-	}
-	return response, nil
+		span.End()
+	}()
+	return h.Handler.HandleSQS(ctx, request)
 }
 
 func (h *InstrumentedHandler) HandleRequest(ctx context.Context, req *Request) (*Response, error) {
