@@ -9,6 +9,7 @@ import (
 type Response struct {
 	Discovery    *DiscoveryStats    `json:"discovery,omitempty"`
 	Subscription *SubscriptionStats `json:"subscription,omitempty"`
+	Cleanup      *CleanupStats      `json:"cleanup,omitempty"`
 }
 
 // Int64 wraps around atomic.Int64 and provides marshalling method.
@@ -50,4 +51,18 @@ func (s *SubscriptionStats) Add(other *SubscriptionStats) {
 	s.Updated.Add(other.Updated.Load())
 	s.Skipped.Add(other.Skipped.Load())
 	s.Processed.Add(other.Processed.Load())
+}
+
+// CleanupStats contains counters for cleanup operations.
+type CleanupStats struct {
+	// LogGroupsScanned tracks total number of log groups scanned.
+	LogGroupsScanned Int64 `json:"logGroupsScanned,omitempty"`
+	// SubscriptionsFound tracks number of our subscriptions found.
+	SubscriptionsFound Int64 `json:"subscriptionsFound,omitempty"`
+	// SubscriptionsKept tracks subscriptions that still match patterns.
+	SubscriptionsKept Int64 `json:"subscriptionsKept,omitempty"`
+	// SubscriptionsDeleted tracks subscriptions that were removed.
+	SubscriptionsDeleted Int64 `json:"subscriptionsDeleted,omitempty"`
+	// SubscriptionsWouldDelete tracks subscriptions that would be removed in dry-run mode.
+	SubscriptionsWouldDelete Int64 `json:"subscriptionsWouldDelete,omitempty"`
 }

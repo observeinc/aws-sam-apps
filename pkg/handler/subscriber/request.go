@@ -14,6 +14,7 @@ var ErrMalformedRequest = errors.New("malformed request")
 type Request struct {
 	*SubscriptionRequest `json:"subscribe"`
 	*DiscoveryRequest    `json:"discover"`
+	*CleanupRequest      `json:"cleanup"`
 }
 
 // Validate verifies request is a union.
@@ -27,6 +28,9 @@ func (r *Request) Validate() error {
 		count++
 	}
 	if r.DiscoveryRequest != nil {
+		count++
+	}
+	if r.CleanupRequest != nil {
 		count++
 	}
 
@@ -119,4 +123,10 @@ func (d *DiscoveryRequest) ToDescribeLogInputs() (inputs []*cloudwatchlogs.Descr
 	}
 
 	return inputs
+}
+
+// CleanupRequest scans all log groups and removes subscriptions that no longer match the configured patterns.
+type CleanupRequest struct {
+	// DryRun if true, will only log what would be deleted without actually deleting
+	DryRun bool `json:"dryRun,omitempty"`
 }
