@@ -31,6 +31,9 @@ type Config struct {
 	LogGroupNamePatterns        []string `env:"LOG_GROUP_NAME_PATTERNS"`
 	LogGroupNamePrefixes        []string `env:"LOG_GROUP_NAME_PREFIXES"`
 	ExcludeLogGroupNamePatterns []string `env:"EXCLUDE_LOG_GROUP_NAME_PATTERNS"`
+	NumWorkers                  int      `env:"NUM_WORKERS,default=1"`
+	CloudWatchAPIRateLimit      float64  `env:"CLOUDWATCH_API_RATE_LIMIT,default=8"`
+	CloudWatchAPIBurst          int      `env:"CLOUDWATCH_API_BURST,default=16"`
 	QueueURL                    string   `env:"QUEUE_URL,required"`
 	ServiceName                 string   `env:"OTEL_SERVICE_NAME,default=subscriber"`
 
@@ -110,6 +113,9 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		LogGroupNamePrefixes:        cfg.LogGroupNamePrefixes,
 		LogGroupNamePatterns:        cfg.LogGroupNamePatterns,
 		ExcludeLogGroupNamePatterns: cfg.ExcludeLogGroupNamePatterns,
+		NumWorkers:                  cfg.NumWorkers,
+		CloudWatchAPIRateLimit:      cfg.CloudWatchAPIRateLimit,
+		CloudWatchAPIBurst:          cfg.CloudWatchAPIBurst,
 		CloudWatchLogsClient:        cloudwatchlogs.NewFromConfig(awsCfg),
 		Queue:                       &iq,
 	})
