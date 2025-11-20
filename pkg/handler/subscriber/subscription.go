@@ -13,13 +13,20 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const maxSubscribeWorkers = 3
+
 func (h *Handler) HandleSubscriptionRequest(ctx context.Context, subReq *SubscriptionRequest) (*Response, error) {
 	var stats SubscriptionStats
 
 	g, ctx := errgroup.WithContext(ctx)
-	if h.NumWorkers > 0 {
-		g.SetLimit(h.NumWorkers)
+	workers := h.NumWorkers
+	if workers <= 0 {
+		workers = 1
 	}
+	if workers > maxSubscribeWorkers {
+		workers = maxSubscribeWorkers
+	}
+	g.SetLimit(workers)
 
 	for _, logGroup := range subReq.LogGroups {
 		logGroup := logGroup
@@ -44,9 +51,28 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 	logger.V(6).Info("describing subscription filters")
 	stats.Processed.Add(1)
 
-	output, err := h.Client.DescribeSubscriptionFilters(ctx, &cloudwatchlogs.DescribeSubscriptionFiltersInput{
-		LogGroupName: &logGroup.LogGroupName,
-	})
+	var (
+		output *cloudwatchlogs.DescribeSubscriptionFiltersOutput
+		err    error
+	)
+	for attempt := 1; attempt <= cloudWatchAPIMaxAttempts; attempt++ {
+		err = h.callCloudWatch(ctx, func() error {
+			var callErr error
+			output, callErr = h.Client.DescribeSubscriptionFilters(ctx, &cloudwatchlogs.DescribeSubscriptionFiltersInput{
+				LogGroupName: &logGroup.LogGroupName,
+			})
+			return callErr
+		})
+		if err == nil {
+			break
+		}
+		if !isRetryableCloudWatchError(err) || attempt == cloudWatchAPIMaxAttempts {
+			break
+		}
+		if sleepErr := sleepWithBackoff(ctx, attempt); sleepErr != nil {
+			return fmt.Errorf("describe subscription filters canceled: %w", sleepErr)
+		}
+	}
 	if err != nil {
 		var exc *types.ResourceNotFoundException
 		if errors.As(err, &exc) {
@@ -63,14 +89,44 @@ func (h *Handler) SubscribeLogGroup(ctx context.Context, logGroup *LogGroup, sta
 		case *cloudwatchlogs.DeleteSubscriptionFilterInput:
 			v.LogGroupName = &logGroup.LogGroupName
 			logger.V(3).Info("deleting subscription filter", "filterName", aws.ToString(v.FilterName))
-			if _, err := h.Client.DeleteSubscriptionFilter(ctx, v); err != nil {
+			for attempt := 1; attempt <= cloudWatchAPIMaxAttempts; attempt++ {
+				err = h.callCloudWatch(ctx, func() error {
+					_, callErr := h.Client.DeleteSubscriptionFilter(ctx, v)
+					return callErr
+				})
+				if err == nil {
+					break
+				}
+				if !isRetryableCloudWatchError(err) || attempt == cloudWatchAPIMaxAttempts {
+					break
+				}
+				if sleepErr := sleepWithBackoff(ctx, attempt); sleepErr != nil {
+					return fmt.Errorf("delete subscription filter canceled: %w", sleepErr)
+				}
+			}
+			if err != nil {
 				return fmt.Errorf("failed to delete subscription filter: %w", err)
 			}
 			stats.Deleted.Add(1)
 		case *cloudwatchlogs.PutSubscriptionFilterInput:
 			v.LogGroupName = &logGroup.LogGroupName
 			logger.V(3).Info("updating subscription filter")
-			if _, err := h.Client.PutSubscriptionFilter(ctx, v); err != nil {
+			for attempt := 1; attempt <= cloudWatchAPIMaxAttempts; attempt++ {
+				err = h.callCloudWatch(ctx, func() error {
+					_, callErr := h.Client.PutSubscriptionFilter(ctx, v)
+					return callErr
+				})
+				if err == nil {
+					break
+				}
+				if !isRetryableCloudWatchError(err) || attempt == cloudWatchAPIMaxAttempts {
+					break
+				}
+				if sleepErr := sleepWithBackoff(ctx, attempt); sleepErr != nil {
+					return fmt.Errorf("put subscription filter canceled: %w", sleepErr)
+				}
+			}
+			if err != nil {
 				return fmt.Errorf("failed to put subscription filter: %w", err)
 			}
 			stats.Updated.Add(1)

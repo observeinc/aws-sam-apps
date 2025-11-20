@@ -98,7 +98,7 @@ steps as a dependency graph:
 
 `make go-build` is responsible for building Lambda binaries. The list of
 binaries to compile are controlled through the `GO_BINS` variable. The target
-architecture is set to `arm64` for compatibility with the `provided.al2` Lambda
+architecture is set to `arm64` for compatibility with the `provided.al2023` Lambda
 runtime.
 
 A build is tagged with a version. By omission, the version is derived from

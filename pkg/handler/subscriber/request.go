@@ -14,6 +14,7 @@ var ErrMalformedRequest = errors.New("malformed request")
 type Request struct {
 	*SubscriptionRequest `json:"subscribe"`
 	*DiscoveryRequest    `json:"discover"`
+	*CleanupRequest      `json:"cleanup"`
 }
 
 // Validate verifies request is a union.
@@ -27,6 +28,9 @@ func (r *Request) Validate() error {
 		count++
 	}
 	if r.DiscoveryRequest != nil {
+		count++
+	}
+	if r.CleanupRequest != nil {
 		count++
 	}
 
@@ -66,6 +70,8 @@ type DiscoveryRequest struct {
 	// optional filters
 	LogGroupNamePatterns []*string `json:"logGroupNamePatterns,omitempty"`
 	LogGroupNamePrefixes []*string `json:"logGroupNamePrefixes,omitempty"`
+	// ExcludeLogGroupNamePatterns allows filtering out log groups after they are retrieved.
+	ExcludeLogGroupNamePatterns []*string `json:"excludeLogGroupNamePatterns,omitempty"`
 
 	// Limit when pagination list endpoint
 	Limit *int32 `json:"limit,omitempty"`
@@ -73,6 +79,21 @@ type DiscoveryRequest struct {
 	// Inline executes subscriptions inline with request
 	// If not set, we default to however lambda is configured.
 	Inline *bool `json:"inline,omitempty"`
+
+	// FullyPrune if true, scans ALL log groups to find and remove subscriptions
+	// that no longer match the current patterns. This is more expensive but ensures
+	// stale subscriptions are cleaned up when patterns change (e.g., during stack updates).
+	// If false (default), only log groups matching the current patterns are processed.
+	FullyPrune bool `json:"fullyPrune,omitempty"`
+	// ScanToken continues a previous discovery scan from a DescribeLogGroups pagination token.
+	ScanToken *string `json:"scanToken,omitempty"`
+	// ScanInputIndex tracks which DescribeLogGroups input is being processed across continuation messages.
+	ScanInputIndex int `json:"scanInputIndex,omitempty"`
+	// MaxGroupsPerInvocation limits the amount of scan work performed by one invocation.
+	// If zero, a package default is used.
+	MaxGroupsPerInvocation int `json:"maxGroupsPerInvocation,omitempty"`
+	// JobID identifies a logical discovery run across multiple continuation messages.
+	JobID string `json:"jobId,omitempty"`
 }
 
 // LogGroup represents the minimal viable info we need to be able to subscribe
@@ -119,4 +140,19 @@ func (d *DiscoveryRequest) ToDescribeLogInputs() (inputs []*cloudwatchlogs.Descr
 	}
 
 	return inputs
+}
+
+// CleanupRequest scans all log groups and removes subscriptions that no longer match the configured patterns.
+type CleanupRequest struct {
+	// DryRun if true, will only log what would be deleted without actually deleting
+	DryRun bool `json:"dryRun,omitempty"`
+	// DeleteAll if true, will delete all subscriptions regardless of whether they match patterns
+	DeleteAll bool `json:"deleteAll,omitempty"`
+	// ScanToken continues a previous cleanup scan from a DescribeLogGroups pagination token.
+	ScanToken *string `json:"scanToken,omitempty"`
+	// MaxGroupsPerInvocation limits the amount of scan work performed by one invocation.
+	// If zero, a package default is used.
+	MaxGroupsPerInvocation int `json:"maxGroupsPerInvocation,omitempty"`
+	// JobID identifies a logical cleanup run across multiple continuation messages.
+	JobID string `json:"jobId,omitempty"`
 }

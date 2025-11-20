@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -38,6 +41,7 @@ type Handler struct {
 	Queue      Queue
 	Client     CloudWatchLogsClient
 	NumWorkers int
+	limiter    *apiLimiter
 
 	subscriptionFilter types.SubscriptionFilter
 	logGroupNameFilter FilterFunc
@@ -55,6 +59,8 @@ func (h *Handler) HandleRequest(ctx context.Context, req *Request) (*Response, e
 		return h.HandleDiscoveryRequest(ctx, req.DiscoveryRequest)
 	case req.SubscriptionRequest != nil:
 		return h.HandleSubscriptionRequest(ctx, req.SubscriptionRequest)
+	case req.CleanupRequest != nil:
+		return h.HandleCleanupRequest(ctx, req.CleanupRequest)
 	default:
 		return nil, ErrNotImplemented
 	}
@@ -103,5 +109,93 @@ func New(cfg *Config) (*Handler, error) {
 		h.NumWorkers = runtime.NumCPU()
 	}
 
+	rps := cfg.CloudWatchAPIRateLimit
+	if rps <= 0 {
+		rps = 8
+	}
+	burst := cfg.CloudWatchAPIBurst
+	if burst <= 0 {
+		burst = int(math.Ceil(rps * 2))
+		if burst < 1 {
+			burst = 1
+		}
+	}
+	h.limiter = newAPILimiter(rps, burst)
+
 	return h, nil
+}
+
+func (h *Handler) callCloudWatch(ctx context.Context, fn func() error) error {
+	if h.limiter != nil {
+		if err := h.limiter.Wait(ctx); err != nil {
+			return err
+		}
+	}
+	return fn()
+}
+
+type apiLimiter struct {
+	mu     sync.Mutex
+	rps    float64
+	burst  float64
+	tokens float64
+	last   time.Time
+}
+
+func newAPILimiter(rps float64, burst int) *apiLimiter {
+	if rps <= 0 {
+		rps = 1
+	}
+	if burst < 1 {
+		burst = 1
+	}
+	return &apiLimiter{
+		rps:    rps,
+		burst:  float64(burst),
+		tokens: float64(burst),
+		last:   time.Now(),
+	}
+}
+
+func (l *apiLimiter) Wait(ctx context.Context) error {
+	for {
+		wait := l.take()
+		if wait <= 0 {
+			return nil
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+func (l *apiLimiter) take() time.Duration {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	now := time.Now()
+	elapsed := now.Sub(l.last).Seconds()
+	if elapsed > 0 {
+		l.tokens += elapsed * l.rps
+		if l.tokens > l.burst {
+			l.tokens = l.burst
+		}
+	}
+	l.last = now
+
+	if l.tokens >= 1 {
+		l.tokens -= 1
+		return 0
+	}
+
+	missing := 1 - l.tokens
+	if missing <= 0 {
+		return 0
+	}
+	waitSeconds := missing / l.rps
+	return time.Duration(waitSeconds * float64(time.Second))
 }
