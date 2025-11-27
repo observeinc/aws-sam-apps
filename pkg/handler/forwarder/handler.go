@@ -109,10 +109,20 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 		key = strings.Trim(h.DestinationURI.Path, "/") + "/" + key
 	}
 
+	// This allows AWS SDK to retry S3 PutObject operations by rewinding the stream
+	var body io.ReadSeeker
+	if r != nil {
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return fmt.Errorf("failed to read message data: %w", err)
+		}
+		body = bytes.NewReader(data)
+	}
+
 	_, err = h.S3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(h.DestinationURI.Host),
 		Key:         &key,
-		Body:        r,
+		Body:        body,
 		ContentType: aws.String("application/x-aws-sqs"),
 	})
 	if err != nil {
