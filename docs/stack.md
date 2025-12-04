@@ -32,6 +32,8 @@ The Observe stack provisions the following components:
 | `ConfigDeliveryBucketName` | String | If AWS Config is already enabled in this account and region, provide the S3 bucket snapshots are written to. |
 | `IncludeResourceTypes` | CommaDelimitedList | If AWS Config is not enabled in this account and region, provide a list of resource types to collect. Use a wildcard to collect all supported resource types. |
 | `ExcludeResourceTypes` | CommaDelimitedList | Exclude a subset of resource types from configuration collection. This parameter can only be set if IncludeResourceTypes is wildcarded. |
+| `OrgId` | String | Optional AWS Organizations ID. If set, adds an AllowAWSConfigFromOrg statement on the SNS topic that allows publishes by aws:PrincipalOrgID. Useful for AWS Control Tower integrations. |
+| `SourceAccounts` | CommaDelimitedList | List of AWS account IDs allowed to publish to the SNS topic via AWS Config. Useful for sub-accounts in AWS Organizations and Control Tower integrations. The current account ID is automatically included when this list is non-empty. |
 | `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. If not empty, the lambda function will only apply to log groups that have names that match one of the provided strings based on a case-sensitive substring search. |
 | `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. If not empty, the lambda function will only apply to log groups that start with a provided string. |
 | `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This paramter is used to filter out log groups from subscription, and supports the use of regular expressions. |

@@ -1,0 +1,82 @@
+#!/bin/bash
+set -euo pipefail
+
+DIE() { echo "$*" 1>&2; exit 1; }
+
+[[ ! -z "${TOPIC_ARN:-}" ]] || DIE "TOPIC_ARN not set"
+[[ ! -z "${CHECK_TYPE:-}" ]] || DIE "CHECK_TYPE not set"
+
+echo "Fetching SNS topic policy for ${TOPIC_ARN}"
+POLICY=$(aws sns get-topic-attributes \
+  --topic-arn "${TOPIC_ARN}" \
+  --query 'Attributes.Policy' \
+  --output text ${OPTS:-})
+
+[[ ! -z "${POLICY}" ]] || DIE "Failed to fetch topic policy"
+
+echo "Policy retrieved successfully"
+
+case "${CHECK_TYPE}" in
+  org_id)
+    [[ ! -z "${EXPECTED_ORG_ID:-}" ]] || DIE "EXPECTED_ORG_ID not set for org_id check"
+    echo "Checking for aws:PrincipalOrgID condition with value: ${EXPECTED_ORG_ID}"
+    
+    # Check if the policy contains the expected org ID
+    if echo "${POLICY}" | jq -e --arg org_id "${EXPECTED_ORG_ID}" \
+      '.Statement[] | select(.Sid == "AllowAWSConfigFromOrg") | .Condition.StringEquals."aws:PrincipalOrgID" == $org_id' > /dev/null; then
+      echo "✓ Found correct aws:PrincipalOrgID condition"
+      exit 0
+    else
+      echo "✗ aws:PrincipalOrgID condition not found or incorrect"
+      echo "Policy:"
+      echo "${POLICY}" | jq '.'
+      exit 1
+    fi
+    ;;
+    
+  source_accounts)
+    [[ ! -z "${EXPECTED_ACCOUNT_IDS:-}" ]] || DIE "EXPECTED_ACCOUNT_IDS not set for source_accounts check"
+
+    # Build the full list of expected accounts (including current account if provided)
+    EXPECTED_ACCOUNTS="${EXPECTED_ACCOUNT_IDS}"
+    if [[ ! -z "${CURRENT_ACCOUNT_ID:-}" ]]; then
+      EXPECTED_ACCOUNTS="${EXPECTED_ACCOUNTS},${CURRENT_ACCOUNT_ID}"
+    fi
+
+    echo "Checking for AWS:SourceAccount condition with accounts: ${EXPECTED_ACCOUNTS}"
+
+    # Check if the policy contains the SourceAccount condition
+    if echo "${POLICY}" | jq -e '.Statement[] | select(.Sid == "AllowAWSConfigFromSourceAccounts")' > /dev/null; then
+      echo "✓ Found AllowAWSConfigFromSourceAccounts statement"
+
+      # Verify the condition exists
+      SOURCE_ACCOUNTS=$(echo "${POLICY}" | jq -r '.Statement[] | select(.Sid == "AllowAWSConfigFromSourceAccounts") | .Condition.StringEquals."AWS:SourceAccount" | if type == "array" then .[] else . end' | sort | tr '\n' ',' | sed 's/,$//')
+
+      echo "Found source accounts: ${SOURCE_ACCOUNTS}"
+      echo "Expected accounts: ${EXPECTED_ACCOUNTS}"
+
+      # Split expected accounts and check each one is present
+      IFS=',' read -ra EXPECTED_ARRAY <<< "${EXPECTED_ACCOUNTS}"
+      for account in "${EXPECTED_ARRAY[@]}"; do
+        if echo "${SOURCE_ACCOUNTS}" | grep -q "${account}"; then
+          echo "✓ Found account ${account}"
+        else
+          echo "✗ Account ${account} not found in policy"
+          exit 1
+        fi
+      done
+
+      exit 0
+    else
+      echo "✗ AllowAWSConfigFromSourceAccounts statement not found"
+      echo "Policy:"
+      echo "${POLICY}" | jq '.'
+      exit 1
+    fi
+    ;;
+    
+  *)
+    DIE "Unknown CHECK_TYPE: ${CHECK_TYPE}. Must be 'org_id' or 'source_accounts'"
+    ;;
+esac
+
