@@ -6,7 +6,6 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
-          "cloudformation:CreateChangeSet",
           "cloudformation:CreateStack",
           "cloudformation:DeleteChangeSet",
           "cloudformation:DeleteStack",
@@ -120,6 +119,18 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
+          "cloudformation:CreateChangeSet"
+        ],
+        "Resource": [
+          "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31",
+          "arn:aws:cloudformation:*:aws:transform/Include",
+          "arn:aws:cloudformation:*:aws:transform/LanguageExtensions",
+          "arn:aws:cloudformation:*:*:stack/*/*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
           "s3:GetObject"
         ],
         "Resource": [
@@ -181,6 +192,7 @@ run "check_sqs" {
     env_vars = {
       SOURCE      = run.install.stack.outputs["BucketName"]
       DESTINATION = run.create_bucket.id
+      COPY_DELAY  = 10
     }
   }
 

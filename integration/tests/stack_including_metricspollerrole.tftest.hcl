@@ -6,7 +6,6 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
-          "cloudformation:CreateChangeSet",
           "cloudformation:CreateStack",
           "cloudformation:DeleteChangeSet",
           "cloudformation:DeleteStack",
@@ -120,6 +119,18 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
+          "cloudformation:CreateChangeSet"
+        ],
+        "Resource": [
+          "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31",
+          "arn:aws:cloudformation:*:aws:transform/Include",
+          "arn:aws:cloudformation:*:aws:transform/LanguageExtensions",
+          "arn:aws:cloudformation:*:*:stack/*/*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
           "s3:GetObject"
         ],
         "Resource": [
@@ -137,7 +148,7 @@ run "setup" {
     version = "2.9.0"
   }
   variables {
-    id_length = 51
+    id_length = 48
   }
 }
 
@@ -163,7 +174,7 @@ run "install" {
       LogGroupNamePatterns     = "*"
       ObserveAwsAccountId = "158067661102"
       DatastreamIds       = "411000001"
-      NameOverride             = run.setup.short
+      NameOverride             = run.setup.id
     }
     capabilities = [
       "CAPABILITY_NAMED_IAM",

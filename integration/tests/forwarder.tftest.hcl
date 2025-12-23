@@ -124,6 +124,7 @@ run "install_forwarder" {
       DestinationUri     = "s3://${run.target_bucket.access_point.alias}/"
       # all bucket names share the same prefix, this should just work.
       SourceBucketNames    = "${run.setup.short}*"
+      SourceObjectKeys     = "*"
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
       SourceKMSKeyArns     = "${join(",", [for k, v in run.sources.buckets : v.kms_key.arn if v.kms_key != null])}"
@@ -156,8 +157,9 @@ run "check_sqs" {
   variables {
     command = "./scripts/check_object_diff"
     env_vars = {
-      SOURCE      = run.sources.buckets["sqs"].id
+      SOURCE     = run.sources.buckets["sqs"].id
       DESTINATION = run.target_bucket.id
+      COPY_DELAY = 10
     }
   }
 
@@ -179,6 +181,7 @@ run "check_eventbridge" {
       SOURCE      = run.sources.buckets["eventbridge"].id
       DESTINATION = run.target_bucket.id
       INIT_DELAY  = 2
+      COPY_DELAY  = 10
     }
   }
 
@@ -200,7 +203,7 @@ run "check_sns" {
       SOURCE      = run.sources.buckets["sns"].id
       DESTINATION = run.target_bucket.id
       INIT_DELAY  = 2
-
+      COPY_DELAY  = 10
     }
   }
 
@@ -221,6 +224,8 @@ run "check_content_type_override" {
     env_vars = {
       SOURCE      = run.sources.buckets["sqs"].id
       DESTINATION = run.target_bucket.id
+      INIT_DELAY  = 2
+      COPY_DELAY  = 10
       # this prefix will match the content type override, so we expect the destination object
       # to have our test content type
       OBJECT_PREFIX = var.override_match
@@ -247,6 +252,7 @@ run "check_kms" {
     env_vars = {
       SOURCE      = run.sources.buckets["kms"].id
       DESTINATION = run.target_bucket.id
+      COPY_DELAY  = 10
       # Object ETag will no longer match because object hash changes after decryption
       JQ_PROCESS_SOURCE = "del(.ETag)"
       # Reset the expected source encryption settings when comparing objects
