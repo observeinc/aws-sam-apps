@@ -70,6 +70,7 @@ run "check_sqs" {
       SOURCE        = run.sources.buckets["sqs"].id
       DESTINATION   = run.target_bucket.id
       OBJECT_PREFIX = "test/allowed/"
+      COPY_DELAY    = 10
     }
   }
 
