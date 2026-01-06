@@ -158,6 +158,7 @@ run "check_sqs" {
     env_vars = {
       SOURCE      = run.sources.buckets["sqs"].id
       DESTINATION = run.target_bucket.id
+      COPY_DELAY  = 10
     }
   }
 
@@ -227,6 +228,7 @@ run "check_content_type_override" {
       # modify the content type of the source to our expected value, after
       # which we should se no diff.
       JQ_PROCESS_SOURCE = ".ContentType = \"${var.override_content_type}\""
+      COPY_DELAY        = 10
     }
   }
 

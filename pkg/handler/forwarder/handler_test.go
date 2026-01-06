@@ -1,10 +1,12 @@
 package forwarder_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"sync/atomic"
@@ -14,6 +16,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -417,4 +420,125 @@ func TestRecorder(t *testing.T) {
 			}
 		})
 	}
+}
+
+// MockUploader is a mock implementation of UploaderAPI for testing
+type MockUploader struct {
+	UploadFunc func(ctx context.Context, input *s3.PutObjectInput, opts ...func(*manager.Uploader)) (*manager.UploadOutput, error)
+}
+
+func (m *MockUploader) Upload(ctx context.Context, input *s3.PutObjectInput, opts ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
+	if m.UploadFunc != nil {
+		return m.UploadFunc(ctx, input, opts...)
+	}
+	return &manager.UploadOutput{}, nil
+}
+
+func TestContentTypeOverrideWithUploadManager(t *testing.T) {
+	t.Parallel()
+
+	testcases := []struct {
+		Name                string
+		SourceContentType   *string
+		OverrideContentType *string
+		ExpectedContentType *string
+	}{
+		{
+			Name:                "ContentType override is respected",
+			SourceContentType:   aws.String("application/json"),
+			OverrideContentType: aws.String("application/x-csv;delimiter=space"),
+			ExpectedContentType: aws.String("application/x-csv;delimiter=space"),
+		},
+		{
+			Name:                "No override uses source content type",
+			SourceContentType:   aws.String("application/json"),
+			OverrideContentType: nil,
+			ExpectedContentType: aws.String("application/json"),
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+
+			var capturedCopyInput *s3.PutObjectInput
+
+			mockS3Client := &awstest.S3Client{
+				GetObjectFunc: func(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+					return &s3.GetObjectOutput{
+						Body:        io.NopCloser(bytes.NewReader([]byte(`{"test":"data"}`))),
+						ContentType: tc.SourceContentType,
+					}, nil
+				},
+			}
+
+			mockUploader := &MockUploader{
+				UploadFunc: func(_ context.Context, input *s3.PutObjectInput, _ ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
+					// Only capture the copy operation, not the SQS write
+					// The copy operation will have the key "test.json", while SQS writes have "AWSLogs/..." keys
+					if aws.ToString(input.Key) == "test.json" {
+						capturedCopyInput = input
+					}
+					return &manager.UploadOutput{}, nil
+				},
+			}
+
+			h, err := forwarder.New(&forwarder.Config{
+				DestinationURI:    "s3://dest-bucket",
+				SourceBucketNames: []string{"*"},
+				SourceObjectKeys:  []string{"*"},
+				S3Client:          mockS3Client,
+				Uploader:          mockUploader,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Create a test request
+			request := events.SQSEvent{
+				Records: []events.SQSMessage{
+					{
+						MessageId: "test-message",
+						Body:      `{"copy":[{"uri":"s3://source-bucket/test.json","size":100}]}`,
+					},
+				},
+			}
+
+			ctx := lambdacontext.NewContext(context.Background(), lambdaContext)
+
+			// If we have an override, apply it before processing
+			if tc.OverrideContentType != nil {
+				// We need to set up an override that matches our test
+				h.Override = &testOverride{contentType: tc.OverrideContentType}
+			}
+
+			_, err = h.Handle(ctx, request)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Verify the content type was set correctly
+			if capturedCopyInput == nil {
+				t.Fatal("Copy upload was not called")
+			}
+
+			if diff := cmp.Diff(aws.ToString(capturedCopyInput.ContentType), aws.ToString(tc.ExpectedContentType)); diff != "" {
+				t.Errorf("ContentType mismatch (-got +want):\n%s", diff)
+			}
+		})
+	}
+}
+
+// testOverride is a simple override implementation for testing
+type testOverride struct {
+	contentType *string
+}
+
+func (o *testOverride) Apply(_ context.Context, input *s3.CopyObjectInput) bool {
+	if o.contentType != nil {
+		input.ContentType = o.contentType
+		return true
+	}
+	return false
 }
