@@ -31,16 +31,6 @@ type S3Client interface {
 	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
 
-// UploaderAPI defines the interface for S3 Upload Manager
-type UploaderAPI interface {
-	Upload(ctx context.Context, input *s3.PutObjectInput, opts ...func(*manager.Uploader)) (*manager.UploadOutput, error)
-}
-
-// S3GetObjectAPI defines the interface for GetObject operations
-type S3GetObjectAPI interface {
-	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
-}
-
 type Override interface {
 	Apply(context.Context, *s3.CopyObjectInput) bool
 }
@@ -51,7 +41,6 @@ type Handler struct {
 	MaxFileSize        int64
 	DestinationURI     *url.URL
 	S3Client           S3Client
-	Uploader           UploaderAPI // Upload Manager (automatically handles small and large files)
 	Override           Override
 	ObjectPolicy       interface{ Allow(string) bool }
 	Now                func() time.Time
@@ -120,95 +109,15 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 		key = strings.Trim(h.DestinationURI.Path, "/") + "/" + key
 	}
 
-	putInput := &s3.PutObjectInput{
+	_, err = h.S3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(h.DestinationURI.Host),
 		Key:         &key,
 		Body:        r,
 		ContentType: aws.String("application/x-aws-sqs"),
-	}
-
-	// Use Upload Manager for all uploads
-	// For small files (< 5MB), it automatically uses single PutObject
-	// For large files (> 5MB), it uses multipart upload with 10MB chunks
-	if h.Uploader != nil {
-		_, err = h.Uploader.Upload(ctx, putInput)
-		if err != nil {
-			return fmt.Errorf("failed to upload messages: %w", err)
-		}
-	} else {
-		// Fallback to standard PutObject if Uploader not configured
-		// This requires seekable stream for retries
-		var body io.ReadSeeker
-		if r != nil {
-			data, err := io.ReadAll(r)
-			if err != nil {
-				return fmt.Errorf("failed to read message data: %w", err)
-			}
-			body = bytes.NewReader(data)
-		}
-		putInput.Body = body
-
-		_, err = h.S3Client.PutObject(ctx, putInput)
-		if err != nil {
-			return fmt.Errorf("failed to write messages: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// copyObjectWithUploadManager performs a copy operation using GetObject + Upload Manager
-func (h *Handler) copyObjectWithUploadManager(ctx context.Context, copyInput *s3.CopyObjectInput) error {
-	logger := logr.FromContextOrDiscard(ctx)
-
-	// Parse the CopySource to extract bucket and key
-	parts := strings.SplitN(aws.ToString(copyInput.CopySource), "/", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid copy source: %s", aws.ToString(copyInput.CopySource))
-	}
-
-	// Get the object from source
-	getOutput, err := h.S3Client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(parts[0]),
-		Key:    aws.String(parts[1]),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get object: %w", err)
+		return fmt.Errorf("failed to write messages: %w", err)
 	}
-	defer func() {
-		if closeErr := getOutput.Body.Close(); closeErr != nil {
-			logger.V(4).Error(closeErr, "failed to close response body")
-		}
-	}()
-
-	// Upload to destination using Upload Manager
-	// Upload Manager automatically handles non-seekable streams
-	logger.V(6).Info("using upload manager for copy", "source", copyInput.CopySource, "dest", copyInput.Key)
-
-	// Build PutObjectInput, respecting any overrides set in copyInput
-	putInput := &s3.PutObjectInput{
-		Bucket:      copyInput.Bucket,
-		Key:         copyInput.Key,
-		Body:        getOutput.Body,
-		ContentType: getOutput.ContentType,
-		Metadata:    getOutput.Metadata,
-	}
-
-	// Respect content type override if set
-	if ct := copyInput.ContentType; ct != nil {
-		putInput.ContentType = ct
-	}
-
-	// Respect content encoding override if set
-	if ce := copyInput.ContentEncoding; ce != nil {
-		putInput.ContentEncoding = ce
-	}
-
-	_, err = h.Uploader.Upload(ctx, putInput)
-	if err != nil {
-		return fmt.Errorf("failed to upload object: %w", err)
-	}
-
 	return nil
 }
 
@@ -244,17 +153,7 @@ func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) 
 			}
 		}
 
-		// Use Upload Manager for all S3 copy operations
-		// For small files (< 5MB), it automatically uses single PutObject
-		// For large files (> 5MB), it uses multipart upload
-		if h.Uploader != nil {
-			err = h.copyObjectWithUploadManager(ctx, copyInput)
-		} else {
-			// Fallback to standard CopyObject if Uploader not configured
-			_, err = h.S3Client.CopyObject(ctx, copyInput)
-		}
-
-		if err != nil {
+		if _, err := h.S3Client.CopyObject(ctx, copyInput); err != nil {
 			return fmt.Errorf("error copying file %q: %w", copyRecord.URI, err)
 		}
 	}
@@ -330,7 +229,6 @@ func New(cfg *Config) (h *Handler, err error) {
 	h = &Handler{
 		DestinationURI:     u,
 		S3Client:           cfg.S3Client,
-		Uploader:           cfg.Uploader,
 		MaxFileSize:        cfg.MaxFileSize,
 		Override:           cfg.Override,
 		ObjectPolicy:       objectFilter,

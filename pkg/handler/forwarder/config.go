@@ -21,7 +21,6 @@ type Config struct {
 	SourceObjectKeys   []string
 	Override           Override
 	S3Client           S3Client
-	Uploader           UploaderAPI // Upload Manager (automatically handles small and large files)
 	GetTime            func() *time.Time
 	MaxConcurrentTasks int // fan out limit
 }
