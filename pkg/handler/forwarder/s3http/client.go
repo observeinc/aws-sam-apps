@@ -1,10 +1,8 @@
 package s3http
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -128,21 +126,7 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 		return toCopyOutput(nil), nil
 	}
 
-	// Read the entire body into memory to create a seekable stream.
-	// This allows AWS SDK to retry S3 operations by rewinding the stream.
-	data, err := io.ReadAll(getResp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read object body: %w", err)
-	}
-
-	// Create a seekable reader from the buffered data
-	seekableBody := bytes.NewReader(data)
-
-	// Create a modified PutObjectInput with the seekable body
-	putInput := toPutInput(params, getResp)
-	putInput.Body = seekableBody
-
-	putResp, err := c.PutObject(ctx, putInput, opts...)
+	putResp, err := c.PutObject(ctx, toPutInput(params, getResp), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to put object: %w", err)
 	}

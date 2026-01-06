@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
 	"go.opentelemetry.io/otel/codes"
@@ -51,9 +50,8 @@ type Config struct {
 	S3HTTPGzipLevel *int `env:"S3_HTTP_GZIP_LEVEL,default=1"`
 
 	// The following variables are not configurable via environment
-	HTTPInsecureSkipVerify bool                  `json:"-"`
-	AWSS3Client            S3Client              `json:"-"`
-	Uploader               forwarder.UploaderAPI `json:"-"`
+	HTTPInsecureSkipVerify bool     `json:"-"`
+	AWSS3Client            S3Client `json:"-"`
 }
 
 type Lambda struct {
@@ -120,37 +118,9 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		return nil, fmt.Errorf("failed to load presets: %w", err)
 	}
 
-	// Get or create the S3 client
 	var awsS3Client = cfg.AWSS3Client
-	var actualS3Client *s3.Client
 	if awsS3Client == nil {
-		actualS3Client = s3.NewFromConfig(awsCfg)
-		awsS3Client = actualS3Client
-	} else {
-		// Try to cast to *s3.Client for Upload Manager
-		var ok bool
-		actualS3Client, ok = awsS3Client.(*s3.Client)
-		if !ok {
-			// If not a concrete client, create one for Upload Manager
-			actualS3Client = s3.NewFromConfig(awsCfg)
-		}
-	}
-
-	// Always create Upload Manager (it automatically handles small and large files)
-	var uploader forwarder.UploaderAPI
-	if cfg.Uploader != nil {
-		uploader = cfg.Uploader
-	} else {
-		// Create default Upload Manager with optimized settings
-		uploader = manager.NewUploader(actualS3Client, func(u *manager.Uploader) {
-			// Set part size to 10MB (good balance for Lambda)
-			u.PartSize = 10 * 1024 * 1024
-			// Set concurrency to 5 (good for Lambda CPU limits)
-			u.Concurrency = 5
-			// Clean up failed uploads to avoid S3 storage costs
-			u.LeavePartsOnError = false
-		})
-		logger.V(4).Info("created upload manager", "partSize", "10MB", "concurrency", 5)
+		awsS3Client = s3.NewFromConfig(awsCfg)
 	}
 
 	var s3Client forwarder.S3Client = awsS3Client
@@ -175,7 +145,6 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		DestinationURI:     cfg.DestinationURI,
 		MaxFileSize:        cfg.MaxFileSize,
 		S3Client:           s3Client,
-		Uploader:           uploader,
 		Override:           append(override.Sets{customOverrides}, presets...),
 		SourceBucketNames:  cfg.SourceBucketNames,
 		SourceObjectKeys:   cfg.SourceObjectKeys,
