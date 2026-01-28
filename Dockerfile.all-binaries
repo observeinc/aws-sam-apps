@@ -1,7 +1,7 @@
 # Dockerfile used for Orca scanning 
 
 #alpine:3.21.3 
-FROM alpine:3.22.2
+FROM alpine:3.23.3
 
 ARG OS
 ARG ARCH
