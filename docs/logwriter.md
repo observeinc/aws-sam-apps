@@ -46,7 +46,7 @@ You can optionally enable automatic log group subscription. Configuring either `
 | `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This parameter is used to filter out log groups from subscription, and supports the use of regular expressions. |
 | `DiscoveryRate` | String | EventBridge rate expression for periodically triggering discovery. If not set, no eventbridge rules are configured. |
 | `FilterName` | String | Subscription filter name. Existing filters that have this name as a prefix will be removed. |
-| `FilterPattern` | String | Subscription filter pattern. |
+| `FilterPattern` | String | CloudWatch Logs subscription filter pattern. Only log events matching this pattern are delivered to Firehose. Uses AWS CloudWatch filter pattern syntax. An empty string matches all events. |
 | `NameOverride` | String | Name of Lambda function. |
 | `BufferingInterval` | Number | Buffer incoming data for the specified period of time, in seconds, before delivering it to S3.  |
 | `BufferingSize` | Number | Buffer incoming data to the specified size, in MiBs, before delivering it to S3.  |
