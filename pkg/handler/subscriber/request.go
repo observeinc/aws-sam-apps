@@ -14,6 +14,7 @@ var ErrMalformedRequest = errors.New("malformed request")
 type Request struct {
 	*SubscriptionRequest `json:"subscribe"`
 	*DiscoveryRequest    `json:"discover"`
+	*CleanupRequest      `json:"cleanup"`
 }
 
 // Validate verifies request is a union.
@@ -27,6 +28,9 @@ func (r *Request) Validate() error {
 		count++
 	}
 	if r.DiscoveryRequest != nil {
+		count++
+	}
+	if r.CleanupRequest != nil {
 		count++
 	}
 
@@ -73,6 +77,12 @@ type DiscoveryRequest struct {
 	// Inline executes subscriptions inline with request
 	// If not set, we default to however lambda is configured.
 	Inline *bool `json:"inline,omitempty"`
+
+	// FullyPrune if true, scans ALL log groups to find and remove subscriptions
+	// that no longer match the current patterns. This is more expensive but ensures
+	// stale subscriptions are cleaned up when patterns change (e.g., during stack updates).
+	// If false (default), only log groups matching the current patterns are processed.
+	FullyPrune bool `json:"fullyPrune,omitempty"`
 }
 
 // LogGroup represents the minimal viable info we need to be able to subscribe
@@ -119,4 +129,12 @@ func (d *DiscoveryRequest) ToDescribeLogInputs() (inputs []*cloudwatchlogs.Descr
 	}
 
 	return inputs
+}
+
+// CleanupRequest scans all log groups and removes subscriptions that no longer match the configured patterns.
+type CleanupRequest struct {
+	// DryRun if true, will only log what would be deleted without actually deleting
+	DryRun bool `json:"dryRun,omitempty"`
+	// DeleteAll if true, will delete all subscriptions regardless of whether they match patterns
+	DeleteAll bool `json:"deleteAll,omitempty"`
 }
