@@ -6,7 +6,6 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
-          "cloudformation:CreateChangeSet",
           "cloudformation:CreateStack",
           "cloudformation:DeleteChangeSet",
           "cloudformation:DeleteStack",
@@ -120,6 +119,18 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
+          "cloudformation:CreateChangeSet"
+        ],
+        "Resource": [
+          "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31",
+          "arn:aws:cloudformation:*:aws:transform/Include",
+          "arn:aws:cloudformation:*:aws:transform/LanguageExtensions",
+          "arn:aws:cloudformation:*:*:stack/*/*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
           "s3:GetObject"
         ],
         "Resource": [
@@ -148,6 +159,25 @@ run "create_bucket" {
   }
   variables {
     setup = run.setup
+  }
+}
+
+run "reset_config_service" {
+  module {
+    source  = "observeinc/collection/aws//modules/testing/exec"
+    version = "2.9.0"
+  }
+
+  variables {
+    command = "./scripts/reset_config_service"
+    env_vars = {
+      RESET_CONFIG_SERVICE = "1"
+    }
+  }
+
+  assert {
+    condition     = output.exitcode == 0
+    error_message = "Failed to reset AWS Config service state"
   }
 }
 
@@ -181,6 +211,7 @@ run "check_sqs" {
     env_vars = {
       SOURCE      = run.install.stack.outputs["BucketName"]
       DESTINATION = run.create_bucket.id
+      COPY_DELAY  = 10
     }
   }
 

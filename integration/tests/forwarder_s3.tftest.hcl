@@ -34,7 +34,7 @@ run "install_forwarder" {
     app   = "forwarder"
     parameters = {
       DestinationUri    = "s3://${run.target_bucket.id}/"
-      SourceBucketNames = "${join(",", [for k, v in run.sources.buckets : v.id])}"
+      SourceBucketNames = "${run.sources.buckets["sns"].id},${run.sources.buckets["sqs"].id},${run.sources.buckets["eventbridge"].id},${run.sources.buckets["kms"].id}"
       SourceObjectKeys  = "*/allowed/*"
       SourceTopicArns   = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       NameOverride      = run.setup.id
@@ -70,6 +70,7 @@ run "check_sqs" {
       SOURCE        = run.sources.buckets["sqs"].id
       DESTINATION   = run.target_bucket.id
       OBJECT_PREFIX = "test/allowed/"
+      COPY_DELAY    = 10
     }
   }
 
