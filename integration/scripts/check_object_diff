@@ -12,6 +12,8 @@ OBJECT_PREFIX=${OBJECT_PREFIX:-}
 # this allows us to filter out expected changes
 JQ_PROCESS_SOURCE=${JQ_PROCESS_SOURCE:-.}
 JQ_PROCESS_DESTINATION=${JQ_PROCESS_DESTINATION:-.}
+MAX_COPY_ATTEMPTS=${MAX_COPY_ATTEMPTS:-10}
+COPY_RETRY_INTERVAL=${COPY_RETRY_INTERVAL:-3}
 
 if [ -n "${DEBUG:-}" ]; then
     set -x
@@ -24,7 +26,6 @@ cleanup() {
 trap cleanup EXIT
 
 TMPFILE=$(mktemp)
-TMPNAME=$(basename ${TMPFILE})
 
 echo "{\"hello\": \"world\"}" > "$TMPFILE"
 
@@ -36,6 +37,22 @@ aws s3 cp ${TMPFILE} s3://${SOURCE}/${KEY} --content-type application/json 1>&2 
 sleep ${INIT_DELAY:-0}
 ORIGINAL=$(aws s3api head-object --bucket ${SOURCE} --key ${KEY} | jq "del(.LastModified, .Expiration) | ${JQ_PROCESS_SOURCE}" || DIE "failed to read file from source")
 sleep ${COPY_DELAY:-0}
-COPY=$(aws s3api head-object --bucket ${DESTINATION} --key ${KEY} | jq "del(.LastModified, .Expiration) | ${JQ_PROCESS_DESTINATION}" || DIE "failed to read file from destination")
 
-[ "$ORIGINAL" = "$COPY" ] || DIE "object differs"
+attempt=1
+while [ "${attempt}" -le "${MAX_COPY_ATTEMPTS}" ]; do
+    if COPY=$(aws s3api head-object --bucket "${DESTINATION}" --key "${KEY}" 2>/dev/null | jq "del(.LastModified, .Expiration) | ${JQ_PROCESS_DESTINATION}" 2>/dev/null); then
+        if [ "${ORIGINAL}" = "${COPY}" ]; then
+            exit 0
+        fi
+        echo "destination object differs on attempt ${attempt}/${MAX_COPY_ATTEMPTS}" 1>&2
+    else
+        echo "destination object not available on attempt ${attempt}/${MAX_COPY_ATTEMPTS}" 1>&2
+    fi
+
+    if [ "${attempt}" -lt "${MAX_COPY_ATTEMPTS}" ]; then
+        sleep "${COPY_RETRY_INTERVAL}"
+    fi
+    attempt=$((attempt + 1))
+done
+
+DIE "failed to read matching object from destination after ${MAX_COPY_ATTEMPTS} attempts"

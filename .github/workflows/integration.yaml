@@ -31,16 +31,23 @@ on:
         default: 'us-west-2'
 
 env:
-  AWS_REGION: "${{ inputs.aws_region }}"
+  AWS_REGION: "${{ inputs.aws_region || 'us-west-2' }}"
   SAM_CLI_TELEMETRY: 0
 
 jobs:
   provision:
-    name: Provision DCE for tests
+    name: Setup for tests
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     outputs:
-      tests: ${{ steps.find_hcl_files.outputs.tests }}
+      parallel_tests: ${{ steps.find_hcl_files.outputs.parallel_tests }}
+      serial_tests: ${{ steps.find_hcl_files.outputs.serial_tests }}
     steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
       with:
@@ -49,32 +56,81 @@ jobs:
     - name: Verify Terraform Installation
       run: terraform version
 
-    - name: DCE Provision
-      uses: observeinc/github-action-dce@1.0.1
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        budget-amount: ${{ vars.BUDGET_AMOUNT }}
-        budget-currency: 'USD'
-        expiry: '30m'
-        email: 'justin.daines@observeinc.com'
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ inputs.aws_region || 'us-west-2' }}
 
-    - name: checkout
-      uses: actions/checkout@v4
+    - name: AWS Info
+      run: aws sts get-caller-identity
 
     - name: Setup test matrix
       id: find_hcl_files
       run: |
-        echo "tests=$(ls integration/tests | awk -F. '{print $1}' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+        # Build test list from *.tftest.hcl only.
+        shopt -s nullglob
+        ALL_TESTS=$(
+          for file in integration/tests/*.tftest.hcl; do
+            basename "$file" .tftest.hcl
+          done | sort
+        )
+
+        echo "All tests found:"
+        echo "$ALL_TESTS"
+
+        # Tests that must run serially (AWS Config limitation: one recorder per region).
+        # We treat a test as "AWS Config related" if it:
+        # - installs app = "config", or
+        # - sets ConfigDeliveryBucketName (stack app includes config resources).
+        SERIAL_TESTS=$(
+          for file in integration/tests/*.tftest.hcl; do
+            if grep -Eq 'app[[:space:]]*=[[:space:]]*"config"|ConfigDeliveryBucketName' "$file"; then
+              basename "$file" .tftest.hcl
+            fi
+          done | sort -u
+        )
+
+        # Filter out serial tests for parallel execution
+        if [ -n "$SERIAL_TESTS" ]; then
+          PARALLEL_TESTS=$(printf "%s\n" "$ALL_TESTS" | grep -vxF -f <(printf "%s\n" "$SERIAL_TESTS") || true)
+        else
+          PARALLEL_TESTS="$ALL_TESTS"
+        fi
+
+        echo ""
+        echo "Parallel tests:"
+        echo "$PARALLEL_TESTS"
+        echo ""
+        echo "Serial tests:"
+        echo "$SERIAL_TESTS"
+
+        PARALLEL_JSON=$(echo "$PARALLEL_TESTS" | jq -R -s -c 'split("\n")[:-1] | map(select(length > 0))')
+        SERIAL_JSON=$(echo "$SERIAL_TESTS" | jq -R -s -c 'split("\n")[:-1] | map(select(length > 0))')
+
+        echo ""
+        echo "Parallel tests JSON: $PARALLEL_JSON"
+        echo "Serial tests JSON: $SERIAL_JSON"
+
+        echo "parallel_tests=$PARALLEL_JSON" >> $GITHUB_OUTPUT
+        echo "serial_tests=$SERIAL_JSON" >> $GITHUB_OUTPUT
 
   tests:
-    name: Run integration test
+    name: Run integration test (parallel)
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     needs: provision
+    if: needs.provision.outputs.parallel_tests != '[]'
     strategy:
+      fail-fast: false
       matrix:
-        testfile: ${{fromJson(needs.provision.outputs.tests)}}
+        testfile: ${{fromJson(needs.provision.outputs.parallel_tests)}}
     steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
       with:
@@ -83,14 +139,14 @@ jobs:
     - name: Verify Terraform Installation
       run: terraform version
 
-    - name: DCE Use
-      uses: observeinc/github-action-dce@1.0.1
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ inputs.aws_region || 'us-west-2' }}
 
-    - name: checkout
-      uses: actions/checkout@v4
+    - name: AWS Info
+      run: aws sts get-caller-identity
 
     - name: Pull SAM manifests
       run: |
@@ -100,17 +156,203 @@ jobs:
         RELEASE_VERSION: "${{ inputs.release_version }}"
 
     - name: Run ${{ matrix.testfile }} integration test
+      id: run_test
+      env:
+        TF_VAR_tags: '{"github_run_id":"${{ github.run_id }}","github_workflow":"${{ github.workflow }}","github_job":"tests","github_testfile":"${{ matrix.testfile }}"}'
       run: TEST_ARGS='-verbose' make test-integration-${{ matrix.testfile }}
 
-  cleanup:
-    name: Cleanup
-    needs: tests
+    - name: Show CloudFormation stack events on failure
+      if: failure() && steps.run_test.outcome == 'failure'
+      continue-on-error: true
+      run: |
+        echo "Fetching CloudFormation stack events for failed stacks..."
+
+        # Find candidate failed stacks and filter to this workflow run.
+        ALL_STACKS=$(aws cloudformation list-stacks \
+          --stack-status-filter CREATE_FAILED ROLLBACK_COMPLETE ROLLBACK_FAILED DELETE_COMPLETE CREATE_IN_PROGRESS ROLLBACK_IN_PROGRESS \
+          --query 'StackSummaries[].StackName' \
+          --output text 2>/dev/null || echo "")
+
+        for stack in $ALL_STACKS; do
+          # Check if stack belongs to this workflow run.
+          TAGS=$(aws cloudformation describe-stacks --stack-name "$stack" --query 'Stacks[0].Tags' --output json 2>/dev/null || echo "[]")
+          RUN_ID=$(echo "$TAGS" | jq -r '.[] | select(.Key=="github_run_id") | .Value' 2>/dev/null || echo "")
+          WORKFLOW=$(echo "$TAGS" | jq -r '.[] | select(.Key=="github_workflow") | .Value' 2>/dev/null || echo "")
+
+          if [ "$RUN_ID" = "${{ github.run_id }}" ] && [ "$WORKFLOW" = "${{ github.workflow }}" ]; then
+            echo ""
+            echo "=========================================="
+            echo "Stack: $stack"
+            echo "=========================================="
+
+            # Show all failure-related events
+            aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --max-items 50 \
+              --query 'StackEvents[?contains(`CREATE_FAILED,ROLLBACK_IN_PROGRESS,ROLLBACK_COMPLETE,DELETE_FAILED`, ResourceStatus)].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]' \
+              --output table 2>/dev/null || echo "Failed to get events for $stack"
+          fi
+        done
+
+  serial_tests:
+    name: Run integration test (serial)
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    needs: [provision, tests]
+    if: always() && needs.provision.outputs.serial_tests != '[]'
+    strategy:
+      max-parallel: 1
+      matrix:
+        testfile: ${{fromJson(needs.provision.outputs.serial_tests)}}
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: latest
+
+    - name: Verify Terraform Installation
+      run: terraform version
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ inputs.aws_region || 'us-west-2' }}
+
+    - name: AWS Info
+      run: aws sts get-caller-identity
+
+    - name: Pull SAM manifests
+      run: |
+        make sam-pull-${AWS_REGION}
+      env:
+        S3_BUCKET_PREFIX: "${{ inputs.s3_bucket_prefix }}"
+        RELEASE_VERSION: "${{ inputs.release_version }}"
+
+    - name: Run ${{ matrix.testfile }} integration test
+      id: run_test
+      env:
+        TF_VAR_tags: '{"github_run_id":"${{ github.run_id }}","github_workflow":"${{ github.workflow }}","github_job":"serial_tests","github_testfile":"${{ matrix.testfile }}"}'
+      run: TEST_ARGS='-verbose' make test-integration-${{ matrix.testfile }}
+
+    - name: Show CloudFormation stack events on failure
+      if: failure() && steps.run_test.outcome == 'failure'
+      continue-on-error: true
+      run: |
+        echo "Fetching CloudFormation stack events for failed stacks..."
+
+        # Find candidate failed stacks and filter to this workflow run.
+        ALL_STACKS=$(aws cloudformation list-stacks \
+          --stack-status-filter CREATE_FAILED ROLLBACK_COMPLETE ROLLBACK_FAILED DELETE_COMPLETE CREATE_IN_PROGRESS ROLLBACK_IN_PROGRESS \
+          --query 'StackSummaries[].StackName' \
+          --output text 2>/dev/null || echo "")
+
+        for stack in $ALL_STACKS; do
+          # Check if stack belongs to this workflow run.
+          TAGS=$(aws cloudformation describe-stacks --stack-name "$stack" --query 'Stacks[0].Tags' --output json 2>/dev/null || echo "[]")
+          RUN_ID=$(echo "$TAGS" | jq -r '.[] | select(.Key=="github_run_id") | .Value' 2>/dev/null || echo "")
+          WORKFLOW=$(echo "$TAGS" | jq -r '.[] | select(.Key=="github_workflow") | .Value' 2>/dev/null || echo "")
+
+          if [ "$RUN_ID" = "${{ github.run_id }}" ] && [ "$WORKFLOW" = "${{ github.workflow }}" ]; then
+            echo ""
+            echo "=========================================="
+            echo "Stack: $stack"
+            echo "=========================================="
+
+            # Show all failure-related events
+            aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --max-items 50 \
+              --query 'StackEvents[?contains(`CREATE_FAILED,ROLLBACK_IN_PROGRESS,ROLLBACK_COMPLETE,DELETE_FAILED`, ResourceStatus)].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]' \
+              --output table 2>/dev/null || echo "Failed to get events for $stack"
+          fi
+        done
+
+  cleanup:
+    name: Cleanup CloudFormation stacks
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    needs: [provision, tests, serial_tests]
     if: always()
     steps:
-    - name: DCE Cleanup
-      uses: observeinc/github-action-dce@1.0.1
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        action-type: 'decommission'
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ inputs.aws_region || 'us-west-2' }}
+
+    - name: Cleanup CloudFormation stacks from this run
+      continue-on-error: true
+      run: |
+        echo "Cleaning up CloudFormation stacks created by GitHub run ${{ github.run_id }}..."
+
+        ALL_STACKS=$(aws cloudformation list-stacks \
+          --stack-status-filter CREATE_COMPLETE CREATE_FAILED ROLLBACK_COMPLETE ROLLBACK_FAILED UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE DELETE_FAILED CREATE_IN_PROGRESS \
+          --query 'StackSummaries[].StackName' \
+          --output text 2>/dev/null || echo "")
+
+        STACKS_TO_DELETE=()
+        for stack in $ALL_STACKS; do
+          TAGS=$(aws cloudformation describe-stacks --stack-name "$stack" --query 'Stacks[0].Tags' --output json 2>/dev/null || echo "[]")
+          RUN_ID=$(echo "$TAGS" | jq -r '.[] | select(.Key=="github_run_id") | .Value' 2>/dev/null || echo "")
+          WORKFLOW=$(echo "$TAGS" | jq -r '.[] | select(.Key=="github_workflow") | .Value' 2>/dev/null || echo "")
+
+          if [ "$RUN_ID" = "${{ github.run_id }}" ] && [ "$WORKFLOW" = "${{ github.workflow }}" ]; then
+            STACKS_TO_DELETE+=("$stack")
+          fi
+        done
+
+        if [ ${#STACKS_TO_DELETE[@]} -eq 0 ]; then
+          echo "No stacks found with github_run_id=${{ github.run_id }}"
+          exit 0
+        fi
+
+        echo "Found ${#STACKS_TO_DELETE[@]} stack(s) to delete"
+
+        # Delete all stacks (parent stacks will delete nested stacks)
+        for stack in "${STACKS_TO_DELETE[@]}"; do
+          echo "Deleting stack: $stack"
+          aws cloudformation delete-stack --stack-name "$stack" 2>/dev/null || echo "Failed to initiate deletion of $stack"
+        done
+
+        # Wait for deletions to complete (up to 10 minutes)
+        echo "Waiting for stack deletions to complete..."
+        TIMEOUT=600
+        ELAPSED=0
+        INTERVAL=15
+
+        while [ $ELAPSED -lt $TIMEOUT ]; do
+          REMAINING_STACKS=()
+
+          for stack in "${STACKS_TO_DELETE[@]}"; do
+            STATUS=$(aws cloudformation describe-stacks --stack-name "$stack" --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "DELETE_COMPLETE")
+
+            if [ "$STATUS" != "DELETE_COMPLETE" ]; then
+              REMAINING_STACKS+=("$stack:$STATUS")
+            fi
+          done
+
+          if [ ${#REMAINING_STACKS[@]} -eq 0 ]; then
+            echo "All stacks deleted successfully!"
+            exit 0
+          fi
+
+          echo "Still waiting for ${#REMAINING_STACKS[@]} stack(s):"
+          printf '%s\n' "${REMAINING_STACKS[@]}"
+
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+        done
+
+        echo "Timeout waiting for stack deletions. Remaining stacks:"
+        printf '%s\n' "${REMAINING_STACKS[@]}"
+        echo "These stacks may need manual cleanup."
+
+
