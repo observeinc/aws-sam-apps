@@ -31,7 +31,7 @@ jobs:
 
       - name: Restore Docker cache
         if: always()
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.ref }}-${{ github.sha }}
@@ -61,7 +61,7 @@ jobs:
 
       - name: Save updated Docker cache
         if: always()
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.ref }}-${{ github.sha }}
