@@ -1,0 +1,42 @@
+#!/bin/bash
+set -euo pipefail
+
+# AWS Config supports only one recorder/channel per region.
+# Integration tests create resources named "default", so clear any existing
+# recorder/channel first to avoid "default already exists" failures.
+
+echo "Resetting AWS Config recorder/channel in region ${AWS_REGION:-unset}..."
+
+RECORDERS=$(aws configservice describe-configuration-recorders \
+  --query 'ConfigurationRecorders[].name' \
+  --output text 2>/dev/null || echo "")
+
+if [ -n "${RECORDERS}" ] && [ "${RECORDERS}" != "None" ]; then
+  for recorder in ${RECORDERS}; do
+    echo "Stopping recorder: ${recorder}"
+    aws configservice stop-configuration-recorder \
+      --configuration-recorder-name "${recorder}" 2>/dev/null || true
+  done
+fi
+
+CHANNELS=$(aws configservice describe-delivery-channels \
+  --query 'DeliveryChannels[].name' \
+  --output text 2>/dev/null || echo "")
+
+if [ -n "${CHANNELS}" ] && [ "${CHANNELS}" != "None" ]; then
+  for channel in ${CHANNELS}; do
+    echo "Deleting delivery channel: ${channel}"
+    aws configservice delete-delivery-channel \
+      --delivery-channel-name "${channel}" 2>/dev/null || true
+  done
+fi
+
+if [ -n "${RECORDERS}" ] && [ "${RECORDERS}" != "None" ]; then
+  for recorder in ${RECORDERS}; do
+    echo "Deleting recorder: ${recorder}"
+    aws configservice delete-configuration-recorder \
+      --configuration-recorder-name "${recorder}" 2>/dev/null || true
+  done
+fi
+
+echo "AWS Config reset complete."

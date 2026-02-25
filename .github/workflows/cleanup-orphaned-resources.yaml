@@ -1,0 +1,294 @@
+name: Cleanup Orphaned AWS Resources
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: 'Maximum age of resources to keep (hours)'
+        required: false
+        default: '12'
+        type: string
+      dry_run:
+        description: "Dry run (don't actually delete)"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: 'us-west-2'
+  MAX_AGE_HOURS: ${{ inputs.max_age_hours || '12' }}
+
+jobs:
+  cleanup:
+    name: Cleanup orphaned resources
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: AWS Info
+      run: aws sts get-caller-identity
+
+    - name: Find and delete old CloudFormation stacks
+      run: |
+        echo "Finding CloudFormation stacks older than $MAX_AGE_HOURS hours..."
+        
+        # Calculate cutoff time (current time - MAX_AGE_HOURS)
+        CUTOFF_TIME=$(date -u -d "$MAX_AGE_HOURS hours ago" +%s 2>/dev/null || date -u -v-${MAX_AGE_HOURS}H +%s)
+        
+        # Find all stacks with github_run_id tag
+        ALL_STACKS=$(aws cloudformation list-stacks \
+          --stack-status-filter CREATE_COMPLETE CREATE_FAILED ROLLBACK_COMPLETE ROLLBACK_FAILED UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE DELETE_FAILED \
+          --query 'StackSummaries[].StackName' \
+          --output text 2>/dev/null || echo "")
+
+        STACKS_TO_DELETE=()
+        
+        for stack in $ALL_STACKS; do
+          # Get stack details
+          STACK_INFO=$(aws cloudformation describe-stacks --stack-name "$stack" 2>/dev/null || echo "")
+          
+          if [ -z "$STACK_INFO" ]; then
+            continue
+          fi
+          
+          # Check if stack has github_run_id or github_workflow tag
+          HAS_GITHUB_TAG=$(echo "$STACK_INFO" | jq -r '.Stacks[0].Tags[]? | select(.Key=="github_run_id" or .Key=="github_workflow") | .Key' | head -1)
+          
+          if [ -z "$HAS_GITHUB_TAG" ]; then
+            continue
+          fi
+          
+          # Get stack creation time
+          CREATION_TIME=$(echo "$STACK_INFO" | jq -r '.Stacks[0].CreationTime')
+          CREATION_TIMESTAMP=$(date -u -d "$CREATION_TIME" +%s 2>/dev/null || date -u -jf "%Y-%m-%dT%H:%M:%S" "$CREATION_TIME" +%s 2>/dev/null || echo "0")
+          
+          if [ "$CREATION_TIMESTAMP" -lt "$CUTOFF_TIME" ]; then
+            STACKS_TO_DELETE+=("$stack")
+            AGE_HOURS=$(( ($(date +%s) - CREATION_TIMESTAMP) / 3600 ))
+            echo "Found old stack: $stack (age: ${AGE_HOURS}h, created: $CREATION_TIME)"
+          fi
+        done
+
+        if [ ${#STACKS_TO_DELETE[@]} -eq 0 ]; then
+          echo "No orphaned stacks found older than $MAX_AGE_HOURS hours"
+          exit 0
+        fi
+
+        echo ""
+        echo "Found ${#STACKS_TO_DELETE[@]} stack(s) to delete"
+
+        if [ "${{ inputs.dry_run }}" = "true" ]; then
+          echo "DRY RUN: Would delete the following stacks:"
+          printf '%s\n' "${STACKS_TO_DELETE[@]}"
+          exit 0
+        fi
+
+        # Delete stacks
+        for stack in "${STACKS_TO_DELETE[@]}"; do
+          echo "Deleting stack: $stack"
+          aws cloudformation delete-stack --stack-name "$stack" 2>/dev/null || echo "Failed to delete $stack"
+        done
+
+        echo "Initiated deletion of ${#STACKS_TO_DELETE[@]} stack(s)"
+
+    - name: Find and delete old S3 buckets
+      run: |
+        echo "Finding S3 buckets with github tags older than $MAX_AGE_HOURS hours..."
+        
+        CUTOFF_TIME=$(date -u -d "$MAX_AGE_HOURS hours ago" +%s 2>/dev/null || date -u -v-${MAX_AGE_HOURS}H +%s)
+        
+        # List all buckets
+        ALL_BUCKETS=$(aws s3api list-buckets --query 'Buckets[].Name' --output text 2>/dev/null || echo "")
+        
+        BUCKETS_TO_DELETE=()
+        
+        for bucket in $ALL_BUCKETS; do
+          # Get bucket tags
+          TAGS=$(aws s3api get-bucket-tagging --bucket "$bucket" 2>/dev/null || echo "")
+          
+          if [ -z "$TAGS" ]; then
+            continue
+          fi
+          
+          # Check if bucket has github_run_id tag
+          HAS_GITHUB_TAG=$(echo "$TAGS" | jq -r '.TagSet[]? | select(.Key=="github_run_id" or .Key=="github_workflow") | .Key' | head -1)
+          
+          if [ -z "$HAS_GITHUB_TAG" ]; then
+            continue
+          fi
+          
+          # Get bucket creation time
+          CREATION_TIME=$(aws s3api list-buckets --query "Buckets[?Name=='$bucket'].CreationDate" --output text)
+          CREATION_TIMESTAMP=$(date -u -d "$CREATION_TIME" +%s 2>/dev/null || date -u -jf "%Y-%m-%dT%H:%M:%S" "$CREATION_TIME" +%s 2>/dev/null || echo "0")
+          
+          if [ "$CREATION_TIMESTAMP" -lt "$CUTOFF_TIME" ]; then
+            BUCKETS_TO_DELETE+=("$bucket")
+            AGE_HOURS=$(( ($(date +%s) - CREATION_TIMESTAMP) / 3600 ))
+            echo "Found old bucket: $bucket (age: ${AGE_HOURS}h)"
+          fi
+        done
+
+        if [ ${#BUCKETS_TO_DELETE[@]} -eq 0 ]; then
+          echo "No orphaned buckets found"
+          exit 0
+        fi
+
+        echo "Found ${#BUCKETS_TO_DELETE[@]} bucket(s) to delete"
+
+        if [ "${{ inputs.dry_run }}" = "true" ]; then
+          echo "DRY RUN: Would delete the following buckets:"
+          printf '%s\n' "${BUCKETS_TO_DELETE[@]}"
+          exit 0
+        fi
+
+        # Delete buckets (empty them first)
+        for bucket in "${BUCKETS_TO_DELETE[@]}"; do
+          echo "Emptying and deleting bucket: $bucket"
+
+          # Empty bucket first
+          aws s3 rm "s3://$bucket" --recursive 2>/dev/null || echo "Failed to empty $bucket"
+
+          # Delete bucket
+          aws s3api delete-bucket --bucket "$bucket" 2>/dev/null || echo "Failed to delete $bucket"
+        done
+
+        echo "Processed ${#BUCKETS_TO_DELETE[@]} bucket(s)"
+
+    - name: Find and delete old Lambda functions
+      run: |
+        echo "Finding Lambda functions with github tags older than $MAX_AGE_HOURS hours..."
+
+        CUTOFF_TIME=$(date -u -d "$MAX_AGE_HOURS hours ago" +%s 2>/dev/null || date -u -v-${MAX_AGE_HOURS}H +%s)
+
+        # List all Lambda functions
+        ALL_FUNCTIONS=$(aws lambda list-functions --query 'Functions[].FunctionName' --output text 2>/dev/null || echo "")
+
+        FUNCTIONS_TO_DELETE=()
+
+        for func in $ALL_FUNCTIONS; do
+          # Get function tags
+          TAGS=$(aws lambda list-tags --resource "arn:aws:lambda:${AWS_REGION}:$(aws sts get-caller-identity --query Account --output text):function:$func" 2>/dev/null || echo "")
+
+          if [ -z "$TAGS" ]; then
+            continue
+          fi
+
+          # Check if function has github_run_id tag
+          HAS_GITHUB_TAG=$(echo "$TAGS" | jq -r '.Tags | to_entries[]? | select(.key=="github_run_id" or .key=="github_workflow") | .key' | head -1)
+
+          if [ -z "$HAS_GITHUB_TAG" ]; then
+            continue
+          fi
+
+          # Get function last modified time
+          LAST_MODIFIED=$(aws lambda get-function --function-name "$func" --query 'Configuration.LastModified' --output text)
+          MODIFIED_TIMESTAMP=$(date -u -d "$LAST_MODIFIED" +%s 2>/dev/null || date -u -jf "%Y-%m-%dT%H:%M:%S" "$LAST_MODIFIED" +%s 2>/dev/null || echo "0")
+
+          if [ "$MODIFIED_TIMESTAMP" -lt "$CUTOFF_TIME" ]; then
+            FUNCTIONS_TO_DELETE+=("$func")
+            AGE_HOURS=$(( ($(date +%s) - MODIFIED_TIMESTAMP) / 3600 ))
+            echo "Found old function: $func (age: ${AGE_HOURS}h)"
+          fi
+        done
+
+        if [ ${#FUNCTIONS_TO_DELETE[@]} -eq 0 ]; then
+          echo "No orphaned Lambda functions found"
+          exit 0
+        fi
+
+        echo "Found ${#FUNCTIONS_TO_DELETE[@]} function(s) to delete"
+
+        if [ "${{ inputs.dry_run }}" = "true" ]; then
+          echo "DRY RUN: Would delete the following functions:"
+          printf '%s\n' "${FUNCTIONS_TO_DELETE[@]}"
+          exit 0
+        fi
+
+        # Delete functions
+        for func in "${FUNCTIONS_TO_DELETE[@]}"; do
+          echo "Deleting function: $func"
+          aws lambda delete-function --function-name "$func" 2>/dev/null || echo "Failed to delete $func"
+        done
+
+        echo "Deleted ${#FUNCTIONS_TO_DELETE[@]} function(s)"
+
+    - name: Find and delete old SQS queues
+      run: |
+        echo "Finding SQS queues with github tags older than $MAX_AGE_HOURS hours..."
+
+        CUTOFF_TIME=$(date -u -d "$MAX_AGE_HOURS hours ago" +%s 2>/dev/null || date -u -v-${MAX_AGE_HOURS}H +%s)
+
+        # List all SQS queues
+        ALL_QUEUES=$(aws sqs list-queues --query 'QueueUrls[]' --output text 2>/dev/null || echo "")
+
+        QUEUES_TO_DELETE=()
+
+        for queue_url in $ALL_QUEUES; do
+          # Get queue tags
+          TAGS=$(aws sqs list-queue-tags --queue-url "$queue_url" 2>/dev/null || echo "")
+
+          if [ -z "$TAGS" ]; then
+            continue
+          fi
+
+          # Check if queue has github_run_id tag
+          HAS_GITHUB_TAG=$(echo "$TAGS" | jq -r '.Tags | to_entries[]? | select(.key=="github_run_id" or .key=="github_workflow") | .key' | head -1)
+
+          if [ -z "$HAS_GITHUB_TAG" ]; then
+            continue
+          fi
+
+          # Get queue creation time (approximate via CreatedTimestamp attribute)
+          CREATED=$(aws sqs get-queue-attributes --queue-url "$queue_url" --attribute-names CreatedTimestamp --query 'Attributes.CreatedTimestamp' --output text 2>/dev/null || echo "0")
+
+          if [ "$CREATED" -lt "$CUTOFF_TIME" ]; then
+            QUEUES_TO_DELETE+=("$queue_url")
+            AGE_HOURS=$(( ($(date +%s) - CREATED) / 3600 ))
+            echo "Found old queue: $queue_url (age: ${AGE_HOURS}h)"
+          fi
+        done
+
+        if [ ${#QUEUES_TO_DELETE[@]} -eq 0 ]; then
+          echo "No orphaned SQS queues found"
+          exit 0
+        fi
+
+        echo "Found ${#QUEUES_TO_DELETE[@]} queue(s) to delete"
+
+        if [ "${{ inputs.dry_run }}" = "true" ]; then
+          echo "DRY RUN: Would delete the following queues:"
+          printf '%s\n' "${QUEUES_TO_DELETE[@]}"
+          exit 0
+        fi
+
+        # Delete queues
+        for queue_url in "${QUEUES_TO_DELETE[@]}"; do
+          echo "Deleting queue: $queue_url"
+          aws sqs delete-queue --queue-url "$queue_url" 2>/dev/null || echo "Failed to delete $queue_url"
+        done
+
+        echo "Deleted ${#QUEUES_TO_DELETE[@]} queue(s)"
+
+    - name: Summary
+      if: always()
+      run: |
+        echo ""
+        echo "=========================================="
+        echo "Cleanup Summary"
+        echo "=========================================="
+        echo "Max age: $MAX_AGE_HOURS hours"
+        echo "Dry run: ${{ inputs.dry_run }}"
+        echo "Region: $AWS_REGION"
+        echo ""
+        echo "Cleanup completed. Check logs above for details."
+

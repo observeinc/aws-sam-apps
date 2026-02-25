@@ -6,7 +6,6 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
-          "cloudformation:CreateChangeSet",
           "cloudformation:CreateStack",
           "cloudformation:DeleteStack",
           "cloudformation:DescribeStacks",
@@ -74,6 +73,18 @@ variables {
           "sqs:TagQueue"
         ],
         "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "cloudformation:CreateChangeSet"
+        ],
+        "Resource": [
+          "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31",
+          "arn:aws:cloudformation:*:aws:transform/Include",
+          "arn:aws:cloudformation:*:aws:transform/LanguageExtensions",
+          "arn:aws:cloudformation:*:*:stack/*/*"
+        ]
       }
     ]
   }
