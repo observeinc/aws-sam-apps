@@ -102,7 +102,15 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) LogGroupFilter() FilterFunc {
+	return BuildLogGroupFilter(c.LogGroupNamePatterns, c.LogGroupNamePrefixes, c.ExcludeLogGroupNamePatterns)
+}
+
+// BuildLogGroupFilter creates a FilterFunc from the given patterns, prefixes, and exclusion patterns.
+// This function is used by both Config.LogGroupFilter() and the CloudFormation handler to build
+// filters dynamically.
+func BuildLogGroupFilter(patterns, prefixes, excludePatterns []string) FilterFunc {
 	var includeRe, excludeRe *regexp.Regexp
+
 	filterFunc := func(logGroupName string) bool {
 		if excludeRe != nil && excludeRe.MatchString(logGroupName) {
 			return false
@@ -114,21 +122,21 @@ func (c *Config) LogGroupFilter() FilterFunc {
 	}
 
 	// build exclusion regex
-	if len(c.ExcludeLogGroupNamePatterns) != 0 {
-		excludeRe = regexp.MustCompile(strings.Join(c.ExcludeLogGroupNamePatterns, "|"))
+	if len(excludePatterns) != 0 {
+		excludeRe = regexp.MustCompile(strings.Join(excludePatterns, "|"))
 	}
 
 	// build inclusion regex
 	var exprs []string
 
-	for _, pattern := range c.LogGroupNamePatterns {
+	for _, pattern := range patterns {
 		if pattern == "*" {
 			return filterFunc
 		}
 		exprs = append(exprs, pattern)
 	}
 
-	for _, prefix := range c.LogGroupNamePrefixes {
+	for _, prefix := range prefixes {
 		if prefix == "*" {
 			return filterFunc
 		}
