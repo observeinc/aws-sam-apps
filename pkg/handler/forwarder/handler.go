@@ -21,9 +21,12 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/observeinc/aws-sam-apps/pkg/handler"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/seekable"
 )
 
 var errNoLambdaContext = fmt.Errorf("no lambda context found")
+
+const writeSQSMemoryLimitBytes int64 = 8 * 1024 * 1024
 
 type S3Client interface {
 	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
@@ -109,10 +112,20 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 		key = strings.Trim(h.DestinationURI.Path, "/") + "/" + key
 	}
 
+	body, cleanup, err := seekable.FromReader(r, writeSQSMemoryLimitBytes)
+	if err != nil {
+		return fmt.Errorf("failed to prepare message body: %w", err)
+	}
+	defer func() {
+		if cleanupErr := cleanup(); cleanupErr != nil {
+			logr.FromContextOrDiscard(ctx).V(4).Error(cleanupErr, "failed to cleanup seekable body")
+		}
+	}()
+
 	_, err = h.S3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(h.DestinationURI.Host),
 		Key:         &key,
-		Body:        r,
+		Body:        body,
 		ContentType: aws.String("application/x-aws-sqs"),
 	})
 	if err != nil {

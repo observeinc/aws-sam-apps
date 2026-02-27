@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
 
+	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/seekable"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/batch"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/decoders"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/request"
@@ -21,6 +22,8 @@ var (
 	errMissingKey        = fmt.Errorf("missing key")
 	errMissingBody       = fmt.Errorf("missing body")
 )
+
+const copyObjectMemoryLimitBytes int64 = 32 * 1024 * 1024
 
 type GetObjectAPIClient interface {
 	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
@@ -126,7 +129,21 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 		return toCopyOutput(nil), nil
 	}
 
-	putResp, err := c.PutObject(ctx, toPutInput(params, getResp), opts...)
+	seekableBody, cleanup, err := seekable.FromReader(getResp.Body, copyObjectMemoryLimitBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare object body: %w", err)
+	}
+	defer func() {
+		if cleanupErr := cleanup(); cleanupErr != nil {
+			logger.V(4).Error(cleanupErr, "failed to cleanup seekable body")
+		}
+	}()
+
+	// Create a modified PutObjectInput with the seekable body
+	putInput := toPutInput(params, getResp)
+	putInput.Body = seekableBody
+
+	putResp, err := c.PutObject(ctx, putInput, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to put object: %w", err)
 	}

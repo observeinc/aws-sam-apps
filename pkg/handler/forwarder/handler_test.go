@@ -1,10 +1,12 @@
 package forwarder_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"sync/atomic"
@@ -416,5 +418,89 @@ func TestRecorder(t *testing.T) {
 				t.Fatal(diff)
 			}
 		})
+	}
+}
+
+func TestWriteSQSUsesCurrentS3ClientAfterRegionSwitch(t *testing.T) {
+	t.Parallel()
+
+	var (
+		defaultClientCalls int64
+		regionClientCalls  int64
+	)
+
+	defaultClient := &awstest.S3Client{
+		PutObjectFunc: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			defaultClientCalls++
+			return &s3.PutObjectOutput{}, nil
+		},
+	}
+
+	regionClient := &awstest.S3Client{
+		PutObjectFunc: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			regionClientCalls++
+			return &s3.PutObjectOutput{}, nil
+		},
+	}
+
+	h, err := forwarder.New(&forwarder.Config{
+		DestinationURI: "s3://dest-bucket",
+		S3Client:       defaultClient,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate lambda region discovery replacing the destination client.
+	h.S3Client = regionClient
+
+	ctx := lambdacontext.NewContext(context.Background(), lambdaContext)
+	if err := h.WriteSQS(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if defaultClientCalls != 0 {
+		t.Fatalf("expected default client to not be called, got %d calls", defaultClientCalls)
+	}
+	if regionClientCalls != 1 {
+		t.Fatalf("expected region client to be called once, got %d calls", regionClientCalls)
+	}
+}
+
+func TestWriteSQSUsesSeekableBody(t *testing.T) {
+	t.Parallel()
+
+	h, err := forwarder.New(&forwarder.Config{
+		DestinationURI: "s3://dest-bucket",
+		S3Client: &awstest.S3Client{
+			PutObjectFunc: func(_ context.Context, input *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+				rs, ok := input.Body.(io.ReadSeeker)
+				if !ok {
+					t.Fatalf("expected PutObject body to be io.ReadSeeker, got %T", input.Body)
+				}
+
+				data, err := io.ReadAll(rs)
+				if err != nil {
+					t.Fatalf("failed reading request body: %v", err)
+				}
+				if diff := cmp.Diff(string(data), "payload"); diff != "" {
+					t.Fatalf("unexpected body data (-got +want):\n%s", diff)
+				}
+
+				if _, err := rs.Seek(0, io.SeekStart); err != nil {
+					t.Fatalf("expected body to be rewindable: %v", err)
+				}
+
+				return &s3.PutObjectOutput{}, nil
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := lambdacontext.NewContext(context.Background(), lambdaContext)
+	if err := h.WriteSQS(ctx, bytes.NewBufferString("payload")); err != nil {
+		t.Fatal(err)
 	}
 }
