@@ -10,7 +10,6 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambdacontext"
 )
 
 // CustomResourceLambdaFunction is a standard form Lambda for a Custom Resource.
@@ -29,11 +28,19 @@ func lambdaWrapWithClient(lambdaFunction CustomResourceFunction, client httpClie
 	fn = func(ctx context.Context, event Event) (reason string, err error) {
 		r := NewResponse(&event)
 
+		// A previous physical resource id exists unless this is a create request.
+		fallbackPhysicalResourceID := event.PhysicalResourceID
+		if event.RequestType == RequestCreate {
+			// If this is a create request, the fallback should be the request ID
+			fallbackPhysicalResourceID = event.RequestID
+		}
+
 		funcDidPanic := true
 		defer func() {
 			if funcDidPanic {
 				r.Status = StatusFailed
 				r.Reason = "Function panicked, see log stream for details"
+				r.PhysicalResourceID = fallbackPhysicalResourceID
 				// FIXME: something should be done if an error is returned here
 				_ = r.sendWith(client)
 			}
@@ -42,17 +49,17 @@ func lambdaWrapWithClient(lambdaFunction CustomResourceFunction, client httpClie
 		r.PhysicalResourceID, r.Data, err = lambdaFunction(ctx, event)
 		funcDidPanic = false
 
+		if r.PhysicalResourceID == "" {
+			r.PhysicalResourceID = fallbackPhysicalResourceID
+			log.Printf("PhysicalResourceID not set. Using fallback PhysicalResourceID: %s\n", r.PhysicalResourceID)
+		}
+
 		if err != nil {
 			r.Status = StatusFailed
 			r.Reason = err.Error()
-			log.Printf("sending status failed: %s", r.Reason)
+			log.Printf("sending status failed: %s\n", r.Reason)
 		} else {
 			r.Status = StatusSuccess
-
-			if r.PhysicalResourceID == "" {
-				log.Println("PhysicalResourceID must exist on creation, copying Log Stream name")
-				r.PhysicalResourceID = lambdacontext.LogStreamName
-			}
 		}
 
 		err = r.sendWith(client)

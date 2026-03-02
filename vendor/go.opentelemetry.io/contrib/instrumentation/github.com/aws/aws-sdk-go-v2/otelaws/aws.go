@@ -1,6 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+// Package otelaws provides instrumentation for the AWS SDK.
 package otelaws // import "go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 
 import (
@@ -10,12 +11,11 @@ import (
 	v2Middleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -26,16 +26,16 @@ const (
 
 type spanTimestampKey struct{}
 
-// AttributeSetter returns an array of KeyValue pairs, it can be used to set custom attributes.
-type AttributeSetter func(context.Context, middleware.InitializeInput) []attribute.KeyValue
+// AttributeBuilder returns an array of KeyValue pairs, it can be used to set custom attributes.
+type AttributeBuilder func(ctx context.Context, in middleware.InitializeInput, out middleware.InitializeOutput) []attribute.KeyValue
 
 type otelMiddlewares struct {
-	tracer          trace.Tracer
-	propagator      propagation.TextMapPropagator
-	attributeSetter []AttributeSetter
+	tracer            trace.Tracer
+	propagator        propagation.TextMapPropagator
+	attributeBuilders []AttributeBuilder
 }
 
-func (m otelMiddlewares) initializeMiddlewareBefore(stack *middleware.Stack) error {
+func (otelMiddlewares) initializeMiddlewareBefore(stack *middleware.Stack) error {
 	return stack.Initialize.Add(middleware.InitializeMiddlewareFunc("OTelInitializeMiddlewareBefore", func(
 		ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
 		out middleware.InitializeOutput, metadata middleware.Metadata, err error,
@@ -57,12 +57,8 @@ func (m otelMiddlewares) initializeMiddlewareAfter(stack *middleware.Stack) erro
 
 		attributes := []attribute.KeyValue{
 			SystemAttr(),
-			ServiceAttr(serviceID),
+			MethodAttr(serviceID, operation),
 			RegionAttr(region),
-			OperationAttr(operation),
-		}
-		for _, setter := range m.attributeSetter {
-			attributes = append(attributes, setter(ctx, in)...)
 		}
 
 		ctx, span := m.tracer.Start(ctx, spanName(serviceID, operation),
@@ -73,8 +69,9 @@ func (m otelMiddlewares) initializeMiddlewareAfter(stack *middleware.Stack) erro
 		defer span.End()
 
 		out, metadata, err = next.HandleInitialize(ctx, in)
+		span.SetAttributes(m.buildAttributes(ctx, in, out)...)
 		if err != nil {
-			span.RecordError(err)
+			span.SetAttributes(semconv.ErrorType(err))
 			span.SetStatus(codes.Error, err.Error())
 		}
 
@@ -83,32 +80,7 @@ func (m otelMiddlewares) initializeMiddlewareAfter(stack *middleware.Stack) erro
 		middleware.After)
 }
 
-func (m otelMiddlewares) deserializeMiddleware(stack *middleware.Stack) error {
-	return stack.Deserialize.Add(middleware.DeserializeMiddlewareFunc("OTelDeserializeMiddleware", func(
-		ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-		out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-	) {
-		out, metadata, err = next.HandleDeserialize(ctx, in)
-		resp, ok := out.RawResponse.(*smithyhttp.Response)
-		if !ok {
-			// No raw response to wrap with.
-			return out, metadata, err
-		}
-
-		span := trace.SpanFromContext(ctx)
-		span.SetAttributes(semconv.HTTPStatusCode(resp.StatusCode))
-
-		requestID, ok := v2Middleware.GetRequestIDMetadata(metadata)
-		if ok {
-			span.SetAttributes(RequestIDAttr(requestID))
-		}
-
-		return out, metadata, err
-	}),
-		middleware.Before)
-}
-
-func (m otelMiddlewares) finalizeMiddleware(stack *middleware.Stack) error {
+func (m otelMiddlewares) finalizeMiddlewareAfter(stack *middleware.Stack) error {
 	return stack.Finalize.Add(middleware.FinalizeMiddlewareFunc("OTelFinalizeMiddleware", func(
 		ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (
 		out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
@@ -122,7 +94,40 @@ func (m otelMiddlewares) finalizeMiddleware(stack *middleware.Stack) error {
 
 		return next.HandleFinalize(ctx, in)
 	}),
+		middleware.After)
+}
+
+func (otelMiddlewares) deserializeMiddleware(stack *middleware.Stack) error {
+	return stack.Deserialize.Add(middleware.DeserializeMiddlewareFunc("OTelDeserializeMiddleware", func(
+		ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+		out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+	) {
+		out, metadata, err = next.HandleDeserialize(ctx, in)
+		resp, ok := out.RawResponse.(*smithyhttp.Response)
+		if !ok {
+			// No raw response to wrap with.
+			return out, metadata, err
+		}
+
+		span := trace.SpanFromContext(ctx)
+		span.SetAttributes(semconv.HTTPResponseStatusCode(resp.StatusCode))
+
+		requestID, ok := v2Middleware.GetRequestIDMetadata(metadata)
+		if ok {
+			span.SetAttributes(RequestIDAttr(requestID))
+		}
+
+		return out, metadata, err
+	}),
 		middleware.Before)
+}
+
+func (m otelMiddlewares) buildAttributes(ctx context.Context, in middleware.InitializeInput, out middleware.InitializeOutput) (attributes []attribute.KeyValue) {
+	for _, builder := range m.attributeBuilders {
+		attributes = append(attributes, builder(ctx, in, out)...)
+	}
+
+	return attributes
 }
 
 func spanName(serviceID, operation string) string {
@@ -145,15 +150,15 @@ func AppendMiddlewares(apiOptions *[]func(*middleware.Stack) error, opts ...Opti
 		opt.apply(&cfg)
 	}
 
-	if cfg.AttributeSetter == nil {
-		cfg.AttributeSetter = []AttributeSetter{DefaultAttributeSetter}
+	if cfg.AttributeBuilders == nil {
+		cfg.AttributeBuilders = []AttributeBuilder{DefaultAttributeBuilder}
 	}
 
 	m := otelMiddlewares{
 		tracer: cfg.TracerProvider.Tracer(ScopeName,
-			trace.WithInstrumentationVersion(Version())),
-		propagator:      cfg.TextMapPropagator,
-		attributeSetter: cfg.AttributeSetter,
+			trace.WithInstrumentationVersion(Version)),
+		propagator:        cfg.TextMapPropagator,
+		attributeBuilders: cfg.AttributeBuilders,
 	}
-	*apiOptions = append(*apiOptions, m.initializeMiddlewareBefore, m.initializeMiddlewareAfter, m.finalizeMiddleware, m.deserializeMiddleware)
+	*apiOptions = append(*apiOptions, m.initializeMiddlewareBefore, m.initializeMiddlewareAfter, m.finalizeMiddlewareAfter, m.deserializeMiddleware)
 }
