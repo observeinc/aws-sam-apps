@@ -30,6 +30,26 @@ func (m *validateOpAssociateKmsKey) HandleInitialize(ctx context.Context, in mid
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpAssociateSourceToS3TableIntegration struct {
+}
+
+func (*validateOpAssociateSourceToS3TableIntegration) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpAssociateSourceToS3TableIntegration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*AssociateSourceToS3TableIntegrationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpAssociateSourceToS3TableIntegrationInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpCancelExportTask struct {
 }
 
@@ -45,6 +65,26 @@ func (m *validateOpCancelExportTask) HandleInitialize(ctx context.Context, in mi
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpCancelExportTaskInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpCancelImportTask struct {
+}
+
+func (*validateOpCancelImportTask) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpCancelImportTask) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*CancelImportTaskInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpCancelImportTaskInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -85,6 +125,26 @@ func (m *validateOpCreateExportTask) HandleInitialize(ctx context.Context, in mi
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpCreateExportTaskInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpCreateImportTask struct {
+}
+
+func (*validateOpCreateImportTask) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpCreateImportTask) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*CreateImportTaskInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpCreateImportTaskInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -145,6 +205,26 @@ func (m *validateOpCreateLogStream) HandleInitialize(ctx context.Context, in mid
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpCreateLogStreamInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpCreateScheduledQuery struct {
+}
+
+func (*validateOpCreateScheduledQuery) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpCreateScheduledQuery) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*CreateScheduledQueryInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpCreateScheduledQueryInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -310,6 +390,26 @@ func (m *validateOpDeleteIndexPolicy) HandleInitialize(ctx context.Context, in m
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDeleteIntegration struct {
+}
+
+func (*validateOpDeleteIntegration) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDeleteIntegration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DeleteIntegrationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDeleteIntegrationInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDeleteLogAnomalyDetector struct {
 }
 
@@ -430,6 +530,26 @@ func (m *validateOpDeleteRetentionPolicy) HandleInitialize(ctx context.Context, 
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDeleteScheduledQuery struct {
+}
+
+func (*validateOpDeleteScheduledQuery) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDeleteScheduledQuery) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DeleteScheduledQueryInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDeleteScheduledQueryInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDeleteSubscriptionFilter struct {
 }
 
@@ -510,6 +630,26 @@ func (m *validateOpDescribeFieldIndexes) HandleInitialize(ctx context.Context, i
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDescribeImportTaskBatches struct {
+}
+
+func (*validateOpDescribeImportTaskBatches) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDescribeImportTaskBatches) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DescribeImportTaskBatchesInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDescribeImportTaskBatchesInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDescribeIndexPolicies struct {
 }
 
@@ -545,6 +685,26 @@ func (m *validateOpDescribeSubscriptionFilters) HandleInitialize(ctx context.Con
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpDescribeSubscriptionFiltersInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpDisassociateSourceFromS3TableIntegration struct {
+}
+
+func (*validateOpDisassociateSourceFromS3TableIntegration) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDisassociateSourceFromS3TableIntegration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DisassociateSourceFromS3TableIntegrationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDisassociateSourceFromS3TableIntegrationInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -650,6 +810,26 @@ func (m *validateOpGetDeliverySource) HandleInitialize(ctx context.Context, in m
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpGetIntegration struct {
+}
+
+func (*validateOpGetIntegration) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetIntegration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetIntegrationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetIntegrationInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpGetLogAnomalyDetector struct {
 }
 
@@ -685,6 +865,46 @@ func (m *validateOpGetLogEvents) HandleInitialize(ctx context.Context, in middle
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpGetLogEventsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpGetLogFields struct {
+}
+
+func (*validateOpGetLogFields) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetLogFields) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetLogFieldsInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetLogFieldsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpGetLogObject struct {
+}
+
+func (*validateOpGetLogObject) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetLogObject) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetLogObjectInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetLogObjectInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -730,6 +950,46 @@ func (m *validateOpGetQueryResults) HandleInitialize(ctx context.Context, in mid
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpGetScheduledQueryHistory struct {
+}
+
+func (*validateOpGetScheduledQueryHistory) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetScheduledQueryHistory) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetScheduledQueryHistoryInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetScheduledQueryHistoryInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpGetScheduledQuery struct {
+}
+
+func (*validateOpGetScheduledQuery) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetScheduledQuery) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetScheduledQueryInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetScheduledQueryInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpGetTransformer struct {
 }
 
@@ -750,6 +1010,26 @@ func (m *validateOpGetTransformer) HandleInitialize(ctx context.Context, in midd
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpListAggregateLogGroupSummaries struct {
+}
+
+func (*validateOpListAggregateLogGroupSummaries) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListAggregateLogGroupSummaries) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListAggregateLogGroupSummariesInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListAggregateLogGroupSummariesInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpListLogGroupsForQuery struct {
 }
 
@@ -765,6 +1045,46 @@ func (m *validateOpListLogGroupsForQuery) HandleInitialize(ctx context.Context, 
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpListLogGroupsForQueryInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpListLogGroups struct {
+}
+
+func (*validateOpListLogGroups) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListLogGroups) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListLogGroupsInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListLogGroupsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpListSourcesForS3TableIntegration struct {
+}
+
+func (*validateOpListSourcesForS3TableIntegration) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListSourcesForS3TableIntegration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListSourcesForS3TableIntegrationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListSourcesForS3TableIntegrationInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -970,6 +1290,26 @@ func (m *validateOpPutIndexPolicy) HandleInitialize(ctx context.Context, in midd
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpPutIntegration struct {
+}
+
+func (*validateOpPutIntegration) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpPutIntegration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*PutIntegrationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpPutIntegrationInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpPutLogEvents struct {
 }
 
@@ -985,6 +1325,26 @@ func (m *validateOpPutLogEvents) HandleInitialize(ctx context.Context, in middle
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpPutLogEventsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpPutLogGroupDeletionProtection struct {
+}
+
+func (*validateOpPutLogGroupDeletionProtection) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpPutLogGroupDeletionProtection) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*PutLogGroupDeletionProtectionInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpPutLogGroupDeletionProtectionInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -1330,12 +1690,40 @@ func (m *validateOpUpdateLogAnomalyDetector) HandleInitialize(ctx context.Contex
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpUpdateScheduledQuery struct {
+}
+
+func (*validateOpUpdateScheduledQuery) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpUpdateScheduledQuery) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*UpdateScheduledQueryInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpUpdateScheduledQueryInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 func addOpAssociateKmsKeyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpAssociateKmsKey{}, middleware.After)
 }
 
+func addOpAssociateSourceToS3TableIntegrationValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpAssociateSourceToS3TableIntegration{}, middleware.After)
+}
+
 func addOpCancelExportTaskValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCancelExportTask{}, middleware.After)
+}
+
+func addOpCancelImportTaskValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpCancelImportTask{}, middleware.After)
 }
 
 func addOpCreateDeliveryValidationMiddleware(stack *middleware.Stack) error {
@@ -1344,6 +1732,10 @@ func addOpCreateDeliveryValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpCreateExportTaskValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateExportTask{}, middleware.After)
+}
+
+func addOpCreateImportTaskValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpCreateImportTask{}, middleware.After)
 }
 
 func addOpCreateLogAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
@@ -1356,6 +1748,10 @@ func addOpCreateLogGroupValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpCreateLogStreamValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateLogStream{}, middleware.After)
+}
+
+func addOpCreateScheduledQueryValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpCreateScheduledQuery{}, middleware.After)
 }
 
 func addOpDeleteAccountPolicyValidationMiddleware(stack *middleware.Stack) error {
@@ -1390,6 +1786,10 @@ func addOpDeleteIndexPolicyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteIndexPolicy{}, middleware.After)
 }
 
+func addOpDeleteIntegrationValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDeleteIntegration{}, middleware.After)
+}
+
 func addOpDeleteLogAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteLogAnomalyDetector{}, middleware.After)
 }
@@ -1414,6 +1814,10 @@ func addOpDeleteRetentionPolicyValidationMiddleware(stack *middleware.Stack) err
 	return stack.Initialize.Add(&validateOpDeleteRetentionPolicy{}, middleware.After)
 }
 
+func addOpDeleteScheduledQueryValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDeleteScheduledQuery{}, middleware.After)
+}
+
 func addOpDeleteSubscriptionFilterValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteSubscriptionFilter{}, middleware.After)
 }
@@ -1430,12 +1834,20 @@ func addOpDescribeFieldIndexesValidationMiddleware(stack *middleware.Stack) erro
 	return stack.Initialize.Add(&validateOpDescribeFieldIndexes{}, middleware.After)
 }
 
+func addOpDescribeImportTaskBatchesValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDescribeImportTaskBatches{}, middleware.After)
+}
+
 func addOpDescribeIndexPoliciesValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDescribeIndexPolicies{}, middleware.After)
 }
 
 func addOpDescribeSubscriptionFiltersValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDescribeSubscriptionFilters{}, middleware.After)
+}
+
+func addOpDisassociateSourceFromS3TableIntegrationValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDisassociateSourceFromS3TableIntegration{}, middleware.After)
 }
 
 func addOpGetDataProtectionPolicyValidationMiddleware(stack *middleware.Stack) error {
@@ -1458,12 +1870,24 @@ func addOpGetDeliverySourceValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetDeliverySource{}, middleware.After)
 }
 
+func addOpGetIntegrationValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetIntegration{}, middleware.After)
+}
+
 func addOpGetLogAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetLogAnomalyDetector{}, middleware.After)
 }
 
 func addOpGetLogEventsValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetLogEvents{}, middleware.After)
+}
+
+func addOpGetLogFieldsValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetLogFields{}, middleware.After)
+}
+
+func addOpGetLogObjectValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetLogObject{}, middleware.After)
 }
 
 func addOpGetLogRecordValidationMiddleware(stack *middleware.Stack) error {
@@ -1474,12 +1898,32 @@ func addOpGetQueryResultsValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetQueryResults{}, middleware.After)
 }
 
+func addOpGetScheduledQueryHistoryValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetScheduledQueryHistory{}, middleware.After)
+}
+
+func addOpGetScheduledQueryValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetScheduledQuery{}, middleware.After)
+}
+
 func addOpGetTransformerValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetTransformer{}, middleware.After)
 }
 
+func addOpListAggregateLogGroupSummariesValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListAggregateLogGroupSummaries{}, middleware.After)
+}
+
 func addOpListLogGroupsForQueryValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListLogGroupsForQuery{}, middleware.After)
+}
+
+func addOpListLogGroupsValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListLogGroups{}, middleware.After)
+}
+
+func addOpListSourcesForS3TableIntegrationValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListSourcesForS3TableIntegration{}, middleware.After)
 }
 
 func addOpListTagsForResourceValidationMiddleware(stack *middleware.Stack) error {
@@ -1522,8 +1966,16 @@ func addOpPutIndexPolicyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpPutIndexPolicy{}, middleware.After)
 }
 
+func addOpPutIntegrationValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpPutIntegration{}, middleware.After)
+}
+
 func addOpPutLogEventsValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpPutLogEvents{}, middleware.After)
+}
+
+func addOpPutLogGroupDeletionProtectionValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpPutLogGroupDeletionProtection{}, middleware.After)
 }
 
 func addOpPutMetricFilterValidationMiddleware(stack *middleware.Stack) error {
@@ -1592,6 +2044,10 @@ func addOpUpdateDeliveryConfigurationValidationMiddleware(stack *middleware.Stac
 
 func addOpUpdateLogAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpUpdateLogAnomalyDetector{}, middleware.After)
+}
+
+func addOpUpdateScheduledQueryValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpUpdateScheduledQuery{}, middleware.After)
 }
 
 func validateAddKeyEntries(v []types.AddKeyEntry) error {
@@ -1702,6 +2158,53 @@ func validateCopyValueEntry(v *types.CopyValueEntry) error {
 	}
 }
 
+func validateDataSource(v *types.DataSource) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DataSource"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateDataSourceFilter(v *types.DataSourceFilter) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DataSourceFilter"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateDataSourceFilters(v []types.DataSourceFilter) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DataSourceFilters"}
+	for i := range v {
+		if err := validateDataSourceFilter(&v[i]); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateDateTimeConverter(v *types.DateTimeConverter) error {
 	if v == nil {
 		return nil
@@ -1745,6 +2248,25 @@ func validateDeliveryDestinationConfiguration(v *types.DeliveryDestinationConfig
 	invalidParams := smithy.InvalidParamsError{Context: "DeliveryDestinationConfiguration"}
 	if v.DestinationResourceArn == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("DestinationResourceArn"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateDestinationConfiguration(v *types.DestinationConfiguration) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DestinationConfiguration"}
+	if v.S3Configuration == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("S3Configuration"))
+	} else if v.S3Configuration != nil {
+		if err := validateS3Configuration(v.S3Configuration); err != nil {
+			invalidParams.AddNested("S3Configuration", err.(smithy.InvalidParamsError))
+		}
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1928,6 +2450,45 @@ func validateMoveKeys(v *types.MoveKeys) error {
 	}
 }
 
+func validateOpenSearchResourceConfig(v *types.OpenSearchResourceConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "OpenSearchResourceConfig"}
+	if v.DataSourceRoleArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DataSourceRoleArn"))
+	}
+	if v.DashboardViewerPrincipals == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DashboardViewerPrincipals"))
+	}
+	if v.RetentionDays == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("RetentionDays"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateParseToOCSF(v *types.ParseToOCSF) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ParseToOCSF"}
+	if len(v.EventSource) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("EventSource"))
+	}
+	if len(v.OcsfVersion) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("OcsfVersion"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateProcessor(v *types.Processor) error {
 	if v == nil {
 		return nil
@@ -1971,6 +2532,11 @@ func validateProcessor(v *types.Processor) error {
 	if v.MoveKeys != nil {
 		if err := validateMoveKeys(v.MoveKeys); err != nil {
 			invalidParams.AddNested("MoveKeys", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.ParseToOCSF != nil {
+		if err := validateParseToOCSF(v.ParseToOCSF); err != nil {
+			invalidParams.AddNested("ParseToOCSF", err.(smithy.InvalidParamsError))
 		}
 	}
 	if v.RenameKeys != nil {
@@ -2073,6 +2639,43 @@ func validateRenameKeys(v *types.RenameKeys) error {
 		if err := validateRenameKeyEntries(v.Entries); err != nil {
 			invalidParams.AddNested("Entries", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateResourceConfig(v types.ResourceConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ResourceConfig"}
+	switch uv := v.(type) {
+	case *types.ResourceConfigMemberOpenSearchResourceConfig:
+		if err := validateOpenSearchResourceConfig(&uv.Value); err != nil {
+			invalidParams.AddNested("[openSearchResourceConfig]", err.(smithy.InvalidParamsError))
+		}
+
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateS3Configuration(v *types.S3Configuration) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "S3Configuration"}
+	if v.DestinationIdentifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DestinationIdentifier"))
+	}
+	if v.RoleArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("RoleArn"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -2291,6 +2894,28 @@ func validateOpAssociateKmsKeyInput(v *AssociateKmsKeyInput) error {
 	}
 }
 
+func validateOpAssociateSourceToS3TableIntegrationInput(v *AssociateSourceToS3TableIntegrationInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AssociateSourceToS3TableIntegrationInput"}
+	if v.IntegrationArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("IntegrationArn"))
+	}
+	if v.DataSource == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DataSource"))
+	} else if v.DataSource != nil {
+		if err := validateDataSource(v.DataSource); err != nil {
+			invalidParams.AddNested("DataSource", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpCancelExportTaskInput(v *CancelExportTaskInput) error {
 	if v == nil {
 		return nil
@@ -2298,6 +2923,21 @@ func validateOpCancelExportTaskInput(v *CancelExportTaskInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "CancelExportTaskInput"}
 	if v.TaskId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("TaskId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpCancelImportTaskInput(v *CancelImportTaskInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "CancelImportTaskInput"}
+	if v.ImportId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ImportId"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -2348,6 +2988,24 @@ func validateOpCreateExportTaskInput(v *CreateExportTaskInput) error {
 	}
 }
 
+func validateOpCreateImportTaskInput(v *CreateImportTaskInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "CreateImportTaskInput"}
+	if v.ImportSourceArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ImportSourceArn"))
+	}
+	if v.ImportRoleArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ImportRoleArn"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpCreateLogAnomalyDetectorInput(v *CreateLogAnomalyDetectorInput) error {
 	if v == nil {
 		return nil
@@ -2388,6 +3046,38 @@ func validateOpCreateLogStreamInput(v *CreateLogStreamInput) error {
 	}
 	if v.LogStreamName == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("LogStreamName"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpCreateScheduledQueryInput(v *CreateScheduledQueryInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "CreateScheduledQueryInput"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if len(v.QueryLanguage) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("QueryLanguage"))
+	}
+	if v.QueryString == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("QueryString"))
+	}
+	if v.ScheduleExpression == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ScheduleExpression"))
+	}
+	if v.DestinationConfiguration != nil {
+		if err := validateDestinationConfiguration(v.DestinationConfiguration); err != nil {
+			invalidParams.AddNested("DestinationConfiguration", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.ExecutionRoleArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ExecutionRoleArn"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -2519,6 +3209,21 @@ func validateOpDeleteIndexPolicyInput(v *DeleteIndexPolicyInput) error {
 	}
 }
 
+func validateOpDeleteIntegrationInput(v *DeleteIntegrationInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DeleteIntegrationInput"}
+	if v.IntegrationName == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("IntegrationName"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpDeleteLogAnomalyDetectorInput(v *DeleteLogAnomalyDetectorInput) error {
 	if v == nil {
 		return nil
@@ -2615,6 +3320,21 @@ func validateOpDeleteRetentionPolicyInput(v *DeleteRetentionPolicyInput) error {
 	}
 }
 
+func validateOpDeleteScheduledQueryInput(v *DeleteScheduledQueryInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DeleteScheduledQueryInput"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpDeleteSubscriptionFilterInput(v *DeleteSubscriptionFilterInput) error {
 	if v == nil {
 		return nil
@@ -2678,6 +3398,21 @@ func validateOpDescribeFieldIndexesInput(v *DescribeFieldIndexesInput) error {
 	}
 }
 
+func validateOpDescribeImportTaskBatchesInput(v *DescribeImportTaskBatchesInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DescribeImportTaskBatchesInput"}
+	if v.ImportId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ImportId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpDescribeIndexPoliciesInput(v *DescribeIndexPoliciesInput) error {
 	if v == nil {
 		return nil
@@ -2700,6 +3435,21 @@ func validateOpDescribeSubscriptionFiltersInput(v *DescribeSubscriptionFiltersIn
 	invalidParams := smithy.InvalidParamsError{Context: "DescribeSubscriptionFiltersInput"}
 	if v.LogGroupName == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("LogGroupName"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpDisassociateSourceFromS3TableIntegrationInput(v *DisassociateSourceFromS3TableIntegrationInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DisassociateSourceFromS3TableIntegrationInput"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -2783,6 +3533,21 @@ func validateOpGetDeliverySourceInput(v *GetDeliverySourceInput) error {
 	}
 }
 
+func validateOpGetIntegrationInput(v *GetIntegrationInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetIntegrationInput"}
+	if v.IntegrationName == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("IntegrationName"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpGetLogAnomalyDetectorInput(v *GetLogAnomalyDetectorInput) error {
 	if v == nil {
 		return nil
@@ -2805,6 +3570,39 @@ func validateOpGetLogEventsInput(v *GetLogEventsInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "GetLogEventsInput"}
 	if v.LogStreamName == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("LogStreamName"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpGetLogFieldsInput(v *GetLogFieldsInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetLogFieldsInput"}
+	if v.DataSourceName == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DataSourceName"))
+	}
+	if v.DataSourceType == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DataSourceType"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpGetLogObjectInput(v *GetLogObjectInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetLogObjectInput"}
+	if v.LogObjectPointer == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("LogObjectPointer"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -2843,6 +3641,42 @@ func validateOpGetQueryResultsInput(v *GetQueryResultsInput) error {
 	}
 }
 
+func validateOpGetScheduledQueryHistoryInput(v *GetScheduledQueryHistoryInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetScheduledQueryHistoryInput"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
+	}
+	if v.StartTime == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("StartTime"))
+	}
+	if v.EndTime == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("EndTime"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpGetScheduledQueryInput(v *GetScheduledQueryInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetScheduledQueryInput"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpGetTransformerInput(v *GetTransformerInput) error {
 	if v == nil {
 		return nil
@@ -2858,6 +3692,26 @@ func validateOpGetTransformerInput(v *GetTransformerInput) error {
 	}
 }
 
+func validateOpListAggregateLogGroupSummariesInput(v *ListAggregateLogGroupSummariesInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListAggregateLogGroupSummariesInput"}
+	if v.DataSources != nil {
+		if err := validateDataSourceFilters(v.DataSources); err != nil {
+			invalidParams.AddNested("DataSources", err.(smithy.InvalidParamsError))
+		}
+	}
+	if len(v.GroupBy) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("GroupBy"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpListLogGroupsForQueryInput(v *ListLogGroupsForQueryInput) error {
 	if v == nil {
 		return nil
@@ -2865,6 +3719,38 @@ func validateOpListLogGroupsForQueryInput(v *ListLogGroupsForQueryInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "ListLogGroupsForQueryInput"}
 	if v.QueryId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("QueryId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpListLogGroupsInput(v *ListLogGroupsInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListLogGroupsInput"}
+	if v.DataSources != nil {
+		if err := validateDataSourceFilters(v.DataSources); err != nil {
+			invalidParams.AddNested("DataSources", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpListSourcesForS3TableIntegrationInput(v *ListSourcesForS3TableIntegrationInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListSourcesForS3TableIntegrationInput"}
+	if v.IntegrationArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("IntegrationArn"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -2950,9 +3836,7 @@ func validateOpPutDeliveryDestinationInput(v *PutDeliveryDestinationInput) error
 	if v.Name == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Name"))
 	}
-	if v.DeliveryDestinationConfiguration == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("DeliveryDestinationConfiguration"))
-	} else if v.DeliveryDestinationConfiguration != nil {
+	if v.DeliveryDestinationConfiguration != nil {
 		if err := validateDeliveryDestinationConfiguration(v.DeliveryDestinationConfiguration); err != nil {
 			invalidParams.AddNested("DeliveryDestinationConfiguration", err.(smithy.InvalidParamsError))
 		}
@@ -3060,6 +3944,31 @@ func validateOpPutIndexPolicyInput(v *PutIndexPolicyInput) error {
 	}
 }
 
+func validateOpPutIntegrationInput(v *PutIntegrationInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "PutIntegrationInput"}
+	if v.IntegrationName == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("IntegrationName"))
+	}
+	if v.ResourceConfig == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ResourceConfig"))
+	} else if v.ResourceConfig != nil {
+		if err := validateResourceConfig(v.ResourceConfig); err != nil {
+			invalidParams.AddNested("ResourceConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if len(v.IntegrationType) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("IntegrationType"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpPutLogEventsInput(v *PutLogEventsInput) error {
 	if v == nil {
 		return nil
@@ -3077,6 +3986,24 @@ func validateOpPutLogEventsInput(v *PutLogEventsInput) error {
 		if err := validateInputLogEvents(v.LogEvents); err != nil {
 			invalidParams.AddNested("LogEvents", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpPutLogGroupDeletionProtectionInput(v *PutLogGroupDeletionProtectionInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "PutLogGroupDeletionProtectionInput"}
+	if v.LogGroupIdentifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("LogGroupIdentifier"))
+	}
+	if v.DeletionProtectionEnabled == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DeletionProtectionEnabled"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3398,6 +4325,38 @@ func validateOpUpdateLogAnomalyDetectorInput(v *UpdateLogAnomalyDetectorInput) e
 	}
 	if v.Enabled == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Enabled"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpUpdateScheduledQueryInput(v *UpdateScheduledQueryInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "UpdateScheduledQueryInput"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
+	}
+	if len(v.QueryLanguage) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("QueryLanguage"))
+	}
+	if v.QueryString == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("QueryString"))
+	}
+	if v.ScheduleExpression == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ScheduleExpression"))
+	}
+	if v.DestinationConfiguration != nil {
+		if err := validateDestinationConfiguration(v.DestinationConfiguration); err != nil {
+			invalidParams.AddNested("DestinationConfiguration", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.ExecutionRoleArn == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ExecutionRoleArn"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

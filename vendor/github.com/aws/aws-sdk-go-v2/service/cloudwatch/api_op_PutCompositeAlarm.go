@@ -190,6 +190,10 @@ type PutCompositeAlarmInput struct {
 	// Systems Manager actions:
 	//
 	//     arn:aws:ssm:region:account-id:opsitem:severity
+	//
+	// Start a Amazon Q Developer operational investigation
+	//
+	//     arn:aws:aiops:region:account-id:investigation-group:investigation-group-id
 	AlarmActions []string
 
 	// The description for the composite alarm.
@@ -268,11 +272,11 @@ func (c *Client) addOperationPutCompositeAlarmMiddlewares(stack *middleware.Stac
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpPutCompositeAlarm{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpPutCompositeAlarm{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpPutCompositeAlarm{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpPutCompositeAlarm{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -328,6 +332,12 @@ func (c *Client) addOperationPutCompositeAlarmMiddlewares(stack *middleware.Stac
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpPutCompositeAlarmValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -349,16 +359,13 @@ func (c *Client) addOperationPutCompositeAlarmMiddlewares(stack *middleware.Stac
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -19,7 +19,7 @@ import (
 // logGroupName . You must include one of these two parameters, but you can't
 // include both.
 //
-// This operation has a limit of five transactions per second, after which
+// This operation has a limit of 25 transactions per second, after which
 // transactions are throttled.
 //
 // If you are using CloudWatch cross-account observability, you can use this
@@ -168,6 +168,9 @@ func (c *Client) addOperationDescribeLogStreamsMiddlewares(stack *middleware.Sta
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeLogStreams(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -186,16 +189,13 @@ func (c *Client) addOperationDescribeLogStreamsMiddlewares(stack *middleware.Sta
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

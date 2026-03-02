@@ -15,6 +15,9 @@ import (
 // log group. Includes the percentage of log events that contain each field. The
 // search is limited to a time period that you specify.
 //
+// This operation is used for discovering fields within log group events. For
+// discovering fields across data sources, use the GetLogFields operation.
+//
 // You can specify the log group to search by using either logGroupIdentifier or
 // logGroupName . You must specify one of these parameters, but you can't specify
 // both.
@@ -149,6 +152,9 @@ func (c *Client) addOperationGetLogGroupFieldsMiddlewares(stack *middleware.Stac
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetLogGroupFields(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -167,16 +173,13 @@ func (c *Client) addOperationGetLogGroupFieldsMiddlewares(stack *middleware.Stac
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

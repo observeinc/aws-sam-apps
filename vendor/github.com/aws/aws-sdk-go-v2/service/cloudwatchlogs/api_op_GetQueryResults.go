@@ -24,6 +24,11 @@ import (
 // returns only partial results. If you see a value of Scheduled or Running for
 // the status, you can retry the operation later to see the final results.
 //
+// This operation is used both for retrieving results from interactive queries and
+// from automated scheduled query executions. Scheduled queries use GetQueryResults
+// internally to retrieve query results for processing and delivery to configured
+// destinations.
+//
 // If you are using CloudWatch cross-account observability, you can use this
 // operation in a monitoring account to start queries in linked source accounts.
 // For more information, see [CloudWatch cross-account observability].
@@ -65,6 +70,12 @@ type GetQueryResultsOutput struct {
 	//
 	// [StartQuery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_StartQuery.html
 	EncryptionKey *string
+
+	// The query language used for this query. For more information about the query
+	// languages that CloudWatch Logs supports, see [Supported query languages].
+	//
+	// [Supported query languages]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_AnalyzeLogData_Languages.html
+	QueryLanguage types.QueryLanguage
 
 	// The log events that matched the query criteria during the most recent time it
 	// ran.
@@ -157,6 +168,9 @@ func (c *Client) addOperationGetQueryResultsMiddlewares(stack *middleware.Stack,
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetQueryResultsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -178,16 +192,13 @@ func (c *Client) addOperationGetQueryResultsMiddlewares(stack *middleware.Stack,
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

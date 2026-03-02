@@ -47,6 +47,10 @@ import (
 //	- A [SessionTimeoutException]object is returned when the session times out, after it has been kept
 //	open for three hours.
 //
+// The StartLiveTail API routes requests to streaming-logs.Region.amazonaws.com
+// using SDK host prefix injection. VPC endpoint support is not available for this
+// API.
+//
 // You can end a session before it times out by closing the session stream or by
 // closing the client that is receiving the stream. The session also ends if the
 // established connection between the client and the server breaks.
@@ -199,6 +203,9 @@ func (c *Client) addOperationStartLiveTailMiddlewares(stack *middleware.Stack, o
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addEndpointPrefix_opStartLiveTailMiddleware(stack); err != nil {
 		return err
 	}
@@ -223,16 +230,13 @@ func (c *Client) addOperationStartLiveTailMiddlewares(stack *middleware.Stack, o
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
