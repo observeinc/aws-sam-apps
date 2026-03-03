@@ -183,3 +183,112 @@ func TestHandleDiscovery(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleDiscoveryRequestEnqueuesContinuation(t *testing.T) {
+	t.Parallel()
+
+	const total = 120
+	logGroups := make([]types.LogGroup, 0, total)
+	for i := range total {
+		name := fmt.Sprintf("/aws/lambda/discovery-%03d", i)
+		logGroups = append(logGroups, types.LogGroup{
+			LogGroupName: aws.String(name),
+		})
+	}
+
+	queue := &queueRecorder{}
+	client := &awstest.CloudWatchLogsClient{
+		LogGroups: logGroups,
+	}
+
+	h, err := subscriber.New(&subscriber.Config{
+		CloudWatchLogsClient: client,
+		Queue:                queue,
+		FilterName:           "test",
+		DestinationARN:       "arn:aws:lambda:us-west-2:123456789012:function:example",
+		LogGroupNamePrefixes: []string{"*"},
+		NumWorkers:           4,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inline := true
+	resp, err := h.HandleDiscoveryRequest(context.Background(), &subscriber.DiscoveryRequest{
+		LogGroupNamePrefixes:   []*string{aws.String("/aws/lambda/")},
+		Inline:                 &inline,
+		MaxGroupsPerInvocation: 50,
+		JobID:                  "discover-job-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := resp.Discovery.LogGroupCount.Load(); got != 50 {
+		t.Fatalf("logGroupCount=%d want=50", got)
+	}
+	if got := len(queue.items); got != 1 {
+		t.Fatalf("queued messages=%d want=1", got)
+	}
+
+	req, ok := queue.items[0].(*subscriber.Request)
+	if !ok || req == nil || req.DiscoveryRequest == nil {
+		t.Fatalf("unexpected continuation payload type: %#v", queue.items[0])
+	}
+	if req.DiscoveryRequest.ScanToken == nil || *req.DiscoveryRequest.ScanToken == "" {
+		t.Fatalf("continuation missing scanToken: %#v", req.DiscoveryRequest)
+	}
+	if req.ScanInputIndex != 0 {
+		t.Fatalf("continuation scanInputIndex=%d want=0", req.ScanInputIndex)
+	}
+	if req.DiscoveryRequest.MaxGroupsPerInvocation != 50 {
+		t.Fatalf("continuation maxGroups=%d want=50", req.DiscoveryRequest.MaxGroupsPerInvocation)
+	}
+}
+
+func TestHandleDiscoveryRequestCompletesWithoutContinuation(t *testing.T) {
+	t.Parallel()
+
+	const total = 40
+	logGroups := make([]types.LogGroup, 0, total)
+	for i := range total {
+		name := fmt.Sprintf("/aws/ecs/discovery-%03d", i)
+		logGroups = append(logGroups, types.LogGroup{
+			LogGroupName: aws.String(name),
+		})
+	}
+
+	queue := &queueRecorder{}
+	client := &awstest.CloudWatchLogsClient{
+		LogGroups: logGroups,
+	}
+
+	h, err := subscriber.New(&subscriber.Config{
+		CloudWatchLogsClient: client,
+		Queue:                queue,
+		FilterName:           "test",
+		DestinationARN:       "arn:aws:lambda:us-west-2:123456789012:function:example",
+		LogGroupNamePrefixes: []string{"*"},
+		NumWorkers:           4,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inline := true
+	resp, err := h.HandleDiscoveryRequest(context.Background(), &subscriber.DiscoveryRequest{
+		LogGroupNamePrefixes:   []*string{aws.String("/aws/ecs/")},
+		Inline:                 &inline,
+		MaxGroupsPerInvocation: 100,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := resp.Discovery.LogGroupCount.Load(); got != total {
+		t.Fatalf("logGroupCount=%d want=%d", got, total)
+	}
+	if got := len(queue.items); got != 0 {
+		t.Fatalf("queued messages=%d want=0", got)
+	}
+}

@@ -4,12 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/go-logr/logr"
 )
 
 var ErrNoQueue = errors.New("no queue defined")
+
+const (
+	defaultDiscoveryMaxGroupsPerInvocation = 200
+	discoveryPaginationPageSize            = 50
+	discoveryContinuationSafetyWindow      = 20 * time.Second
+)
 
 func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *DiscoveryRequest) (*Response, error) {
 	resp := &Response{
@@ -17,7 +25,7 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 	}
 
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.V(3).Info("handling discovery request", "request", discoveryReq)
+	logger.V(3).Info("handling discovery request", "request", discoveryReq, "fullyPrune", discoveryReq.FullyPrune)
 
 	var inline bool
 	if discoveryReq.Inline == nil {
@@ -32,11 +40,56 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 		resp.Discovery.Subscription = new(SubscriptionStats)
 	}
 
-	for _, input := range discoveryReq.ToDescribeLogInputs() {
-		paginator := cloudwatchlogs.NewDescribeLogGroupsPaginator(h.Client, input)
+	maxGroups := discoveryReq.MaxGroupsPerInvocation
+	if maxGroups <= 0 {
+		maxGroups = defaultDiscoveryMaxGroupsPerInvocation
+	}
 
-		for paginator.HasMorePages() {
-			page, err := paginator.NextPage(ctx)
+	// Build the scan plan. FullyPrune scans the entire namespace with one input.
+	inputs := discoveryReq.ToDescribeLogInputs()
+	if discoveryReq.FullyPrune {
+		logger.Info("fully pruning: scanning all log groups")
+		inputs = []*cloudwatchlogs.DescribeLogGroupsInput{{}}
+	}
+
+	if len(inputs) == 0 {
+		return resp, nil
+	}
+
+	if discoveryReq.ScanInputIndex < 0 || discoveryReq.ScanInputIndex >= len(inputs) {
+		return resp, fmt.Errorf("invalid scanInputIndex: %d", discoveryReq.ScanInputIndex)
+	}
+
+	continuationInputIndex := -1
+	var continuationToken *string
+	remaining := maxGroups
+	for inputIdx := discoveryReq.ScanInputIndex; inputIdx < len(inputs) && remaining > 0; inputIdx++ {
+		baseInput := inputs[inputIdx]
+		nextToken := aws.ToString(discoveryReq.ScanToken)
+		if inputIdx != discoveryReq.ScanInputIndex {
+			nextToken = ""
+		}
+
+		for remaining > 0 {
+			if shouldEnqueueDiscoveryContinuation(ctx) {
+				continuationInputIndex = inputIdx
+				if nextToken != "" {
+					continuationToken = aws.String(nextToken)
+				}
+				break
+			}
+
+			pageLimit := int32(min(remaining, discoveryPaginationPageSize))
+			callInput := *baseInput
+			if nextToken != "" {
+				callInput.NextToken = aws.String(nextToken)
+			}
+			if callInput.Limit != nil {
+				pageLimit = min(pageLimit, *callInput.Limit)
+			}
+			callInput.Limit = aws.Int32(pageLimit)
+
+			page, err := h.Client.DescribeLogGroups(ctx, &callInput)
 			if err != nil {
 				return resp, fmt.Errorf("failed to describe log groups: %w", err)
 			}
@@ -44,7 +97,6 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 			resp.Discovery.LogGroupCount.Add(int64(len(page.LogGroups)))
 
 			subscriptionRequest := NewSubscriptionRequestFromLogGroupsOutput(page)
-
 			if inline {
 				s, err := h.HandleSubscriptionRequest(ctx, subscriptionRequest)
 				if err != nil {
@@ -54,8 +106,57 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 			} else if err := h.Queue.Put(ctx, &Request{SubscriptionRequest: subscriptionRequest}); err != nil {
 				return resp, fmt.Errorf("failed to write to queue: %w", err)
 			}
+
+			remaining -= len(page.LogGroups)
+			if page.NextToken == nil {
+				nextToken = ""
+				break
+			}
+			nextToken = aws.ToString(page.NextToken)
+		}
+
+		if continuationInputIndex >= 0 {
+			break
+		}
+
+		if nextToken != "" {
+			continuationInputIndex = inputIdx
+			continuationToken = aws.String(nextToken)
+			break
 		}
 	}
 
+	if continuationInputIndex >= 0 {
+		if h.Queue == nil {
+			return resp, fmt.Errorf("discovery continuation requires queue: %w", ErrNoQueue)
+		}
+
+		continuation := &Request{
+			DiscoveryRequest: &DiscoveryRequest{
+				LogGroupNamePatterns:   discoveryReq.LogGroupNamePatterns,
+				LogGroupNamePrefixes:   discoveryReq.LogGroupNamePrefixes,
+				Limit:                  discoveryReq.Limit,
+				Inline:                 discoveryReq.Inline,
+				FullyPrune:             discoveryReq.FullyPrune,
+				ScanToken:              continuationToken,
+				ScanInputIndex:         continuationInputIndex,
+				MaxGroupsPerInvocation: maxGroups,
+				JobID:                  discoveryReq.JobID,
+			},
+		}
+		if err := h.Queue.Put(ctx, continuation); err != nil {
+			return resp, fmt.Errorf("failed to enqueue discovery continuation: %w", err)
+		}
+		logger.Info("discovery continuation enqueued", "jobID", discoveryReq.JobID, "scanInputIndex", continuationInputIndex, "nextTokenSet", continuationToken != nil, "processed", resp.Discovery.LogGroupCount.Load())
+	}
+
 	return resp, nil
+}
+
+func shouldEnqueueDiscoveryContinuation(ctx context.Context) bool {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return false
+	}
+	return time.Until(deadline) <= discoveryContinuationSafetyWindow
 }
