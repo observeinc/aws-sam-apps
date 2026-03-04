@@ -95,6 +95,15 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+  EnableTagEnrichment:
+    Type: String
+    Description: >-
+      Set to "true" to enable tag enrichment via a Lambda transform on the
+      Firehose delivery stream. This adds resource tags to each metric record.
+    Default: ''
+    AllowedValues:
+      - ''
+      - 'true'
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
@@ -105,6 +114,9 @@ Conditions:
       - ""
   NotDeployLambda: !Not
     - !Condition DeployLambda
+  EnableTagger: !Equals
+    - !Ref EnableTagEnrichment
+    - 'true'
 
 Resources:
   DeliveryStreamRole:
@@ -145,6 +157,18 @@ Resources:
                 Resource:
                   - !Ref BucketArn
                   - !Sub '${BucketArn}/${Prefix}*'
+        - !If
+          - EnableTagger
+          - PolicyName: lambda-invoke
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                    - lambda:GetFunctionConfiguration
+                  Resource: !GetAtt Tagger.Arn
+          - !Ref AWS::NoValue
   LambdaLogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -190,7 +214,7 @@ Resources:
         - !Ref AWS::StackName
         - !Ref NameOverride
       DeliveryStreamType: DirectPut
-      S3DestinationConfiguration:
+      ExtendedS3DestinationConfiguration:
         BucketARN: !Ref BucketArn
         RoleARN: !GetAtt DeliveryStreamRole.Arn
         # yamllint disable-line rule:line-length
@@ -204,6 +228,19 @@ Resources:
           Enabled: true
           LogGroupName: !Ref LogGroup
           LogStreamName: !Ref LogStream
+        ProcessingConfiguration: !If
+          - EnableTagger
+          - Enabled: true
+            Processors:
+              - Type: Lambda
+                Parameters:
+                  - ParameterName: LambdaArn
+                    ParameterValue: !GetAtt Tagger.Arn
+                  - ParameterName: BufferSizeInMBs
+                    ParameterValue: '1'
+                  - ParameterName: BufferIntervalInSeconds
+                    ParameterValue: '60'
+          - !Ref AWS::NoValue
   MetricStreamRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -254,6 +291,82 @@ Resources:
       # filterURI is decided in the parent stack becauseAWS does not
       # allow an !If function inside an AWS::Include.
       OutputFormat: !Ref OutputFormat
+  TaggerLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Condition: EnableTagger
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !If
+            - UseStackName
+            - !Sub '${AWS::StackName}-tagger'
+            - !Sub '${NameOverride}-tagger'
+      RetentionInDays: 365
+  TaggerRole:
+    Type: 'AWS::IAM::Role'
+    Condition: EnableTagger
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logging
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt TaggerLogGroup.Arn
+        - PolicyName: tagging
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - tag:GetResources
+                Resource: '*'
+  Tagger:
+    Type: AWS::Serverless::Function
+    Condition: EnableTagger
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !If
+        - UseStackName
+        - !Sub '${AWS::StackName}-tagger'
+        - !Sub '${NameOverride}-tagger'
+      Role: !GetAtt TaggerRole.Arn
+      CodeUri: ../../bin/linux_arm64
+      Handler: bootstrap
+      Runtime: provided.al2023
+      MemorySize: 256
+      Timeout: 300
+      Architectures:
+        - arm64
+      LoggingConfig:
+        LogGroup: !Ref TaggerLogGroup
+      Environment:
+        Variables:
+          OUTPUT_FORMAT: !Ref OutputFormat
+          CACHE_TTL: 5m
+          VERBOSITY: 1
+  TaggerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: EnableTagger
+    Properties:
+      FunctionName: !GetAtt Tagger.Arn
+      Action: lambda:InvokeFunction
+      Principal: firehose.amazonaws.com
+      SourceArn: !GetAtt DeliveryStream.Arn
   MetricsConfiguratorRole:
     Type: AWS::IAM::Role
     Condition: DeployLambda
