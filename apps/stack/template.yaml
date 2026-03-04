@@ -48,6 +48,7 @@ Metadata:
           - DatasourceID
           - GQLToken
           - UpdateTimestamp
+          - EnableTagEnrichment
       - Label:
           default: Enable Observe Metrics Poller
         Parameters:
@@ -170,6 +171,16 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+  EnableTagEnrichment:
+    Type: String
+    Description: >-
+      Set to "true" to enable tag enrichment on the metric stream. When
+      enabled, a Lambda transform enriches each metric record with resource
+      tags from the Resource Groups Tagging API.
+    Default: ''
+    AllowedValues:
+      - ''
+      - 'true'
   MetricsPollerAllowedActions:
     Type: CommaDelimitedList
     Description: >-
@@ -495,6 +506,7 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
+        EnableTagEnrichment: !Ref EnableTagEnrichment
   MetricsPollerRole:
     Type: AWS::Serverless::Application
     Condition: EnableMetricsPollerRole
