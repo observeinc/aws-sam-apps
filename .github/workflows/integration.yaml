@@ -60,7 +60,7 @@ jobs:
         email: 'justin.daines@observeinc.com'
 
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup test matrix
       id: find_hcl_files
@@ -90,7 +90,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Pull SAM manifests
       run: |
