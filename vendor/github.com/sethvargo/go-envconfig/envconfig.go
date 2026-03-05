@@ -108,6 +108,17 @@ type Lookuper interface {
 	Lookup(key string) (string, bool)
 }
 
+var _ Lookuper = (LookuperFunc)(nil)
+
+// LookuperFunc implements the [Lookuper] interface and provides a quick way to
+// create an anonymous function that performs a lookup for a string-based key.
+type LookuperFunc func(key string) (string, bool)
+
+// Lookup implements [Lookuper].
+func (l LookuperFunc) Lookup(key string) (string, bool) {
+	return l(key)
+}
+
 // osLookuper looks up environment configuration from the local environment.
 type osLookuper struct{}
 
@@ -203,16 +214,23 @@ type keyedLookuper interface {
 	Key(key string) string
 }
 
-// Decoder is an interface that custom types/fields can implement to control how
-// decoding takes place. For example:
+// Decoder is the legacy implementation of [DecoderCtx], but it does not accept
+// a context as the first parameter to `EnvDecode`. Please use [DecoderCtx]
+// instead, as this will be removed in a future release.
+type Decoder interface {
+	EnvDecode(val string) error
+}
+
+// DecoderCtx is an interface that custom types/fields can implement to control
+// how decoding takes place. For example:
 //
 //	type MyType string
 //
-//	func (mt MyType) EnvDecode(val string) error {
+//	func (mt MyType) EnvDecode(ctx context.Context, val string) error {
 //	    return "CUSTOM-"+val
 //	}
-type Decoder interface {
-	EnvDecode(val string) error
+type DecoderCtx interface {
+	EnvDecode(ctx context.Context, val string) error
 }
 
 // options are internal options for decoding.
@@ -460,7 +478,7 @@ func processWith(ctx context.Context, c *Config) error {
 			}
 
 			if found || usedDefault || decodeUnset {
-				if ok, err := processAsDecoder(val, ef); ok {
+				if ok, err := processAsDecoder(ctx, val, ef); ok {
 					if err != nil {
 						return err
 					}
@@ -545,8 +563,8 @@ func processWith(ctx context.Context, c *Config) error {
 		}
 
 		// Set value.
-		if err := processField(val, ef, delimiter, separator, noInit); err != nil {
-			return fmt.Errorf("%s(%q): %w", tf.Name, val, err)
+		if err := processField(ctx, val, ef, delimiter, separator, noInit); err != nil {
+			return fmt.Errorf("%s: %w", tf.Name, err)
 		}
 	}
 
@@ -642,6 +660,18 @@ func lookup(key string, required bool, defaultValue string, l Lookuper) (string,
 		}
 
 		if defaultValue != "" {
+			// Handle escaped "$" by replacing the value with a character that is
+			// invalid to have in an environment variable. A more perfect solution
+			// would be to re-implement os.Expand to handle this case, but that's been
+			// proposed and rejected in the stdlib. Additionally, the function is
+			// dependent on other private functions in the [os] package, so
+			// duplicating it is toilsome.
+			//
+			// While admittidly a hack, replacing the escaped values with invalid
+			// characters (and then replacing later), is a reasonable solution.
+			defaultValue = strings.ReplaceAll(defaultValue, "\\\\", "\u0000")
+			defaultValue = strings.ReplaceAll(defaultValue, "\\$", "\u0008")
+
 			// Expand the default value. This allows for a default value that maps to
 			// a different environment variable.
 			val = os.Expand(defaultValue, func(i string) string {
@@ -657,6 +687,9 @@ func lookup(key string, required bool, defaultValue string, l Lookuper) (string,
 				return ""
 			})
 
+			val = strings.ReplaceAll(val, "\u0000", "\\")
+			val = strings.ReplaceAll(val, "\u0008", "$")
+
 			return val, false, true, nil
 		}
 	}
@@ -666,7 +699,7 @@ func lookup(key string, required bool, defaultValue string, l Lookuper) (string,
 
 // processAsDecoder processes the given value as a decoder or custom
 // unmarshaller.
-func processAsDecoder(v string, ef reflect.Value) (bool, error) {
+func processAsDecoder(ctx context.Context, v string, ef reflect.Value) (bool, error) {
 	// Keep a running error. It's possible that a property might implement
 	// multiple decoders, and we don't know *which* decoder will succeed. If we
 	// get through all of them, we'll return the most recent error.
@@ -685,6 +718,13 @@ func processAsDecoder(v string, ef reflect.Value) (bool, error) {
 		// never attempt to use other decoders in case of failure. EnvDecode's
 		// decoding logic is "the right one", and the error returned (if any)
 		// is the most specific we can get.
+		if dec, ok := iface.(DecoderCtx); ok {
+			imp = true
+			err = dec.EnvDecode(ctx, v)
+			return imp, err
+		}
+
+		// Check legacy decoder implementation
 		if dec, ok := iface.(Decoder); ok {
 			imp = true
 			err = dec.EnvDecode(v)
@@ -723,7 +763,7 @@ func processAsDecoder(v string, ef reflect.Value) (bool, error) {
 	return imp, err
 }
 
-func processField(v string, ef reflect.Value, delimiter, separator string, noInit bool) error {
+func processField(ctx context.Context, v string, ef reflect.Value, delimiter, separator string, noInit bool) error {
 	// If the input value is empty and initialization is skipped, do nothing.
 	if v == "" && noInit {
 		return nil
@@ -741,7 +781,7 @@ func processField(v string, ef reflect.Value, delimiter, separator string, noIni
 	tk := tf.Kind()
 
 	// Handle existing decoders.
-	if ok, err := processAsDecoder(v, ef); ok {
+	if ok, err := processAsDecoder(ctx, v, ef); ok {
 		return err
 	}
 
@@ -811,12 +851,12 @@ func processField(v string, ef reflect.Value, delimiter, separator string, noIni
 			mKey, mVal := strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1])
 
 			k := reflect.New(tf.Key()).Elem()
-			if err := processField(mKey, k, delimiter, separator, noInit); err != nil {
+			if err := processField(ctx, mKey, k, delimiter, separator, noInit); err != nil {
 				return fmt.Errorf("%s: %w", mKey, err)
 			}
 
 			v := reflect.New(tf.Elem()).Elem()
-			if err := processField(mVal, v, delimiter, separator, noInit); err != nil {
+			if err := processField(ctx, mVal, v, delimiter, separator, noInit); err != nil {
 				return fmt.Errorf("%s: %w", mVal, err)
 			}
 
@@ -834,7 +874,7 @@ func processField(v string, ef reflect.Value, delimiter, separator string, noIni
 			s := reflect.MakeSlice(tf, len(vals), len(vals))
 			for i, val := range vals {
 				val = strings.TrimSpace(val)
-				if err := processField(val, s.Index(i), delimiter, separator, noInit); err != nil {
+				if err := processField(ctx, val, s.Index(i), delimiter, separator, noInit); err != nil {
 					return fmt.Errorf("%s: %w", val, err)
 				}
 			}
@@ -856,7 +896,7 @@ func validateEnvName(s string) bool {
 	}
 
 	for i, r := range s {
-		if (i == 0 && !isLetter(r)) || (!isLetter(r) && !isNumber(r) && r != '_') {
+		if (i == 0 && !isLetter(r) && r != '_') || (!isLetter(r) && !isNumber(r) && r != '_') {
 			return false
 		}
 	}
