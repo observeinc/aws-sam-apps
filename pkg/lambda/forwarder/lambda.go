@@ -97,9 +97,9 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 	}()
 
 	awsCfg, err := tracing.AWSLoadDefaultConfig(ctx, &tracing.AWSConfig{
-		Logger:           logger,
-		TracerProvider:   tracerProvider,
-		AttributeSetters: forwardertracing.AttributeSetters,
+		Logger:            logger,
+		TracerProvider:    tracerProvider,
+		AttributeBuilders: forwardertracing.AttributeBuilders,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS configuration: %w", err)
