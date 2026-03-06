@@ -6,7 +6,6 @@ variables {
       {
         "Effect": "Allow",
         "Action": [
-          "cloudformation:CreateChangeSet",
           "cloudformation:CreateStack",
           "cloudformation:DeleteChangeSet",
           "cloudformation:DeleteStack",
@@ -46,6 +45,18 @@ variables {
           "logs:UntagResource"
         ],
         "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "cloudformation:CreateChangeSet"
+        ],
+        "Resource": [
+          "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31",
+          "arn:aws:cloudformation:*:aws:transform/Include",
+          "arn:aws:cloudformation:*:aws:transform/LanguageExtensions",
+          "arn:aws:cloudformation:*:*:stack/*/*"
+        ]
       },
       {
         "Effect": "Allow",

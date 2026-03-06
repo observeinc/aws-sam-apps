@@ -14,6 +14,10 @@ type ObjectFilter struct {
 
 // Allow verifies if object source should be accessed
 func (o *ObjectFilter) Allow(source string) bool {
+	// If no filters are specified, allow all objects
+	if len(o.filters) == 0 {
+		return true
+	}
 	for _, re := range o.filters {
 		if re.MatchString(source) {
 			return true
@@ -29,6 +33,16 @@ func NewObjectFilter(names, keys []string) (*ObjectFilter, error) {
 	// TODO: for simplicity we compute the cross product of regular expressions. It
 	// would be more efficient to verify buckets and object key separately, but
 	// we don't expect either list to be very long.
+
+	// If keys is empty, default to "*" to match all keys
+	if len(keys) == 0 && len(names) > 0 {
+		keys = []string{"*"}
+	}
+
+	// If names is empty, default to "*" to match all buckets
+	if len(names) == 0 && len(keys) > 0 {
+		names = []string{"*"}
+	}
 
 	for _, name := range names {
 		for _, key := range keys {

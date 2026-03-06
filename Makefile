@@ -266,6 +266,10 @@ test-init:
 
 .PHONY: $(TEST_INTEGRATION_TARGETS)
 $(TEST_INTEGRATION_TARGETS): test-init
+	APP=$$(awk -F'"' '/^[[:space:]]*app[[:space:]]*=[[:space:]]*"/ {print $$2; exit}' integration/tests/$(lastword $(subst -, ,$@)).tftest.hcl); \
+	if [ ! -z "$$APP" ]; then \
+	  $(MAKE) sam-package-$$APP; \
+	fi; \
 	if [ "$(TF_TEST_DEBUG)" = "1" ]; then \
 	  export CHECK_DEBUG_FILE=debug.sh; \
 	fi && \
