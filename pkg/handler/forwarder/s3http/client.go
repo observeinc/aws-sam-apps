@@ -3,12 +3,14 @@ package s3http
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
 
+	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/seekable"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/batch"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/decoders"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/request"
@@ -21,6 +23,8 @@ var (
 	errMissingKey        = fmt.Errorf("missing key")
 	errMissingBody       = fmt.Errorf("missing body")
 )
+
+const copyObjectMemoryLimitBytes int64 = 32 * 1024 * 1024
 
 type GetObjectAPIClient interface {
 	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
@@ -54,17 +58,17 @@ func toGetInput(copyInput *s3.CopyObjectInput) (*s3.GetObjectInput, error) {
 	}, nil
 }
 
-func toPutInput(copyInput *s3.CopyObjectInput, getOutput *s3.GetObjectOutput) *s3.PutObjectInput {
+func toPutInput(copyInput *s3.CopyObjectInput, body io.Reader, contentType, contentEncoding *string) *s3.PutObjectInput {
 	in := &s3.PutObjectInput{
 		Bucket:              copyInput.Bucket,
 		Key:                 copyInput.Key,
 		ACL:                 copyInput.ACL,
-		Body:                getOutput.Body,
+		Body:                body,
 		BucketKeyEnabled:    copyInput.BucketKeyEnabled,
 		ContentDisposition:  copyInput.ContentDisposition,
-		ContentEncoding:     getOutput.ContentEncoding,
+		ContentEncoding:     contentEncoding,
 		ContentLanguage:     copyInput.ContentLanguage,
-		ContentType:         getOutput.ContentType,
+		ContentType:         contentType,
 		ExpectedBucketOwner: copyInput.ExpectedBucketOwner,
 		Expires:             copyInput.Expires,
 		GrantFullControl:    copyInput.GrantFullControl,
@@ -126,7 +130,19 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 		return toCopyOutput(nil), nil
 	}
 
-	putResp, err := c.PutObject(ctx, toPutInput(params, getResp), opts...)
+	seekableBody, cleanup, err := seekable.FromReader(getResp.Body, copyObjectMemoryLimitBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare object body: %w", err)
+	}
+	defer func() {
+		if cleanupErr := cleanup(); cleanupErr != nil {
+			logger.V(4).Error(cleanupErr, "failed to cleanup seekable body")
+		}
+	}()
+
+	putInput := toPutInput(params, seekableBody, getResp.ContentType, getResp.ContentEncoding)
+
+	putResp, err := c.PutObject(ctx, putInput, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to put object: %w", err)
 	}
