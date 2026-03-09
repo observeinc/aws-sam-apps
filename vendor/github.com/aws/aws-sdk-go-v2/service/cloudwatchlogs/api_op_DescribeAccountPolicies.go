@@ -20,7 +20,7 @@ import (
 //     logs:GetDataProtectionPolicy and logs:DescribeAccountPolicies permissions.
 //
 //   - To see subscription filter policies, you must have the
-//     logs:DescrubeSubscriptionFilters and logs:DescribeAccountPolicies permissions.
+//     logs:DescribeSubscriptionFilters and logs:DescribeAccountPolicies permissions.
 //
 //   - To see transformer policies, you must have the logs:GetTransformer and
 //     logs:DescribeAccountPolicies permissions.
@@ -150,6 +150,9 @@ func (c *Client) addOperationDescribeAccountPoliciesMiddlewares(stack *middlewar
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeAccountPoliciesValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -171,16 +174,13 @@ func (c *Client) addOperationDescribeAccountPoliciesMiddlewares(stack *middlewar
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

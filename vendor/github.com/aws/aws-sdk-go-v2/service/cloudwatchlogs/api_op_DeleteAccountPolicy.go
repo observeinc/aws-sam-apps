@@ -12,9 +12,11 @@ import (
 )
 
 // Deletes a CloudWatch Logs account policy. This stops the account-wide policy
-// from applying to log groups in the account. If you delete a data protection
-// policy or subscription filter policy, any log-group level policies of those
-// types remain in effect.
+// from applying to log groups or data sources in the account. If you delete a data
+// protection policy or subscription filter policy, any log-group level policies of
+// those types remain in effect. This operation supports deletion of data
+// source-based field index policies, including facet configurations, in addition
+// to log group-based policies.
 //
 // To use this operation, you must be signed on with the correct permissions
 // depending on the type of policy that you are deleting.
@@ -30,6 +32,11 @@ import (
 //
 //   - To delete a field index policy, you must have the logs:DeleteIndexPolicy and
 //     logs:DeleteAccountPolicy permissions.
+//
+// If you delete a field index policy that included facet configurations, those
+//
+//	facets will no longer be available for interactive exploration in the CloudWatch
+//	Logs Insights console. However, facet data is retained for up to 30 days.
 //
 // If you delete a field index policy, the indexing of the log events that
 // happened before you deleted the policy will still be used for up to 30 days to
@@ -135,6 +142,9 @@ func (c *Client) addOperationDeleteAccountPolicyMiddlewares(stack *middleware.St
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteAccountPolicyValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -156,16 +166,13 @@ func (c *Client) addOperationDeleteAccountPolicyMiddlewares(stack *middleware.St
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
