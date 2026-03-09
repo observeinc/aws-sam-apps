@@ -37,7 +37,7 @@ func (c *Client) DeleteDeliveryDestination(ctx context.Context, params *DeleteDe
 type DeleteDeliveryDestinationInput struct {
 
 	// The name of the delivery destination that you want to delete. You can find a
-	// list of delivery destionation names by using the [DescribeDeliveryDestinations]operation.
+	// list of delivery destination names by using the [DescribeDeliveryDestinations]operation.
 	//
 	// [DescribeDeliveryDestinations]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeDeliveryDestinations.html
 	//
@@ -118,6 +118,9 @@ func (c *Client) addOperationDeleteDeliveryDestinationMiddlewares(stack *middlew
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteDeliveryDestinationValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -139,16 +142,13 @@ func (c *Client) addOperationDeleteDeliveryDestinationMiddlewares(stack *middlew
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -19,7 +19,7 @@ import (
 // Permissions] in the table at [Enabling logging from Amazon Web Services services.]
 //
 // A delivery destination can represent a log group in CloudWatch Logs, an Amazon
-// S3 bucket, or a delivery stream in Firehose.
+// S3 bucket, a delivery stream in Firehose, or X-Ray.
 //
 // To configure logs delivery between a supported Amazon Web Services service and
 // a destination, you must do the following:
@@ -173,6 +173,9 @@ func (c *Client) addOperationCreateDeliveryMiddlewares(stack *middleware.Stack, 
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateDeliveryValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -194,16 +197,13 @@ func (c *Client) addOperationCreateDeliveryMiddlewares(stack *middleware.Stack, 
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
