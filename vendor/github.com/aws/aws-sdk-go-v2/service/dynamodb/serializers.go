@@ -3911,6 +3911,25 @@ func awsAwsjson10_serializeDocumentCreateGlobalSecondaryIndexAction(v *types.Cre
 		}
 	}
 
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func awsAwsjson10_serializeDocumentCreateGlobalTableWitnessGroupMemberAction(v *types.CreateGlobalTableWitnessGroupMemberAction, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.RegionName != nil {
+		ok := object.Key("RegionName")
+		ok.String(*v.RegionName)
+	}
+
 	return nil
 }
 
@@ -4049,6 +4068,18 @@ func awsAwsjson10_serializeDocumentDeleteGlobalSecondaryIndexAction(v *types.Del
 	if v.IndexName != nil {
 		ok := object.Key("IndexName")
 		ok.String(*v.IndexName)
+	}
+
+	return nil
+}
+
+func awsAwsjson10_serializeDocumentDeleteGlobalTableWitnessGroupMemberAction(v *types.DeleteGlobalTableWitnessGroupMemberAction, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.RegionName != nil {
+		ok := object.Key("RegionName")
+		ok.String(*v.RegionName)
 	}
 
 	return nil
@@ -4258,6 +4289,13 @@ func awsAwsjson10_serializeDocumentGlobalSecondaryIndex(v *types.GlobalSecondary
 		}
 	}
 
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -4378,6 +4416,40 @@ func awsAwsjson10_serializeDocumentGlobalTableGlobalSecondaryIndexSettingsUpdate
 	for i := range v {
 		av := array.Value()
 		if err := awsAwsjson10_serializeDocumentGlobalTableGlobalSecondaryIndexSettingsUpdate(&v[i], av); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func awsAwsjson10_serializeDocumentGlobalTableWitnessGroupUpdate(v *types.GlobalTableWitnessGroupUpdate, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.Create != nil {
+		ok := object.Key("Create")
+		if err := awsAwsjson10_serializeDocumentCreateGlobalTableWitnessGroupMemberAction(v.Create, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.Delete != nil {
+		ok := object.Key("Delete")
+		if err := awsAwsjson10_serializeDocumentDeleteGlobalTableWitnessGroupMemberAction(v.Delete, ok); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func awsAwsjson10_serializeDocumentGlobalTableWitnessGroupUpdateList(v []types.GlobalTableWitnessGroupUpdate, value smithyjson.Value) error {
+	array := value.Array()
+	defer array.Close()
+
+	for i := range v {
+		av := array.Value()
+		if err := awsAwsjson10_serializeDocumentGlobalTableWitnessGroupUpdate(&v[i], av); err != nil {
 			return err
 		}
 	}
@@ -4713,6 +4785,11 @@ func awsAwsjson10_serializeDocumentPointInTimeRecoverySpecification(v *types.Poi
 	if v.PointInTimeRecoveryEnabled != nil {
 		ok := object.Key("PointInTimeRecoveryEnabled")
 		ok.Boolean(*v.PointInTimeRecoveryEnabled)
+	}
+
+	if v.RecoveryPeriodInDays != nil {
+		ok := object.Key("RecoveryPeriodInDays")
+		ok.Integer(*v.RecoveryPeriodInDays)
 	}
 
 	return nil
@@ -5486,6 +5563,13 @@ func awsAwsjson10_serializeDocumentUpdateGlobalSecondaryIndexAction(v *types.Upd
 		}
 	}
 
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -5539,6 +5623,23 @@ func awsAwsjson10_serializeDocumentUpdateReplicationGroupMemberAction(v *types.U
 	if len(v.TableClassOverride) > 0 {
 		ok := object.Key("TableClassOverride")
 		ok.String(string(v.TableClassOverride))
+	}
+
+	return nil
+}
+
+func awsAwsjson10_serializeDocumentWarmThroughput(v *types.WarmThroughput, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.ReadUnitsPerSecond != nil {
+		ok := object.Key("ReadUnitsPerSecond")
+		ok.Long(*v.ReadUnitsPerSecond)
+	}
+
+	if v.WriteUnitsPerSecond != nil {
+		ok := object.Key("WriteUnitsPerSecond")
+		ok.Long(*v.WriteUnitsPerSecond)
 	}
 
 	return nil
@@ -5764,6 +5865,13 @@ func awsAwsjson10_serializeOpDocumentCreateTableInput(v *CreateTableInput, value
 	if v.Tags != nil {
 		ok := object.Key("Tags")
 		if err := awsAwsjson10_serializeDocumentTagList(v.Tags, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
 			return err
 		}
 	}
@@ -7016,6 +7124,11 @@ func awsAwsjson10_serializeOpDocumentUpdateContributorInsightsInput(v *UpdateCon
 		ok.String(string(v.ContributorInsightsAction))
 	}
 
+	if len(v.ContributorInsightsMode) > 0 {
+		ok := object.Key("ContributorInsightsMode")
+		ok.String(string(v.ContributorInsightsMode))
+	}
+
 	if v.IndexName != nil {
 		ok := object.Key("IndexName")
 		ok.String(*v.IndexName)
@@ -7225,6 +7338,18 @@ func awsAwsjson10_serializeOpDocumentUpdateTableInput(v *UpdateTableInput, value
 		}
 	}
 
+	if v.GlobalTableWitnessUpdates != nil {
+		ok := object.Key("GlobalTableWitnessUpdates")
+		if err := awsAwsjson10_serializeDocumentGlobalTableWitnessGroupUpdateList(v.GlobalTableWitnessUpdates, ok); err != nil {
+			return err
+		}
+	}
+
+	if len(v.MultiRegionConsistency) > 0 {
+		ok := object.Key("MultiRegionConsistency")
+		ok.String(string(v.MultiRegionConsistency))
+	}
+
 	if v.OnDemandThroughput != nil {
 		ok := object.Key("OnDemandThroughput")
 		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughput, ok); err != nil {
@@ -7268,6 +7393,13 @@ func awsAwsjson10_serializeOpDocumentUpdateTableInput(v *UpdateTableInput, value
 	if v.TableName != nil {
 		ok := object.Key("TableName")
 		ok.String(*v.TableName)
+	}
+
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -96,22 +96,22 @@ run "sources" {
 
   variables {
     setup = run.setup
-    kms_key_policy_json = jsonencode(
-      {
-        Statement = [
-          {
-            Action = "kms:*"
-            Effect = "Allow"
-            Principal = {
-              AWS = "arn:aws:iam::${run.setup.account_id}:root"
-            }
-            Resource = "*"
-            Sid      = "Enable IAM User Permissions"
-          }
-        ]
-        Version = "2012-10-17"
-      }
-    )
+    kms_key_policy_json = <<-EOF
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "Enable IAM User Permissions",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::${run.setup.account_id}:root"
+          },
+          "Action": "kms:*",
+          "Resource": "*"
+        }
+      ]
+    }
+EOF
   }
 }
 
@@ -126,7 +126,7 @@ run "install_forwarder" {
       SourceBucketNames    = "${run.setup.short}*"
       SourceTopicArns      = "arn:aws:sns:${run.setup.region}:${run.setup.account_id}:*"
       ContentTypeOverrides = "${var.override_match}=${var.override_content_type}"
-      SourceKMSKeyArns     = "${join(",", [for k, v in run.sources.buckets : v.kms_key.arn if v.kms_key != null])}"
+      SourceKMSKeyArns     = run.sources.buckets["kms"].kms_key.arn
       NameOverride         = run.setup.short
     }
     capabilities = [
@@ -158,6 +158,7 @@ run "check_sqs" {
     env_vars = {
       SOURCE      = run.sources.buckets["sqs"].id
       DESTINATION = run.target_bucket.id
+      COPY_DELAY  = 10
     }
   }
 
@@ -178,7 +179,7 @@ run "check_eventbridge" {
     env_vars = {
       SOURCE      = run.sources.buckets["eventbridge"].id
       DESTINATION = run.target_bucket.id
-      INIT_DELAY  = 2
+      COPY_DELAY  = 30
     }
   }
 
@@ -199,8 +200,7 @@ run "check_sns" {
     env_vars = {
       SOURCE      = run.sources.buckets["sns"].id
       DESTINATION = run.target_bucket.id
-      INIT_DELAY  = 2
-
+      COPY_DELAY  = 30
     }
   }
 
@@ -221,6 +221,7 @@ run "check_content_type_override" {
     env_vars = {
       SOURCE      = run.sources.buckets["sqs"].id
       DESTINATION = run.target_bucket.id
+      COPY_DELAY  = 20
       # this prefix will match the content type override, so we expect the destination object
       # to have our test content type
       OBJECT_PREFIX = var.override_match
@@ -247,6 +248,7 @@ run "check_kms" {
     env_vars = {
       SOURCE      = run.sources.buckets["kms"].id
       DESTINATION = run.target_bucket.id
+      COPY_DELAY  = 30
       # Object ETag will no longer match because object hash changes after decryption
       JQ_PROCESS_SOURCE = "del(.ETag)"
       # Reset the expected source encryption settings when comparing objects

@@ -10,9 +10,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-var AttributeSetters = []otelaws.AttributeSetter{AttributeSetter}
+var AttributeBuilders = []otelaws.AttributeBuilder{AttributeBuilder}
 
-func AttributeSetter(_ context.Context, in middleware.InitializeInput) (attrs []attribute.KeyValue) {
+func AttributeBuilder(_ context.Context, in middleware.InitializeInput, _ middleware.InitializeOutput) (attrs []attribute.KeyValue) {
 	switch v := in.Parameters.(type) {
 	case *cloudwatchlogs.DescribeLogGroupsInput:
 		if s := v.LogGroupNamePattern; s != nil {

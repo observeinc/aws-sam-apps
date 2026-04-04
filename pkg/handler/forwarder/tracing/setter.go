@@ -10,9 +10,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-var AttributeSetters = []otelaws.AttributeSetter{AttributeSetter}
+var AttributeBuilders = []otelaws.AttributeBuilder{AttributeBuilder}
 
-func AttributeSetter(_ context.Context, in middleware.InitializeInput) (attrs []attribute.KeyValue) {
+func AttributeBuilder(_ context.Context, in middleware.InitializeInput, _ middleware.InitializeOutput) (attrs []attribute.KeyValue) {
 	// see https://opentelemetry.io/docs/specs/semconv/object-stores/s3/
 	switch v := in.Parameters.(type) {
 	case *s3.GetObjectInput:

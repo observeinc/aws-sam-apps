@@ -95,7 +95,9 @@ Parameters:
   FilterPattern:
     Type: String
     Description: >-
-      Subscription filter pattern.
+      CloudWatch Logs subscription filter pattern. Only log events matching this
+      pattern are delivered to Firehose. Uses AWS CloudWatch filter pattern
+      syntax. An empty string matches all events.
     Default: ''
   NameOverride:
     Type: String

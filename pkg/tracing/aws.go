@@ -17,9 +17,9 @@ import (
 )
 
 type AWSConfig struct {
-	Logger           logr.Logger
-	TracerProvider   trace.TracerProvider
-	AttributeSetters []otelaws.AttributeSetter
+	Logger            logr.Logger
+	TracerProvider    trace.TracerProvider
+	AttributeBuilders []otelaws.AttributeBuilder
 }
 
 func AWSLoadDefaultConfig(ctx context.Context, cfg *AWSConfig) (aws.Config, error) {
@@ -52,7 +52,7 @@ func AWSLoadDefaultConfig(ctx context.Context, cfg *AWSConfig) (aws.Config, erro
 
 	otelaws.AppendMiddlewares(&awsCfg.APIOptions,
 		otelaws.WithTracerProvider(cfg.TracerProvider),
-		otelaws.WithAttributeSetter(append(cfg.AttributeSetters, otelaws.DefaultAttributeSetter)...),
+		otelaws.WithAttributeBuilder(append(cfg.AttributeBuilders, otelaws.DefaultAttributeBuilder)...),
 	)
 	return awsCfg, nil
 }
