@@ -1,6 +1,6 @@
 # Observe LogWriter Application
 
-The Observe LogWriter application is an AWS SAM application that writes CloudWatch Log Groups to an S3 bucket. 
+The Observe LogWriter application writes CloudWatch Logs to an S3 bucket via Kinesis Data Firehose, and can subscribe log groups to that Firehose. The template is **plain CloudFormation** (no SAM transform on this app): the Subscriber Lambda loads code from S3 (`LambdaS3BucketPrefix`, `LambdaS3Key`). When nested under the [Observe collection stack](stack.md), released templates supply embedded defaults for those parameters.
 
 Additionally, the stack is capable of subscribing log groups and provides a method for automatically triggering subscription through Eventbridge rules.
 
@@ -8,8 +8,7 @@ Additionally, the stack is capable of subscribing log groups and provides a meth
 
 This app allows for collecting CloudWatch logs. The LogWriter app provisions the following resources:
 
-![LogWriter](images/logwriter.png)
-
+LogWriter
 
 1. A Kinesis Firehose Delivery Stream which is responsible for writing data to the provided S3 Bucket.
 2. An IAM Role which grants the Firehose permission to write to S3.
@@ -24,7 +23,7 @@ to the Firehose (1). Logs will be batched and written out to S3.
 
 You can optionally enable automatic log group subscription. Configuring either `LogGroupNamePatterns` or `LogGroupNamePrefixes` parameters will configure these additional resources:
 
-![Subscriber](images/subscriber.png)
+Subscriber
 
 1. A Subscriber Lambda Function that is responsible for querying the CloudWatch API and configuring Log Group Subscription Filters towards the LogWriter Firehose on your behalf.
 2. An IAM Role which grants the Subscriber function permission to subscribe Log Groups.
@@ -37,37 +36,45 @@ You can optionally enable automatic log group subscription. Configuring either `
 
 ### Parameters
 
-| Parameter       | Type    | Description |
-|-----------------|---------|-------------|
-| **`BucketArn`** | String | S3 Bucket ARN to write log records to. |
-| `Prefix` | String | Optional prefix to write log records to. |
-| `LogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. We will only subscribe to log groups that have names matching any of the provided strings based on a case-sensitive substring search. See the AWS `DescribeLogGroups` action for more information. To subscribe to all log groups, use the wildcard operator *. |
-| `LogGroupNamePrefixes` | CommaDelimitedList | Comma separated list of prefixes. The lambda function will only apply to log groups that start with a provided string. To subscribe to all log groups, use the wildcard operator *. |
-| `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This parameter is used to filter out log groups from subscription, and supports the use of regular expressions. |
-| `DiscoveryRate` | String | EventBridge rate expression for periodically triggering discovery. If not set, no eventbridge rules are configured. |
-| `FilterName` | String | Subscription filter name. Existing filters that have this name as a prefix will be removed. |
-| `FilterPattern` | String | CloudWatch Logs subscription filter pattern. Only log events matching this pattern are delivered to Firehose. Uses AWS CloudWatch filter pattern syntax. An empty string matches all events. |
-| `NameOverride` | String | Name of Lambda function. |
-| `BufferingInterval` | Number | Buffer incoming data for the specified period of time, in seconds, before delivering it to S3.  |
-| `BufferingSize` | Number | Buffer incoming data to the specified size, in MiBs, before delivering it to S3.  |
-| `NumWorkers` | String | Maximum number of concurrent workers when processing log groups.  |
-| `MemorySize` | String | The amount of memory, in megabytes, that your function has access to. |
-| `Timeout` | String | The amount of time that Lambda allows a function to run before stopping it. The maximum allowed value is 900 seconds. |
-| `DebugEndpoint` | String | Endpoint to send additional debug telemetry to. |
-| `Verbosity` | String | Logging verbosity for Lambda. Highest log verbosity is 9. |
 
-**Note**: If neither `LogGroupNamePatterns` nor `LogGroupNamePrefixes` are provided, the Lambda function will not operate on any log groups. It requires explicit patterns or prefixes to define its scope of operation.
+| Parameter                     | Type               | Description                                                                                                                                                                                                                                                                                       |
+| ----------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `**BucketArn`**               | String             | S3 Bucket ARN to write log records to.                                                                                                                                                                                                                                                            |
+| `Prefix`                      | String             | Optional prefix to write log records to.                                                                                                                                                                                                                                                          |
+| `LogGroupNamePatterns`        | CommaDelimitedList | Comma separated list of patterns. We will only subscribe to log groups that have names matching any of the provided strings based on a case-sensitive substring search. See the AWS `DescribeLogGroups` action for more information. To subscribe to all log groups, use the wildcard operator *. |
+| `LogGroupNamePrefixes`        | CommaDelimitedList | Comma separated list of prefixes. The lambda function will only apply to log groups that start with a provided string. To subscribe to all log groups, use the wildcard operator *.                                                                                                               |
+| `ExcludeLogGroupNamePatterns` | CommaDelimitedList | Comma separated list of patterns. This parameter is used to filter out log groups from subscription, and supports the use of regular expressions.                                                                                                                                                 |
+| `DiscoveryRate`               | String             | EventBridge rate expression for periodically triggering discovery. If not set, no eventbridge rules are configured.                                                                                                                                                                               |
+| `FilterName`                  | String             | Subscription filter name. Existing filters that have this name as a prefix will be removed.                                                                                                                                                                                                       |
+| `FilterPattern`               | String             | CloudWatch Logs subscription filter pattern. Only log events matching this pattern are delivered to Firehose. Uses AWS CloudWatch filter pattern syntax. An empty string matches all events.                                                                                                      |
+| `NameOverride`                | String             | Name of Lambda function.                                                                                                                                                                                                                                                                          |
+| `BufferingInterval`           | Number             | Buffer incoming data for the specified period of time, in seconds, before delivering it to S3.                                                                                                                                                                                                    |
+| `BufferingSize`               | Number             | Buffer incoming data to the specified size, in MiBs, before delivering it to S3.                                                                                                                                                                                                                  |
+| `NumWorkers`                  | String             | Maximum number of concurrent workers when processing log groups.                                                                                                                                                                                                                                  |
+| `MemorySize`                  | String             | The amount of memory, in megabytes, that your function has access to.                                                                                                                                                                                                                             |
+| `Timeout`                     | String             | The amount of time that Lambda allows a function to run before stopping it. The maximum allowed value is 900 seconds.                                                                                                                                                                             |
+| `DebugEndpoint`               | String             | Endpoint to send additional debug telemetry to.                                                                                                                                                                                                                                                   |
+| `Verbosity`                   | String             | Logging verbosity for Lambda. Highest log verbosity is 9.                                                                                                                                                                                                                                         |
+| `LambdaS3BucketPrefix`        | String             | Prefix for the S3 bucket that holds the Subscriber Lambda ZIP (`{prefix}-{region}`). Published `logwriter.yaml` embeds a default.                                                                                                                                                                 |
+| `LambdaS3Key`                 | String             | S3 key for the Subscriber Lambda ZIP.                                                                                                                                                                                                                                                             |
+
+
+**Note**: If neither `LogGroupNamePatterns` nor `LogGroupNamePrefixes` are provided, the Subscriber Lambda will not operate on any log groups. It requires explicit patterns or prefixes to define its scope of operation.
+
+When subscription is enabled, an `**AWS::Lambda::EventSourceMapping*`* connects the Subscriber to its SQS queue (replacing SAM `Events` on the function definition).
 
 ### Outputs
 
-| Output       |  Description |
-|-----------------|-------------|
-| FirehoseArn | Kinesis Firehose Delivery Stream ARN. CloudWatch Log Groups subscribed to this Firehose will have their logs batched and written to S3. |
-| DestinationRoleArn | ARN for IAM Role to be assumed by CloudWatch for log delivery. This value is required when configuring a subscription towards the Firehose Delivery Stream. |
-| FirehoseLogGroupName | Firehose Log Group Name. These logs may contain useful information for debugging Firehose delivery to S3. |
-| SubscriberArn | Subscriber Function ARN. This function is responsible for log group discovery, filtering and subscription. |
-| SubscriberQueueArn | Subscriber Queue ARN. This queue is used by the subscriber function to fan out execution of subscription requests. |
-| SubscriberLogGroupName | Subscriber Log Group Name. This log group contains useful information for debugging the Subscriber function. |
+
+| Output                 | Description                                                                                                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FirehoseArn            | Kinesis Firehose Delivery Stream ARN. CloudWatch Log Groups subscribed to this Firehose will have their logs batched and written to S3.                     |
+| DestinationRoleArn     | ARN for IAM Role to be assumed by CloudWatch for log delivery. This value is required when configuring a subscription towards the Firehose Delivery Stream. |
+| FirehoseLogGroupName   | Firehose Log Group Name. These logs may contain useful information for debugging Firehose delivery to S3.                                                   |
+| SubscriberArn          | Subscriber Function ARN. This function is responsible for log group discovery, filtering and subscription.                                                  |
+| SubscriberQueueArn     | Subscriber Queue ARN. This queue is used by the subscriber function to fan out execution of subscription requests.                                          |
+| SubscriberLogGroupName | Subscriber Log Group Name. This log group contains useful information for debugging the Subscriber function.                                                |
+
 
 ## Subscription Request
 
@@ -177,10 +184,8 @@ If this parameter is set, two EventBridge rules are installed:
 
 Both rules will send requests to the SQS queue, which in turn are consumed by the subscriber lambda.
 
-
 ## Deleting existing subscriptions on uninstall
 
 Uninstalling this app will not clean up configured subscription filters. This is because the time required to uninstall subscription filters varies according to the number of log groups. For a sufficient number of log groups the uninstall timeout would be systematically exceeded, making the app uninstall very brittle.
 
 Given the Firehose will be deleted on uninstall, any existing subscription filters which reference the Firehose will have no effect. If you wish to delete these subscription filters, you should delete them prior to uninstall by setting `ExcludeLogGroupMatches` to `*` and updating your stack. This will work because the inclusion filters `LogGroupPrefixes` and `LogGroupPatterns` determine the set of log groups the Subscriber is allowed to operate on, whereas the exclusion set `ExcludeLogGroupMatches` determines the subset of log groups which cannot have our filter set.
-

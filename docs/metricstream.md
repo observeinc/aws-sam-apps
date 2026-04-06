@@ -10,7 +10,7 @@ The application is configurable through several parameters that determine how da
 
 | Parameter       | Type    | Description |
 |-----------------|---------|-------------|
-| **`BucketArn`** | String | S3 Bucket ARN to write log records to. |
+| **`BucketArn`** | String | S3 Bucket ARN to write metrics records to. |
 | `Prefix` | String | Optional prefix to write metrics to. |
 | `FilterUri` | String | A file hosted in S3 containing list of metrics to stream. |
 | `OutputFormat` | String | The output format for CloudWatch Metrics. |
@@ -22,7 +22,19 @@ The application is configurable through several parameters that determine how da
 | `DatasourceID` | String | The datasource for this metric stream. Providing this will override the `MetricStreamFilterUri`. The configuration from the datasource will be used instead. |
 | `GQLToken` | String | The token used to retrieve metric configuration from the Observe backend.  |
 | `UpdateTimestamp` | String | Unix timestamp when metric stream was created or updated.  |
+| `LambdaS3BucketPrefix` | String | Prefix for the S3 bucket that holds the MetricsConfigurator Lambda ZIP (`{prefix}-{region}`). Published `metricstream.yaml` embeds a default. |
+| `LambdaS3Key` | String | S3 key for the MetricsConfigurator Lambda ZIP. |
 
+The template is **plain CloudFormation** (no SAM transform on this app). The MetricsConfigurator runs as a standard `AWS::Lambda::Function` with code loaded from S3.
+
+Metrics are not collected into your pipeline until **CloudWatch metric streams** exist that send matching metrics into the Firehose delivery stream. In this design those streams are **created and updated by the MetricsConfigurator Lambda**, which CloudFormation invokes (via a custom resource) on stack create and update. There is no separate “static” metric stream defined only in CloudFormation from an S3 include; the Lambda must run for that wiring to happen when this app is deployed in the configurator-enabled mode.
+
+**Datasource vs S3 filter file:** The Lambda does one of two things:
+
+- **`DatasourceID` set:** It uses a **GraphQL query** against Observe to read the datasource’s metric configuration, then calls the CloudWatch API to create or update metric streams (possibly **several** streams when the filter set is large). **`GQLToken`** and related Observe parameters are required for this path.
+- **`DatasourceID` empty:** It uses **`FilterUri`** only—downloads the YAML/JSON from S3 and applies it via **`PutMetricStream`** (typically a single stream).
+
+If **both** **`DatasourceID`** and a non-empty **`FilterUri`** are supplied, the implementation **uses the datasource path only**; the S3 file is not applied for that invocation. (Leaving **`DatasourceID`** empty is how you opt into the filter-file path.)
 
 ### Outputs
 
@@ -33,25 +45,27 @@ The application is configurable through several parameters that determine how da
 
 ## Resources Created
 
-The CloudWatch Metrics Stream application provisions the following AWS resources:
+The MetricStream template always provisions:
 
 - **IAM Role**: Grants the Firehose service permission to access source and destination services.
-- **CloudWatch Log Group**: Captures logging information from the Firehose delivery stream.
-- **CloudWatch Log Stream**: A specific log stream for storing Firehose delivery logs.
-- **Kinesis Firehose Delivery Stream**: The core component that manages the delivery of data to the S3 bucket.
-- **CloudWatch Metrics Stream**: the component responsible for writing metrics to Kinesis Firehose.
+- **CloudWatch Log Group / Log Stream**: Firehose delivery logging.
+- **Kinesis Firehose Delivery Stream**: Delivers metrics data to the S3 bucket.
+- **IAM Role for CloudWatch Metric Streams**: Lets the metric stream write to Firehose.
 
-To apply changes to the metrics via Lambda Function, you must include the `ObserveAccountID`, and `ObserveDomainName`, `DatasourceID`, `GQLToken` and `UpdateTimestamp` parameters. If these parameters are provided, the stack will also create the following:
+When the **MetricsConfigurator** path is enabled (see **Datasource vs S3 filter file** above, plus packaged Lambda ZIP parameters), the stack also creates:
 
-- **Lambda Function**: Queries the datasource configuration set up in the Observe backend and updates the CloudWatch Metrics Stream accordingly.
-- **Lambda IAM Role**: Grants the Lambda function permission to update the CloudWatch Metrics Stream and access the token stored in Secrets Manager.
-- **Secrets Manager Secret**: Stores the token used to retrieve metric configuration from the Observe backend.
+- **MetricsConfigurator Lambda**: Invoked by a custom resource to create or update **CloudWatch metric streams** via the CloudWatch API (including multiple streams when needed for large filter sets). Configuration comes from the Observe datasource (**GraphQL**) when **`DatasourceID`** is set, or from the YAML/JSON at **`FilterUri`** when it is not.
+- **Lambda IAM Role**: `cloudwatch:PutMetricStream` / `DeleteMetricStream`, `iam:PassRole`, and (when using a datasource) Secrets Manager access for **`GQLToken`**.
+- **Secrets Manager Secret**: Created only when **`DatasourceID`** is set; stores **`GQLToken`** for the GraphQL path.
+- **Custom resource**: Triggers the configurator on create/update (uses **`UpdateTimestamp`** and **`FilterUri`** as appropriate).
+
+Static **`AWS::CloudWatch::MetricStream`** resources with **`AWS::Include`** from S3 are not used; metric streams are managed by the Lambda for compatibility with StackSets and S3-based code deployment.
 
 ## Filtering metrics
 
 ### Via Configuration File
 
-You may provide a URI to a pubicly readable S3 object containing a YAML or JSON definition
+You may provide a URI to a publicly readable S3 object containing a YAML or JSON definition
 for what metrics to collect. Observe hosts some boilerplate filters you can use:
 
 - `s3://observeinc/cloudwatchmetrics/filters/full.yaml` collects all metrics.
