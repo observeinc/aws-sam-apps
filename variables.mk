@@ -46,11 +46,21 @@ GO_BUILD_IMAGE  ?= golang:1.25.7-alpine
 GO_MOD          ?= vendor
 GOFLAGS         ?=
 
-# Bucket prefix used when running `sam-push-*`. This can be omitted for
-# development purposes, in which case the `sam package` command will provision
-# a bucket.
+# Bucket prefix used when running `sam-push-*`. When omitted, a default
+# bucket is auto-created as aws-sam-apps-${AWS_ACCOUNT_ID}-${REGION}.
 S3_BUCKET_PREFIX ?=
 SAM_BUILD_DIR    ?= .aws-sam/build
+
+# Lambda binaries that need to be zipped and uploaded separately (not handled
+# by SAM's native packaging because these templates use AWS::Lambda::Function).
+LAMBDA_ZIP_DIR   := $(SAM_BUILD_DIR)/lambda-zips
+LAMBDA_ZIP_BINS  := subscriber metricsconfigurator pollerconfigurator
+
+# Per-app mapping: which Lambda ZIPs does each app need?
+LAMBDA_ZIPS_logwriter     := subscriber
+LAMBDA_ZIPS_metricstream  := metricsconfigurator
+LAMBDA_ZIPS_externalrole  := pollerconfigurator
+LAMBDA_ZIPS_stack         := subscriber metricsconfigurator pollerconfigurator
 SAM_CONFIG_FILE  ?= $(shell pwd)/samconfig.yaml
 SAM_CONFIG_ENV   ?= default
 
@@ -67,3 +77,8 @@ TAG              := $(if $(RELEASE_TAG),$(RELEASE_TAG),latest)
 
 # Version should only be overridden in CI. Cannot be empty.
 VERSION          := $(if $(RELEASE_VERSION),$(RELEASE_VERSION),$(shell git describe --tags --always --dirty))
+
+# When S3_BUCKET_PREFIX is not set, we auto-create a deterministic bucket.
+# The account ID is lazily resolved only when needed.
+AWS_ACCOUNT_ID   ?= $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null)
+RESOLVED_S3_BUCKET_PREFIX = $(if $(S3_BUCKET_PREFIX),$(S3_BUCKET_PREFIX),aws-sam-apps-$(AWS_ACCOUNT_ID)-)
