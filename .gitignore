@@ -17,3 +17,7 @@ tfplan
 
 .idea
 tftests
+
+# Build artifacts
+.tmp/
+packaged-*.yaml
