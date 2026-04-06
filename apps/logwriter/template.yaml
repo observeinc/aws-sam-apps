@@ -1,8 +1,5 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Transform:
-  - AWS::Serverless-2016-10-31
-  - AWS::LanguageExtensions
 Description: 'Subscribe logs to S3.'
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -40,6 +37,11 @@ Metadata:
           - NumWorkers
           - MemorySize
           - Timeout
+      - Label:
+          default: Lambda Code
+        Parameters:
+          - LambdaS3BucketPrefix
+          - LambdaS3Key
       - Label:
           default: Debugging
         Parameters:
@@ -155,13 +157,25 @@ Parameters:
     Description: >-
       Endpoint to send additional debug telemetry to.
     Default: ''
-    AllowedPattern: "^(http(s)?:\/\/.*)?$"
+    AllowedPattern: '^(http(s)?://.*)?$'
   Verbosity:
     Type: String
     Default: ''
     Description: >-
       Logging verbosity for Lambda. Highest log verbosity is 9.
     AllowedPattern: "^[0-9]?$"
+  LambdaS3BucketPrefix:
+    Type: String
+    Description: >-
+      S3 bucket name prefix for the subscriber Lambda code ZIP.
+      The actual bucket is constructed as {prefix}-{region}, e.g.
+      observeinc-us-west-2. Required for StackSet deployments.
+    Default: ''
+  LambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the subscriber Lambda code ZIP.
+    Default: ''
 Conditions:
   UseDefaultFilterName: !Equals
     - !Ref FilterName
@@ -414,10 +428,8 @@ Resources:
             - !Ref NameOverride
       RetentionInDays: 365
   Subscriber:
-    Type: AWS::Serverless::Function
+    Type: AWS::Lambda::Function
     Condition: EnableSubscription
-    Metadata:
-      BuildMethod: makefile
     DependsOn:
       - QueuePolicy
       - SubscriberLogGroup
@@ -427,30 +439,21 @@ Resources:
         - !Ref AWS::StackName
         - !Ref NameOverride
       Role: !GetAtt SubscriberRole.Arn
-      CodeUri: ../../bin/linux_arm64
+      Code:
+        S3Bucket: !Sub '${LambdaS3BucketPrefix}-${AWS::Region}'
+        S3Key: !Ref LambdaS3Key
       Handler: bootstrap
       Runtime: provided.al2023
       MemorySize: !If
         - UseDefaultMemorySize
-        - "128"
+        - 128
         - !Ref MemorySize
       Timeout: !If
         - UseDefaultTimeout
-        - "120"
+        - 120
         - !Ref Timeout
       Architectures:
         - arm64
-      Events:
-        Items:
-          Type: SQS
-          Properties:
-            BatchSize: 1
-            Enabled: true
-            FunctionResponseTypes:
-              - ReportBatchItemFailures
-            Queue: !GetAtt Queue.Arn
-            ScalingConfig:
-              MaximumConcurrency: 2
       Environment:
         Variables:
           FILTER_NAME: !If
@@ -477,6 +480,18 @@ Resources:
           NUM_WORKERS: !Ref NumWorkers
           OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
           OTEL_TRACES_EXPORTER: !If [DisableOTEL, "none", "otlp"]
+  SubscriberEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: EnableSubscription
+    Properties:
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn: !GetAtt Queue.Arn
+      FunctionName: !Ref Subscriber
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: 2
   SubscriptionEvents:
     Type: AWS::Events::Rule
     Condition: HasDiscoveryRate
@@ -538,16 +553,20 @@ Resources:
       Target:
         Arn: !GetAtt Queue.Arn
         RoleArn: !GetAtt SchedulerRole.Arn
-        Input: !ToJsonString
-          discover:
-            logGroupNamePatterns: !If
+        Input: !Sub
+          - '{"discover":{"logGroupNamePatterns":[${Patterns}],"logGroupNamePrefixes":[${Prefixes}]}}'
+          - Patterns: !If
               - HasLogGroupNamePatterns
-              - !Ref LogGroupNamePatterns
-              - []
-            logGroupNamePrefixes: !If
+              - !Sub
+                - '"${Val}"'
+                - Val: !Join ['","', !Ref LogGroupNamePatterns]
+              - ''
+            Prefixes: !If
               - HasLogGroupNamePrefixes
-              - !Ref LogGroupNamePrefixes
-              - []
+              - !Sub
+                - '"${Val}"'
+                - Val: !Join ['","', !Ref LogGroupNamePrefixes]
+              - ''
   Trigger:
     Type: Custom::Trigger
     Condition: HasDiscoveryRate
