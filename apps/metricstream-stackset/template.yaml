@@ -1,0 +1,216 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  StackSet for deploying Observe MetricStream across an AWS Organization.
+  Deploy this template in the management or delegated admin account.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: StackSet Configuration
+        Parameters:
+          - TemplateURL
+          - TargetOUs
+          - TargetRegions
+          - AutoDeployEnabled
+          - RetainStacksOnAccountRemoval
+          - CallAs
+      - Label:
+          default: MetricStream Destination
+        Parameters:
+          - BucketArn
+          - Prefix
+      - Label:
+          default: MetricStream Configuration
+        Parameters:
+          - FilterUri
+          - OutputFormat
+          - NameOverride
+      - Label:
+          default: MetricStream Sizing
+        Parameters:
+          - BufferingInterval
+          - BufferingSize
+      - Label:
+          default: Observe Configuration
+        Parameters:
+          - ObserveAccountID
+          - ObserveDomainName
+          - DatasourceID
+          - GQLToken
+          - UpdateTimestamp
+
+Parameters:
+  TemplateURL:
+    Type: String
+    Description: >-
+      S3 URL of the packaged metricstream template. This is the URL produced
+      by `sam package` or `sam push`, e.g.
+      https://<bucket>.s3.<region>.amazonaws.com/aws-sam-apps/<version>/metricstream.yaml
+    AllowedPattern: "^https://.*$"
+  TargetOUs:
+    Type: CommaDelimitedList
+    Description: >-
+      Organizational Unit IDs to deploy to, e.g. ou-abc123,ou-def456.
+  TargetRegions:
+    Type: CommaDelimitedList
+    Description: >-
+      AWS Regions to deploy stack instances to, e.g. us-east-1,us-west-2.
+  AutoDeployEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >-
+      Automatically deploy to new accounts added to the target OUs.
+  RetainStacksOnAccountRemoval:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >-
+      Whether to retain stack instances when an account is removed from the
+      target OUs.
+  CallAs:
+    Type: String
+    Default: SELF
+    AllowedValues:
+      - SELF
+      - DELEGATED_ADMIN
+    Description: >-
+      Whether you are acting as the management account (SELF) or a delegated
+      administrator (DELEGATED_ADMIN).
+
+  # --- Pass-through parameters for metricstream ---
+  BucketArn:
+    Type: String
+    Description: >-
+      S3 Bucket ARN to write metrics to.
+    AllowedPattern: "^arn:.*$"
+  Prefix:
+    Type: String
+    Description: >-
+      Optional prefix to write metrics to.
+    Default: ''
+  FilterUri:
+    Type: String
+    Description: >-
+      A file hosted in S3 containing list of metrics to stream.
+    Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
+  OutputFormat:
+    Type: String
+    Description: >-
+      The output format for CloudWatch Metrics.
+    Default: 'json'
+    AllowedValues:
+      - json
+      - opentelemetry0.7
+      - opentelemetry1.0
+  NameOverride:
+    Type: String
+    Description: >-
+      Set Firehose Delivery Stream name. In the absence of a value, the stack
+      name will be used.
+    Default: ''
+    MaxLength: 64
+  BufferingInterval:
+    Type: Number
+    Default: 60
+    MinValue: 60
+    MaxValue: 900
+    Description: >-
+      Buffer incoming data for the specified period of time, in seconds,
+      before delivering it to the destination.
+  BufferingSize:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 64
+    Description: >-
+      Buffer incoming data to the specified size, in MiBs, before delivering
+      it to the destination.
+  ObserveAccountID:
+    Type: String
+    Description: Observe Account ID.
+    Default: ''
+  ObserveDomainName:
+    Type: String
+    Description: >-
+      The domain name we will retrieve metric configuration from.
+    Default: ''
+  UpdateTimestamp:
+    Type: String
+    Description: >-
+      Timestamp when the metric stream was created or updated.
+    Default: ''
+  DatasourceID:
+    Type: String
+    Description: >-
+      The datasource for this metric stream. Providing this will override the
+      MetricStreamFilterUri.
+    Default: ''
+  GQLToken:
+    Type: String
+    NoEcho: true
+    Description: >-
+      The token used to retrieve metric configuration.
+    Default: ''
+Resources:
+  MetricStreamStackSet:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      StackSetName: !Sub '${AWS::StackName}'
+      Description: >-
+        Observe MetricStream - streams CloudWatch Metrics to S3 via Kinesis
+        Firehose.
+      TemplateURL: !Ref TemplateURL
+      PermissionModel: SERVICE_MANAGED
+      CallAs: !Ref CallAs
+      AutoDeployment:
+        Enabled: !Ref AutoDeployEnabled
+        RetainStacksOnAccountRemoval: !Ref RetainStacksOnAccountRemoval
+      Capabilities:
+        - CAPABILITY_IAM
+        - CAPABILITY_NAMED_IAM
+      ManagedExecution:
+        Active: true
+      StackInstancesGroup:
+        - DeploymentTargets:
+            OrganizationalUnitIds: !Ref TargetOUs
+          Regions: !Ref TargetRegions
+      Parameters:
+        - ParameterKey: BucketArn
+          ParameterValue: !Ref BucketArn
+        - ParameterKey: Prefix
+          ParameterValue: !Ref Prefix
+        - ParameterKey: FilterUri
+          ParameterValue: !Ref FilterUri
+        - ParameterKey: OutputFormat
+          ParameterValue: !Ref OutputFormat
+        - ParameterKey: NameOverride
+          ParameterValue: !Ref NameOverride
+        - ParameterKey: BufferingInterval
+          ParameterValue: !Ref BufferingInterval
+        - ParameterKey: BufferingSize
+          ParameterValue: !Ref BufferingSize
+        - ParameterKey: ObserveAccountID
+          ParameterValue: !Ref ObserveAccountID
+        - ParameterKey: ObserveDomainName
+          ParameterValue: !Ref ObserveDomainName
+        - ParameterKey: UpdateTimestamp
+          ParameterValue: !Ref UpdateTimestamp
+        - ParameterKey: DatasourceID
+          ParameterValue: !Ref DatasourceID
+        - ParameterKey: GQLToken
+          ParameterValue: !Ref GQLToken
+
+Outputs:
+  StackSetName:
+    Description: Name of the MetricStream StackSet.
+    Value: !Sub '${AWS::StackName}'
+  StackSetId:
+    Description: ID of the MetricStream StackSet.
+    Value: !Ref MetricStreamStackSet

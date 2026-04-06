@@ -29,6 +29,28 @@ This repository contains multiple SAM applications, each fulfilling a specific r
 | [![Static Badge](https://img.shields.io/badge/us_west_2-latest-blue?logo=amazonaws)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://observeinc-us-west-2.s3.amazonaws.com/aws-sam-apps/latest/stack.yaml) | [![Static Badge](https://img.shields.io/badge/us_west_2-latest-blue?logo=amazonaws)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://observeinc-us-west-2.s3.amazonaws.com/aws-sam-apps/latest/config.yaml) | [![Static Badge](https://img.shields.io/badge/us_west_2-latest-blue?logo=amazonaws)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://observeinc-us-west-2.s3.amazonaws.com/aws-sam-apps/latest/forwarder.yaml) |
 
 
+## Deployment Modes
+
+This repository supports two deployment modes:
+
+### Single-stack deployment
+
+Deploy individual applications to a single AWS account. Use the Quick Create
+links above, `sam deploy`, or Terraform. Each packaged template is
+self-contained with Lambda code defaults pre-populated.
+
+### StackSet deployment (AWS Organizations)
+
+Deploy across multiple accounts and regions using CloudFormation StackSets.
+The repository includes StackSet wrapper templates:
+
+- `logwriter-stackset` -- deploys LogWriter across member accounts
+- `metricstream-stackset` -- deploys MetricStream across member accounts
+- `externalrole-stackset` -- deploys the external IAM role and PollerConfigurator
+
+Each StackSet template references the underlying app template via a
+`TemplateURL` parameter pointing to the packaged template on S3.
+
 ## Getting Started
 
 To begin using these applications, you'll need to have the AWS CLI and SAM CLI installed and configured. See below for quick instructions on building and deploying an application. For a full development guide, check out the `DEVELOPER.md` file.
@@ -41,12 +63,15 @@ To begin using these applications, you'll need to have the AWS CLI and SAM CLI i
 
 ### Building and Deploying an Application
 
-Navigate to an application's directory under `apps/` and use the SAM CLI to build and deploy:
+Package and deploy any application:
 
 ```sh
-cd apps/forwarder
-sam build
-sam deploy --guided
+make sam-package-forwarder
+# deploy the packaged template
+sam deploy \
+  --template .aws-sam/build/regions/${AWS_REGION}/forwarder.yaml \
+  --stack-name my-forwarder \
+  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
 ```
 
 For more detailed instructions on building, deploying, and publishing applications, please see the corresponding documentation in the `docs` folder.
@@ -69,7 +94,9 @@ Each SAM application has its own documentation, providing specific details and u
 - [Forwarder](docs/forwarder.md)
 - [MetricStream](docs/metricstream.md)
 - [LogWriter](docs/logwriter.md)
+- [ExternalRole](docs/externalrole.md)
 - [Config](docs/config.md)
+- [ConfigSubscription](docs/configsubscription.md)
 
 For development practices, build and release processes, and testing workflows, see the `DEVELOPER.md` file.
 
