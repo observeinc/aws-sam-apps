@@ -1,0 +1,54 @@
+[
+  {
+    "ParameterKey": "TemplateURL",
+    "ParameterValue": "https://aws-sam-apps-460044344528-us-west-2.s3.us-west-2.amazonaws.com/aws-sam-apps/VERSION_PLACEHOLDER/externalrole.yaml"
+  },
+  {
+    "ParameterKey": "TargetOUs",
+    "ParameterValue": "ou-erx5-wz7686xs"
+  },
+  {
+    "ParameterKey": "TargetRegions",
+    "ParameterValue": "us-west-2,us-east-1"
+  },
+  {
+    "ParameterKey": "ObserveAwsAccountId",
+    "ParameterValue": "723346149663"
+  },
+  {
+    "ParameterKey": "AllowedActions",
+    "ParameterValue": "cloudwatch:GetMetricData,cloudwatch:ListMetrics,cloudwatch:ListTagsForResource,tag:GetResources,ec2:DescribeInstances,ec2:DescribeVolumes"
+  },
+  {
+    "ParameterKey": "DatastreamIds",
+    "ParameterValue": "42469220"
+  },
+  {
+    "ParameterKey": "NameOverride",
+    "ParameterValue": "obs-externalrole"
+  },
+  {
+    "ParameterKey": "ObserveCustomerAccountId",
+    "ParameterValue": "137968094238"
+  },
+  {
+    "ParameterKey": "ObserveDomainName",
+    "ParameterValue": "observe-eng.com"
+  },
+  {
+    "ParameterKey": "WorkspaceID",
+    "ParameterValue": "42434428"
+  },
+  {
+    "ParameterKey": "GQLToken",
+    "ParameterValue": "REPLACE_WITH_TOKEN"
+  },
+  {
+    "ParameterKey": "PollerConfigURI",
+    "ParameterValue": "s3://observe-blunderdome/poller-config.json"
+  },
+  {
+    "ParameterKey": "UpdateTimestamp",
+    "ParameterValue": ""
+  }
+]
