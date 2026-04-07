@@ -271,6 +271,11 @@ $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 	  echo "# copying $${APP}-stackset.yaml -> $(dir $@)$${APP}-stackset.yaml" && \
 	  cp "apps/$${APP}-stackset/template.yaml" \
 	     "$(dir $@)$${APP}-stackset.yaml" && \
+	  export TEMPLATE_URL="https://$${BUCKET}.s3.$${REGION}.amazonaws.com/aws-sam-apps/$(VERSION)/$${APP}.yaml" && \
+	  echo "# embedding TemplateURL default: $${TEMPLATE_URL}" && \
+	  python3 scripts/embed-lambda-defaults.py \
+	    "$(dir $@)$${APP}-stackset.yaml" \
+	    "TemplateURL=$${TEMPLATE_URL}" && \
 	  echo "# uploading $${APP}-stackset.yaml -> s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}-stackset.yaml" && \
 	  aws s3 cp "$(dir $@)$${APP}-stackset.yaml" \
 	    "s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}-stackset.yaml" \
@@ -287,7 +292,7 @@ $(foreach target,$(SAM_PULL_REGION_TARGETS),$(eval  \
 $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 	# force ourselves to use the public URLs, verifying ACLs are correctly set
 	cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
-	for app in $(PACKAGEABLE_APPS); do \
+	for app in $(PACKAGEABLE_APPS) $(STACKSET_APPS); do \
 	  curl -fs \
 	    -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.$(subst sam-pull-,,$@).amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
 	    -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \

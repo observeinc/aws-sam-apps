@@ -55,6 +55,21 @@ def embed_defaults(template_path, defaults):
             new_content = pattern_dq.sub(replacement_dq, content)
 
         if new_content == content:
+            # No Default line exists — insert one after the last indented
+            # property line in the parameter block.
+            insert_pattern = re.compile(
+                r"(^  " + re.escape(param_name) + r":\s*\n"
+                r"(?:    .*\n)*?)"     # capture the full param block
+                r"(?=  \S|\Z)",        # stop at the next top-level key or EOF
+                re.MULTILINE,
+            )
+            match = insert_pattern.search(content)
+            if match:
+                block = match.group(1)
+                new_block = block + "    Default: '" + param_value + "'\n"
+                new_content = content[:match.start()] + new_block + content[match.end():]
+
+        if new_content == content:
             skipped.append(param_name)
 
         content = new_content
