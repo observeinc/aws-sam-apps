@@ -63,8 +63,8 @@ Parameters:
   PrimaryRegion:
     Type: String
     Description: >-
-      Region where the IAM role is created. IAM roles are global, so only one
-      region should create the role to avoid conflicts in multi-region StackSets.
+      Region where the IAM role is created. IAM roles are global,
+      so only one region should create the role to avoid conflicts.
     Default: 'us-west-2'
   ObserveCustomerAccountId:
     Type: String
@@ -164,6 +164,14 @@ Resources:
                 Resource: '*'
 
   GQLTokenSecret:
+    # W1030: GQLToken defaults to '' but this resource is gated by the
+    # DeployPollerConfigurator condition so it is never created with an
+    # empty value.
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W1030
     Type: AWS::SecretsManager::Secret
     Condition: DeployPollerConfigurator
     Properties:
@@ -215,6 +223,14 @@ Resources:
                 Resource: !Ref GQLTokenSecret
 
   PollerConfigurator:
+    # W1030: LambdaS3Key defaults to '' but this resource is gated by
+    # the DeployPollerConfigurator condition so it is never created with
+    # an empty value.
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W1030
     Type: AWS::Lambda::Function
     Condition: DeployPollerConfigurator
     Properties:

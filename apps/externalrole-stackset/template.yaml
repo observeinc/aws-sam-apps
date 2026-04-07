@@ -101,9 +101,9 @@ Parameters:
   PrimaryRegion:
     Type: String
     Description: >-
-      Region where the IAM role is created. IAM roles are global, so only one
-      region should create the role to avoid conflicts in multi-region StackSets.
-      Must match one of the TargetRegions.
+      Region where the IAM role is created. IAM roles are
+      global, so only one region should create the role to avoid
+      conflicts. Must match one of the TargetRegions.
     Default: 'us-west-2'
 
   # --- Poller configuration pass-through ---

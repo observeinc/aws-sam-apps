@@ -65,8 +65,8 @@ func TestReportStatusWithPhysicalID(t *testing.T) {
 	var receivedBody CfResponse
 
 	cfnServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		json.NewDecoder(r.Body).Decode(&receivedBody)
+		defer func() { _ = r.Body.Close() }()
+		_ = json.NewDecoder(r.Body).Decode(&receivedBody)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer cfnServer.Close()
@@ -100,8 +100,8 @@ func TestReportStatusFailure(t *testing.T) {
 	var receivedBody CfResponse
 
 	cfnServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		json.NewDecoder(r.Body).Decode(&receivedBody)
+		defer func() { _ = r.Body.Close() }()
+		_ = json.NewDecoder(r.Body).Decode(&receivedBody)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer cfnServer.Close()

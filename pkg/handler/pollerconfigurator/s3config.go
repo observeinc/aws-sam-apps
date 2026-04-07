@@ -73,7 +73,7 @@ func downloadPollerConfigFromURL(ctx context.Context, url string) (*PollerConfig
 	if err != nil {
 		return nil, fmt.Errorf("failed to download poller config from %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to download poller config from %s: HTTP %d", url, resp.StatusCode)

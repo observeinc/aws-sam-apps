@@ -49,7 +49,7 @@ func downloadFilterYAML(ctx context.Context, filterURI string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to download filter YAML from %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to download filter YAML from %s: HTTP %d", url, resp.StatusCode)
