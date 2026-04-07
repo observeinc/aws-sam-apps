@@ -175,7 +175,7 @@ $(foreach app,logwriter metricstream externalrole stack, \
   ) \
 )
 
-SAM_BUILD_TEMPLATES = $(foreach app,$(APPS), $(SAM_BUILD_DIR)/apps/$(app)/template.yaml)
+SAM_BUILD_TEMPLATES = $(foreach app,$(PACKAGEABLE_APPS), $(SAM_BUILD_DIR)/apps/$(app)/template.yaml)
 
 $(foreach template,$(SAM_BUILD_TEMPLATE),$(eval  \
 	$(template): apps/$(call get_app, $(template))/template.yaml \
@@ -190,7 +190,7 @@ $(SAM_BUILD_TEMPLATES): go-build $(LAMBDA_MAKEFILE)
 	  --config-file $(SAM_CONFIG_FILE) \
 	  --config-env $(SAM_CONFIG_ENV)
 
-SAM_PACKAGE_TARGETS = $(foreach app,$(APPS),sam-package-$(app))
+SAM_PACKAGE_TARGETS = $(foreach app,$(PACKAGEABLE_APPS),sam-package-$(app))
 
 .PHONY: $(SAM_PACKAGE_TARGETS)
 # map each SAM_PACKAGE_TARGET to the corresponding SAM_PACKAGE_TEMPLATE for our current region
@@ -211,7 +211,7 @@ $(subst .yaml,,$(lastword $(subst /, ,$(1))))
 endef
 
 SAM_PACKAGE_DIRS = $(foreach region, $(AWS_REGIONS), $(SAM_BUILD_DIR)/regions/$(region))
-SAM_PACKAGE_TEMPLATES = $(foreach dir,$(SAM_PACKAGE_DIRS), $(foreach app,$(APPS),$(dir)/$(app).yaml))
+SAM_PACKAGE_TEMPLATES = $(foreach dir,$(SAM_PACKAGE_DIRS), $(foreach app,$(PACKAGEABLE_APPS),$(dir)/$(app).yaml))
 
 $(foreach template,$(SAM_PACKAGE_TEMPLATES),$(eval  \
 	$(template): $(SAM_BUILD_DIR)/apps/$(call get_app, $(template))/template.yaml \
@@ -280,14 +280,14 @@ $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 SAM_PULL_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-pull-$(region))
 
 $(foreach target,$(SAM_PULL_REGION_TARGETS),$(eval  \
-	$(target): $(foreach app,$(APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$(target))) \
+	$(target): $(foreach app,$(PACKAGEABLE_APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$(target))) \
 ))
 
 .PHONY: $(SAM_PULL_REGION_TARGETS)
 $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 	# force ourselves to use the public URLs, verifying ACLs are correctly set
 	cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
-	for app in $(APPS); do \
+	for app in $(PACKAGEABLE_APPS); do \
 	  curl -fs \
 	    -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.$(subst sam-pull-,,$@).amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
 	    -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \
@@ -296,7 +296,7 @@ $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 SAM_PUSH_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-push-$(region))
 
 $(foreach target,$(SAM_PUSH_REGION_TARGETS),$(eval  \
-	$(target): $(foreach app,$(APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$(target))/$(app).yaml) \
+	$(target): $(foreach app,$(PACKAGEABLE_APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$(target))/$(app).yaml) \
 ))
 
 require_bucket_prefix:
@@ -315,7 +315,7 @@ $(SAM_PUSH_REGION_TARGETS): require_bucket_prefix
 	  --recursive \
 	  $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$@)/ s3://$(S3_BUCKET_PREFIX)$(subst sam-push-,,$@)/aws-sam-apps/$(VERSION)/
 
-SAM_VALIDATE_TARGETS = $(foreach app,$(APPS),sam-validate-$(app))
+SAM_VALIDATE_TARGETS = $(foreach app,$(SAM_APPS),sam-validate-$(app))
 
 .PHONY: $(SAM_VALIDATE_TARGETS)
 $(SAM_VALIDATE_TARGETS):
@@ -324,6 +324,14 @@ $(SAM_VALIDATE_TARGETS):
 	--template apps/$(lastword $(subst -, ,$@))/template.yaml \
 	--config-file $(SAM_CONFIG_FILE) \
 	--config-env $(SAM_CONFIG_ENV)
+
+CFN_VALIDATE_APPS = $(CFN_APPS) $(STACKSET_APPS)
+CFN_VALIDATE_TARGETS = $(foreach app,$(CFN_VALIDATE_APPS),cfn-validate-$(app))
+
+.PHONY: $(CFN_VALIDATE_TARGETS)
+$(foreach app,$(CFN_VALIDATE_APPS),$(eval \
+  cfn-validate-$(app): ; yamllint apps/$(app)/template.yaml && cfn-lint apps/$(app)/template.yaml \
+))
 
 TEST_INTEGRATION_TARGETS = $(foreach test,$(TF_TESTS),test-integration-$(test))
 
@@ -373,10 +381,12 @@ sam-push: $(SAM_PUSH_REGION_TARGETS)
 sam-push-%: # @HELP push all SAM apps to specific region (e.g sam-push-us-west-2)
 
 .PHONY: sam-validate
-sam-validate: # @HELP validate all SAM templates.
-sam-validate: $(SAM_VALIDATE_TARGETS)
+sam-validate: # @HELP validate all templates (SAM validate for SAM apps, cfn-lint for plain CloudFormation).
+sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS)
 
-sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-logwriter).
+sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-forwarder).
+
+cfn-validate-%: # @HELP validate specific CloudFormation template (e.g. cfn-validate-logwriter).
 
 .PHONY: tag
 tag: # @HELP pull SAM manifests for RELEASE_VERSION, and publish as RELEASE_TAG.
@@ -412,7 +422,9 @@ outputs-%: # @HELP generate outputs list for documentation purposes.
 help: # @HELP displays this message.
 help:
 	echo "VARIABLES:"
-	echo "  APPS          = $(APPS)"
+	echo "  SAM_APPS      = $(SAM_APPS)"
+	echo "  CFN_APPS      = $(CFN_APPS)"
+	echo "  STACKSET_APPS = $(STACKSET_APPS)"
 	echo "  AWS_REGION    = $(AWS_REGION)"
 	echo "  GO_BINS       = $(GO_BINS)"
 	echo "  GO_BUILD_DIRS = $(GO_BUILD_DIRS)"

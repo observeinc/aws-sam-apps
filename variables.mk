@@ -1,5 +1,18 @@
-# Each directory under apps/* must contain a validate SAM template
-APPS         := $(shell find apps/* -type d -maxdepth 0 -exec basename {} \;)
+# All app directories under apps/
+APPS             := $(shell find apps/* -type d -maxdepth 0 -exec basename {} \;)
+
+# Apps that use the SAM transform and go through sam build/package/validate.
+SAM_APPS         := config configsubscription forwarder stack
+
+# Apps that go through sam build/package but don't use the SAM transform.
+# These are plain CloudFormation templates validated with cfn-lint.
+CFN_APPS         := logwriter metricstream externalrole
+
+# Stackset wrapper templates -- static YAML, no build/package step needed.
+STACKSET_APPS    := $(filter %-stackset,$(APPS))
+
+# All apps that go through sam build/package (excludes stackset wrappers).
+PACKAGEABLE_APPS := $(SAM_APPS) $(CFN_APPS)
 
 # This is our default region when not provided.
 AWS_REGION   ?= us-west-2
