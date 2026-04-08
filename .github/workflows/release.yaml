@@ -11,6 +11,10 @@ on:
         type: boolean
         description: 'Skip tests.'
         default: false
+      skip_regions:
+        type: string
+        description: 'Space-separated list of regions to skip'
+        default: ''
  
 jobs:
   version:
@@ -52,6 +56,7 @@ jobs:
       s3_bucket_prefix: "observeinc-"
       global: ${{ needs.version.outputs.version != '' }}
       release_version: ${{ needs.version.outputs.version }}
+      skip_regions: ${{ inputs.skip_regions }}
 
   integration:
     needs: upload
