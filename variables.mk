@@ -4,8 +4,12 @@ APPS         := $(shell find apps/* -type d -maxdepth 0 -exec basename {} \;)
 # This is our default region when not provided.
 AWS_REGION   ?= us-west-2
 
+# Regions to skip (set via environment to exclude broken/unavailable regions).
+SKIP_REGIONS ?=
+
 # List of regions supported by `make sam-push-*`.
-AWS_REGIONS  := us-west-2      \
+AWS_REGIONS  := $(filter-out $(SKIP_REGIONS), \
+                us-west-2      \
                 us-west-1      \
                 us-east-2      \
                 us-east-1      \
@@ -26,7 +30,7 @@ AWS_REGIONS  := us-west-2      \
                 me-south-1 \
                 me-central-1 \
                 il-central-1 \
-                mx-central-1 \
+                mx-central-1)
 
 # Assume lambda functions are linux/arm64
 # These variables must be defined before GO_BUILD_DIRS

@@ -19,6 +19,10 @@ on:
         type: string
         description: 'Release version to use. If omitted, version will be computed'
         default: ''
+      skip_regions:
+        type: string
+        description: 'Space-separated list of regions to skip'
+        default: ''
     outputs:
       release_version:
         description: "Release version used."
@@ -65,3 +69,4 @@ jobs:
         MAKEFLAGS: "-j ${{ inputs.concurrency }} --output-sync=target"
         S3_BUCKET_PREFIX: "${{ inputs.s3_bucket_prefix }}"
         RELEASE_VERSION: "${{ inputs.release_version }}"
+        SKIP_REGIONS: "${{ inputs.skip_regions }}"
