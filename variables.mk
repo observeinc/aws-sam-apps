@@ -5,7 +5,7 @@ APPS         := $(shell find apps/* -type d -maxdepth 0 -exec basename {} \;)
 AWS_REGION   ?= us-west-2
 
 # Regions to skip (set via environment to exclude broken/unavailable regions).
-SKIP_REGIONS ?=
+SKIP_REGIONS ?= me-south-1
 
 # List of regions supported by `make sam-push-*`.
 AWS_REGIONS  := $(filter-out $(SKIP_REGIONS), \
