@@ -19,6 +19,7 @@ AWS_REGIONS  := $(filter-out $(SKIP_REGIONS), \
                 eu-west-1      \
                 eu-north-1     \
                 eu-central-1   \
+                eu-central-2   \
                 ca-central-1   \
                 ca-west-1      \
                 ap-southeast-2 \
@@ -27,9 +28,10 @@ AWS_REGIONS  := $(filter-out $(SKIP_REGIONS), \
                 ap-northeast-3 \
                 ap-northeast-2 \
                 ap-northeast-1 \
-                me-south-1 \
-                me-central-1 \
-                il-central-1 \
+                af-south-1     \
+                me-south-1     \
+                me-central-1   \
+                il-central-1   \
                 mx-central-1)
 
 # Assume lambda functions are linux/arm64
