@@ -50,6 +50,17 @@ type Handler struct {
 	MaxConcurrentTasks int
 }
 
+// encodeCopySourceKey URL-encodes each path segment of an S3 key for use in
+// the x-amz-copy-source header, preserving '/' separators between segments.
+func encodeCopySourceKey(rawKey string) string {
+	rawKey = strings.TrimPrefix(rawKey, "/")
+	segs := strings.Split(rawKey, "/")
+	for i := range segs {
+		segs[i] = url.QueryEscape(segs[i])
+	}
+	return strings.Join(segs, "/")
+}
+
 // GetCopyObjectInput constructs the input struct for CopyObject.
 func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 	if source == nil || destination == nil {
@@ -58,7 +69,7 @@ func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 
 	var (
 		bucket     = destination.Host
-		copySource = fmt.Sprintf("%s%s", source.Host, source.Path)
+		copySource = source.Host + "/" + encodeCopySourceKey(source.Path)
 		key        = source.Path
 	)
 
@@ -147,7 +158,7 @@ func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) 
 
 		copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
 
-		if !h.ObjectPolicy.Allow(aws.ToString(copyInput.CopySource)) {
+		if !h.ObjectPolicy.Allow(sourceURL.Host + sourceURL.Path) {
 			logger.Info("Ignoring object not in allowed sources", "bucket", copyInput.Bucket, "key", copyInput.Key)
 			continue
 		}

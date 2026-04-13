@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
 	"regexp"
 	"strings"
@@ -29,8 +30,11 @@ type Filter struct {
 
 // Match input object.
 func (f *Filter) Match(input *s3.CopyObjectInput) bool {
-	if f.Source != nil && !f.Source.MatchString(aws.ToString(input.CopySource)) {
-		return false
+	if f.Source != nil {
+		cs, _ := url.QueryUnescape(aws.ToString(input.CopySource))
+		if !f.Source.MatchString(cs) {
+			return false
+		}
 	}
 	if f.ContentType != nil && !f.ContentType.MatchString(aws.ToString(input.ContentType)) {
 		return false
