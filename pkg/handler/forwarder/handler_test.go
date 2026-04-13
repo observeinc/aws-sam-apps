@@ -82,6 +82,16 @@ func TestCopy(t *testing.T) {
 				Key:        aws.String("hello/test.json"),
 			},
 		},
+		{
+			// '+' in object key must appear as %2B in CopySource (S3 x-amz-copy-source).
+			SourceURI:      "s3://example-source-bucket/2026-04-08T20:50:00+00:00.json",
+			DestinationURI: "s3://another-bucket",
+			Expected: &s3.CopyObjectInput{
+				Bucket:     aws.String("another-bucket"),
+				CopySource: aws.String("example-source-bucket/2026-04-08T20:50:00%2B00:00.json"),
+				Key:        aws.String("2026-04-08T20:50:00+00:00.json"),
+			},
+		},
 	}
 
 	for i, tc := range testcases {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,9 +44,14 @@ func toGetInput(copyInput *s3.CopyObjectInput) (*s3.GetObjectInput, error) {
 		return nil, fmt.Errorf("%w: %q", errInvalidCopySource, aws.ToString(copyInput.CopySource))
 	}
 
+	rawKey, err := url.PathUnescape(parts[1])
+	if err != nil {
+		rawKey = parts[1]
+	}
+
 	return &s3.GetObjectInput{
 		Bucket:               aws.String(parts[0]),
-		Key:                  aws.String(parts[1]),
+		Key:                  aws.String(rawKey),
 		ExpectedBucketOwner:  copyInput.ExpectedSourceBucketOwner,
 		IfMatch:              copyInput.CopySourceIfMatch,
 		IfModifiedSince:      copyInput.CopySourceIfModifiedSince,

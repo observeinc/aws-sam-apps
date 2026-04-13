@@ -50,6 +50,35 @@ type Handler struct {
 	MaxConcurrentTasks int
 }
 
+// encodeS3CopySourceKey URL-encodes each path segment for x-amz-copy-source (S3 requires
+// an encoded key; unescaped '+' is treated as space in headers).
+func encodeS3CopySourceKey(key string) string {
+	key = strings.TrimPrefix(key, "/")
+	if key == "" {
+		return ""
+	}
+	segs := strings.Split(key, "/")
+	for i := range segs {
+		segs[i] = url.PathEscape(segs[i])
+	}
+	// PathEscape leaves '+' literal; S3 copy-source headers treat '+' as space.
+	return strings.ReplaceAll(strings.Join(segs, "/"), "+", "%2B")
+}
+
+// unencodedCopySourceForPolicy reverses CopySource encoding from GetCopyObjectInput so
+// ObjectPolicy (glob) patterns still match the original bucket/key form.
+func unencodedCopySourceForPolicy(encoded string) string {
+	parts := strings.SplitN(encoded, "/", 2)
+	if len(parts) != 2 {
+		return encoded
+	}
+	k, err := url.PathUnescape(parts[1])
+	if err != nil {
+		return encoded
+	}
+	return parts[0] + "/" + k
+}
+
 // GetCopyObjectInput constructs the input struct for CopyObject.
 func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 	if source == nil || destination == nil {
@@ -58,7 +87,7 @@ func GetCopyObjectInput(source, destination *url.URL) *s3.CopyObjectInput {
 
 	var (
 		bucket     = destination.Host
-		copySource = fmt.Sprintf("%s%s", source.Host, source.Path)
+		copySource = fmt.Sprintf("%s/%s", source.Host, encodeS3CopySourceKey(strings.TrimPrefix(source.Path, "/")))
 		key        = source.Path
 	)
 
@@ -147,7 +176,7 @@ func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) 
 
 		copyInput := GetCopyObjectInput(sourceURL, h.DestinationURI)
 
-		if !h.ObjectPolicy.Allow(aws.ToString(copyInput.CopySource)) {
+		if !h.ObjectPolicy.Allow(unencodedCopySourceForPolicy(aws.ToString(copyInput.CopySource))) {
 			logger.Info("Ignoring object not in allowed sources", "bucket", copyInput.Bucket, "key", copyInput.Key)
 			continue
 		}
