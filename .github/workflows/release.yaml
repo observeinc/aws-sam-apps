@@ -90,7 +90,7 @@ jobs:
     - name: AWS Info
       run: aws sts get-caller-identity
 
-    - name: Tag release 
+    - name: Tag release
       id: build
       run: |
           make tag
@@ -99,6 +99,7 @@ jobs:
         S3_BUCKET_PREFIX: "observeinc-"
         RELEASE_VERSION: "${{ needs.version.outputs.version }}"
         RELEASE_TAG: ${{ needs.version.outputs.channel }}
+        SKIP_REGIONS: "${{ inputs.skip_regions }}"
 
     - name: Cut release
       id: release
