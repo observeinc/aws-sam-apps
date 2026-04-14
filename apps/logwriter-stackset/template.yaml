@@ -17,6 +17,12 @@ Metadata:
           - RetainStacksOnAccountRemoval
           - CallAs
       - Label:
+          default: StackSet Operation Preferences
+        Parameters:
+          - MaxConcurrentPercentage
+          - FailureTolerancePercentage
+          - RegionConcurrencyType
+      - Label:
           default: LogWriter Destination
         Parameters:
           - BucketArn
@@ -87,6 +93,30 @@ Parameters:
     Description: >-
       Whether you are acting as the management account (SELF) or a delegated
       administrator (DELEGATED_ADMIN).
+  MaxConcurrentPercentage:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 100
+    Description: >-
+      Maximum percentage of accounts in which to perform this operation at one
+      time. A value of 100 deploys to all accounts simultaneously.
+  FailureTolerancePercentage:
+    Type: Number
+    Default: 100
+    MinValue: 0
+    MaxValue: 100
+    Description: >-
+      Percentage of accounts per region for which stack operations can fail
+      before StackSets stops the operation in that region.
+  RegionConcurrencyType:
+    Type: String
+    Default: PARALLEL
+    AllowedValues:
+      - SEQUENTIAL
+      - PARALLEL
+    Description: >-
+      Whether to deploy to regions in parallel or sequentially.
 
   # --- Pass-through parameters for logwriter ---
   BucketArn:
@@ -202,6 +232,10 @@ Resources:
         - CAPABILITY_NAMED_IAM
       ManagedExecution:
         Active: true
+      OperationPreferences:
+        MaxConcurrentPercentage: !Ref MaxConcurrentPercentage
+        FailureTolerancePercentage: !Ref FailureTolerancePercentage
+        RegionConcurrencyType: !Ref RegionConcurrencyType
       StackInstancesGroup:
         - DeploymentTargets:
             OrganizationalUnitIds: !Ref TargetOUs
