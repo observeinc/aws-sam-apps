@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -37,6 +38,13 @@ type Client struct {
 	GzipLevel      *int
 }
 
+func queryUnescapeOrOriginal(s string) string {
+	if v, err := url.QueryUnescape(s); err == nil {
+		return v
+	}
+	return s
+}
+
 func toGetInput(copyInput *s3.CopyObjectInput) (*s3.GetObjectInput, error) {
 	parts := strings.SplitN(aws.ToString(copyInput.CopySource), "/", 2)
 	if len(parts) != 2 {
@@ -45,7 +53,7 @@ func toGetInput(copyInput *s3.CopyObjectInput) (*s3.GetObjectInput, error) {
 
 	return &s3.GetObjectInput{
 		Bucket:               aws.String(parts[0]),
-		Key:                  aws.String(parts[1]),
+		Key:                  aws.String(queryUnescapeOrOriginal(parts[1])),
 		ExpectedBucketOwner:  copyInput.ExpectedSourceBucketOwner,
 		IfMatch:              copyInput.CopySourceIfMatch,
 		IfModifiedSince:      copyInput.CopySourceIfModifiedSince,

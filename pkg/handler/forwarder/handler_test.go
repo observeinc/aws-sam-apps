@@ -82,6 +82,15 @@ func TestCopy(t *testing.T) {
 				Key:        aws.String("hello/test.json"),
 			},
 		},
+		{
+			SourceURI:      "s3://example-bucket/2026-04-08T20:50:00+00:00.json",
+			DestinationURI: "s3://another-bucket",
+			Expected: &s3.CopyObjectInput{
+				Bucket:     aws.String("another-bucket"),
+				CopySource: aws.String("example-bucket/2026-04-08T20%3A50%3A00%2B00%3A00.json"),
+				Key:        aws.String("2026-04-08T20:50:00+00:00.json"),
+			},
+		},
 	}
 
 	for i, tc := range testcases {
