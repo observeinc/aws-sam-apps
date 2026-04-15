@@ -11,6 +11,26 @@ description: >-
 
 # Deploy Observe AWS Collection
 
+## Agent Behavior
+
+**Never assume customer configuration.** Before deploying, always ask the
+customer for every parameter that controls what data is collected. This
+includes but is not limited to:
+
+- Which log groups to subscribe to (`LogGroupNamePrefixes` or
+  `LogGroupNamePatterns`) and the specific values
+- Whether to collect metrics, and if so, which mode (Filter URI vs
+  Datasource-driven)
+- The `NameOverride` value
+- The deployment region
+- For stacksets: target OUs, target regions, and the central bucket
+
+Only use defaults for sizing/buffering parameters (`BufferingInterval`,
+`BufferingSize`) unless the customer specifies otherwise.
+
+For credentials and filedrop values (`DestinationUri`, `DataAccessPointArn`),
+ask the customer — these cannot be guessed.
+
 ## Overview
 
 There are two deployment models:
