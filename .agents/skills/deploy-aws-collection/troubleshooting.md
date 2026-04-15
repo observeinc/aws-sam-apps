@@ -22,8 +22,8 @@ double quotes:
 --parameters 'ParameterKey=TargetRegions,ParameterValue="us-west-2,us-east-1"'
 ```
 
-This applies to all `CommaDelimitedList` parameters: `TargetRegions`,
-`TargetOUs`, `AllowedActions`, `DatastreamIds`, `LogGroupNamePatterns`, etc.
+This applies to all `CommaDelimitedList` parameters: `LogGroupNamePatterns`,
+`LogGroupNamePrefixes`, etc.
 
 ### Expired session tokens
 
@@ -34,8 +34,7 @@ An error occurred (ExpiredToken) when calling the DescribeStacks operation
 **Cause**: AWS session credentials have expired (common with SSO/Britive
 profiles).
 **Fix**: Re-authenticate. This is not a stack error — just refresh credentials
-and retry. Long-running stackset operations (10+ minutes) often outlast short
-session tokens; ensure you have a long-lived session before starting.
+and retry.
 
 ---
 
@@ -225,100 +224,4 @@ these up manually if needed:
 ```bash
 aws logs delete-log-group --log-group-name "/aws/lambda/STACK_NAME"
 aws logs delete-log-group --log-group-name "/aws/lambda/STACK_NAME-LogWriter"
-```
-
----
-
-## Stackset-Specific Issues
-
-### ExternalRole deployed without pollers
-
-**Symptom**: The externalrole-stackset instances are all `CURRENT` but no
-pollers exist in Observe.
-
-**Cause**: The `PollerConfigurator` Lambda and `PollerCustomResource` are
-gated by a `DeployPollerConfigurator` condition that requires
-`PollerConfigURI` to be non-empty. If you deployed without poller params
-(`PollerConfigURI`, `GQLToken`, `WorkspaceID`, `ObserveCustomerAccountId`,
-`ObserveDomainName`), only the IAM role is created — no pollers.
-
-**Fix**: Always deploy the externalrole-stackset with **all** poller params
-from the start. Check for existing parameter files in the repo (e.g.
-`apps/externalrole-stackset/parameters-blunderdome.json`) before constructing
-parameters manually. If already deployed without them, update the stack:
-
-```bash
-aws cloudformation update-stack \
-  --stack-name obs-externalrole-stackset \
-  --use-previous-template \
-  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-  --parameters \
-    'ParameterKey=TargetOUs,UsePreviousValue=true' \
-    'ParameterKey=TargetRegions,UsePreviousValue=true' \
-    'ParameterKey=ObserveAwsAccountId,UsePreviousValue=true' \
-    'ParameterKey=AllowedActions,UsePreviousValue=true' \
-    'ParameterKey=DatastreamIds,UsePreviousValue=true' \
-    'ParameterKey=NameOverride,UsePreviousValue=true' \
-    'ParameterKey=PrimaryRegion,UsePreviousValue=true' \
-    'ParameterKey=ObserveCustomerAccountId,ParameterValue=OBSERVE_ACCOUNT_ID' \
-    'ParameterKey=ObserveDomainName,ParameterValue=observe-eng.com' \
-    'ParameterKey=WorkspaceID,ParameterValue=WORKSPACE_ID' \
-    'ParameterKey=GQLToken,ParameterValue=TOKEN' \
-    'ParameterKey=PollerConfigURI,ParameterValue=s3://BUCKET/poller-config.json' \
-    "ParameterKey=UpdateTimestamp,ParameterValue=$(date +%s)"
-```
-
-### Stackset operations take a long time
-
-**Expected behavior**: Stackset operations process instances sequentially by
-default (one account/region at a time). With 2 accounts x 2 regions, a
-create or delete operation typically takes 8-15 minutes. Each instance
-involves creating/deleting Firehose delivery streams, Lambda functions, IAM
-roles, and custom resources.
-
-**Monitoring progress**: Check instance-level status rather than just the
-overall operation:
-
-```bash
-aws cloudformation list-stack-set-operation-results \
-  --stack-set-name STACKSET_NAME \
-  --operation-id OPERATION_ID \
-  --query 'Summaries[].{Account:Account,Region:Region,Status:Status}'
-```
-
-### Stackset instance stuck in OUTDATED
-
-**Cause**: An update operation is in progress. `OUTDATED` with
-`StatusReason: "User Initiated"` means the instance is queued for update,
-not that it failed.
-
-**Fix**: Wait for the operation to complete. If an instance is genuinely
-stuck (OUTDATED for 30+ minutes), check the stack events in the member
-account for the specific instance's stack ID.
-
-### Cannot delete stackset — "StackSet is not empty"
-
-**Cause**: Stack instances still exist.
-
-**Fix**: Delete all instances first, wait for the operation to complete,
-then delete the stackset:
-
-```bash
-# 1. Delete instances
-aws cloudformation delete-stack-instances \
-  --stack-set-name STACKSET_NAME \
-  --deployment-targets OrganizationalUnitIds=ou-XXXX-XXXXXXXX \
-  --regions us-west-2 us-east-1 \
-  --no-retain-stacks
-
-# 2. Wait for completion
-aws cloudformation describe-stack-set-operation \
-  --stack-set-name STACKSET_NAME --operation-id OP_ID \
-  --query 'StackSetOperation.Status'
-
-# 3. Delete the stackset
-aws cloudformation delete-stack-set --stack-set-name STACKSET_NAME
-
-# 4. Delete the wrapper CloudFormation stack
-aws cloudformation delete-stack --stack-name STACKSET_NAME
 ```
