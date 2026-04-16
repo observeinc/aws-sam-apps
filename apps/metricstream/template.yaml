@@ -95,10 +95,20 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+  TransformFunctionArn:
+    Type: String
+    Description: >-
+      Optional ARN of a Lambda function to use as a Firehose data transformation
+      processor (e.g. the observe-metrictag function).
+    Default: ''
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
+  HasTransformFunction: !Not
+    - !Equals
+      - !Ref TransformFunctionArn
+      - ''
   DeployLambda: !Not
     - !Equals
       - !Ref DatasourceID
@@ -145,6 +155,18 @@ Resources:
                 Resource:
                   - !Ref BucketArn
                   - !Sub '${BucketArn}/${Prefix}*'
+        - !If
+          - HasTransformFunction
+          - PolicyName: lambda-transform
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                    - lambda:GetFunctionConfiguration
+                  Resource: !Sub '${TransformFunctionArn}*'
+          - !Ref AWS::NoValue
   LambdaLogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -204,6 +226,17 @@ Resources:
           Enabled: true
           LogGroupName: !Ref LogGroup
           LogStreamName: !Ref LogStream
+        ProcessingConfiguration: !If
+          - HasTransformFunction
+          - Enabled: true
+            Processors:
+              - Type: Lambda
+                Parameters:
+                  - ParameterName: LambdaArn
+                    ParameterValue: !Sub '${TransformFunctionArn}:$LATEST'
+                  - ParameterName: RoleArn
+                    ParameterValue: !GetAtt DeliveryStreamRole.Arn
+          - !Ref AWS::NoValue
   MetricStreamRole:
     Type: 'AWS::IAM::Role'
     Properties:
