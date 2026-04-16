@@ -256,6 +256,14 @@ $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 	        subscriber)           DEFAULTS="$${DEFAULTS} SubscriberLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
 	        metricsconfigurator)  DEFAULTS="$${DEFAULTS} MetricsConfiguratorLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
 	        pollerconfigurator)   DEFAULTS="$${DEFAULTS} PollerConfiguratorLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
+	        metrictag)            DEFAULTS="$${DEFAULTS} MetricTagLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
+	      esac; \
+	    done; \
+	  elif [ "$${APP}" = "metricstream" ]; then \
+	    for bin in $${LAMBDA_ZIPS}; do \
+	      case $${bin} in \
+	        metricsconfigurator)  DEFAULTS="$${DEFAULTS} LambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
+	        metrictag)            DEFAULTS="$${DEFAULTS} MetricTagLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
 	      esac; \
 	    done; \
 	  else \

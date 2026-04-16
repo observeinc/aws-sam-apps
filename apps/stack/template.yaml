@@ -48,6 +48,8 @@ Metadata:
           - DatasourceID
           - GQLToken
           - UpdateTimestamp
+          - EnableMetricTag
+          - MetricTagResourceCacheTTLSeconds
       - Label:
           default: Enable Observe Metrics Poller
         Parameters:
@@ -67,6 +69,7 @@ Metadata:
           - SubscriberLambdaS3Key
           - MetricsConfiguratorLambdaS3Key
           - PollerConfiguratorLambdaS3Key
+          - MetricTagLambdaS3Key
       - Label:
           default: Debugging Options
         Parameters:
@@ -262,6 +265,27 @@ Parameters:
     Description: >-
       S3 key for the poller configurator Lambda code ZIP.
     Default: ''
+  EnableMetricTag:
+    Type: String
+    Description: >-
+      Enable the metrictag Lambda as a Firehose data transformation that
+      enriches CloudWatch metric stream records with AWS resource tags.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  MetricTagResourceCacheTTLSeconds:
+    Type: Number
+    Default: 600
+    MinValue: 0
+    Description: >-
+      How long (in seconds) the metrictag Lambda caches tagged resource lists
+      per namespace/region. Set to 0 to disable caching.
+  MetricTagLambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the MetricTag Lambda code ZIP.
+    Default: ''
 
 Conditions:
   EmptyConfigDeliveryBucketName: !Equals
@@ -322,6 +346,11 @@ Conditions:
         - ','
         - !Ref SourceAccounts
       - ''
+  EnableMetricTagApp: !And
+    - !Condition EnableMetricStream
+    - !Equals
+      - !Ref EnableMetricTag
+      - 'true'
 Resources:
   Topic:
     Type: "AWS::SNS::Topic"
@@ -507,12 +536,15 @@ Resources:
         UpdateTimestamp: !Ref UpdateTimestamp
         GQLToken: !Ref GQLToken
         DatasourceID: !Ref DatasourceID
+        EnableMetricTag: !Ref EnableMetricTag
+        MetricTagResourceCacheTTLSeconds: !Ref MetricTagResourceCacheTTLSeconds
         NameOverride: !If
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
         LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
         LambdaS3Key: !Ref MetricsConfiguratorLambdaS3Key
+        MetricTagLambdaS3Key: !Ref MetricTagLambdaS3Key
   MetricsPollerRole:
     Type: AWS::Serverless::Application
     Condition: EnableMetricsPollerRole
@@ -595,6 +627,11 @@ Outputs:
     Value: !GetAtt
       - LogWriter
       - Outputs.FirehoseLogGroupName
+  MetricTagFunctionArn:
+    Description: >-
+      MetricTag Lambda ARN used as the Firehose data transformation processor.
+    Condition: EnableMetricTagApp
+    Value: !GetAtt MetricStream.Outputs.MetricTagFunctionArn
   LogWriterSubscriberArn:
     Description: >-
       Subscriber Function ARN. This function is responsible for log group

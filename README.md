@@ -55,6 +55,20 @@ sam build
 sam deploy --guided
 ```
 
+To deploy the full collection stack (`apps/stack`), all three CloudFormation
+capabilities are required because the parent template uses the SAM transform,
+nested stacks, and named IAM resources:
+
+```sh
+sam build --template apps/stack/template.yaml
+sam deploy \
+  --template apps/stack/template.yaml \
+  --stack-name observe-collection \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --resolve-s3 \
+  --parameter-overrides DestinationUri=... DataAccessPointArn=...
+```
+
 For more detailed instructions on building, deploying, and publishing applications, please see the corresponding documentation in the `docs` folder.
 
 ## Testing
