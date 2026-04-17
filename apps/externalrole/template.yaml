@@ -1,6 +1,5 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
 Description: 'Allow external entity to execute AWS actions.'
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -22,6 +21,22 @@ Metadata:
           - AllowedActions
           - DatastreamIds
           - NameOverride
+          - PrimaryRegion
+      - Label:
+          default: Poller Configuration
+        Parameters:
+          - ObserveCustomerAccountId
+          - ObserveDomainName
+          - WorkspaceID
+          - GQLToken
+          - PollerConfigURI
+          - UpdateTimestamp
+      - Label:
+          default: Lambda Code
+        Parameters:
+          - LambdaS3BucketPrefix
+          - LambdaS3Key
+
 Parameters:
   ObserveAwsAccountId:
     Type: String
@@ -45,14 +60,82 @@ Parameters:
       name will be used.
     Default: ''
     MaxLength: 64
+  PrimaryRegion:
+    Type: String
+    Description: >-
+      Region where the IAM role is created. IAM roles are global,
+      so only one region should create the role to avoid conflicts.
+    Default: 'us-west-2'
+  ObserveCustomerAccountId:
+    Type: String
+    Description: >-
+      Observe customer account ID for the GQL API (e.g. 117606320593).
+    Default: ''
+  ObserveDomainName:
+    Type: String
+    Description: >-
+      Observe domain name for the GQL API (e.g. observeinc.com).
+    Default: ''
+  WorkspaceID:
+    Type: String
+    Description: >-
+      Observe workspace ID where the poller will be created.
+    Default: ''
+  GQLToken:
+    Type: String
+    NoEcho: true
+    Description: >-
+      GQL token with poller CRUD permissions.
+    Default: ''
+  PollerConfigURI:
+    Type: String
+    Description: >-
+      S3 URI pointing to the poller configuration JSON file
+      (e.g. s3://mybucket/poller-config.json).
+    Default: ''
+  UpdateTimestamp:
+    Type: String
+    Description: >-
+      Change this value to force the PollerConfigurator custom resource
+      to re-run on stack update.
+    Default: ''
+    AllowedPattern: '^[0-9]*$'
+  LambdaS3BucketPrefix:
+    Type: String
+    Description: >-
+      S3 bucket name prefix for the PollerConfigurator Lambda code ZIP.
+      The actual bucket is constructed as {prefix}-{region}, e.g.
+      observeinc-us-west-2.
+    Default: ''
+  LambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the PollerConfigurator Lambda code ZIP.
+    Default: ''
+
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
+  IsPrimaryRegion: !Equals
+    - !Ref 'AWS::Region'
+    - !Ref PrimaryRegion
+  HasPollerConfig: !Not
+    - !Equals
+      - !Ref PollerConfigURI
+      - ''
+  HasLambdaCode: !Not
+    - !Equals
+      - !Ref LambdaS3BucketPrefix
+      - ''
+  DeployPollerConfigurator: !And
+    - !Condition HasPollerConfig
+    - !Condition HasLambdaCode
 
 Resources:
   Role:
     Type: 'AWS::IAM::Role'
+    Condition: IsPrimaryRegion
     Properties:
       RoleName: !If
         - UseStackName
@@ -79,8 +162,126 @@ Resources:
               - Effect: Allow
                 Action: !Ref AllowedActions
                 Resource: '*'
+
+  GQLTokenSecret:
+    # W1030: GQLToken defaults to '' but this resource is gated by the
+    # DeployPollerConfigurator condition so it is never created with an
+    # empty value.
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W1030
+    Type: AWS::SecretsManager::Secret
+    Condition: DeployPollerConfigurator
+    Properties:
+      Description: GQL Token for PollerConfigurator
+      Name: !Sub "observe-gql-token-poller-${AWS::StackName}"
+      SecretString: !Ref GQLToken
+
+  PollerConfiguratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: DeployPollerConfigurator
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !If
+            - UseStackName
+            - !Sub '${AWS::StackName}-pollerconfigurator'
+            - !Sub '${NameOverride}-pollerconfigurator'
+          - '-'
+          - !Select [2, !Split ["/", !Ref "AWS::StackId"]]
+      RetentionInDays: 365
+
+  PollerConfiguratorRole:
+    Type: AWS::IAM::Role
+    Condition: DeployPollerConfigurator
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: PollerConfiguratorPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt PollerConfiguratorLogGroup.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref GQLTokenSecret
+
+  PollerConfigurator:
+    # W1030: LambdaS3Key defaults to '' but this resource is gated by
+    # the DeployPollerConfigurator condition so it is never created with
+    # an empty value.
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W1030
+    Type: AWS::Lambda::Function
+    Condition: DeployPollerConfigurator
+    Properties:
+      FunctionName: !If
+        - UseStackName
+        - !Sub '${AWS::StackName}-pollerconfigurator'
+        - !Sub '${NameOverride}-pollerconfigurator'
+      Role: !GetAtt PollerConfiguratorRole.Arn
+      Code:
+        S3Bucket: !Sub '${LambdaS3BucketPrefix}-${AWS::Region}'
+        S3Key: !Ref LambdaS3Key
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Timeout: 120
+      LoggingConfig:
+        LogGroup: !Ref PollerConfiguratorLogGroup
+      Environment:
+        Variables:
+          OBSERVE_ACCOUNT_ID: !Ref ObserveCustomerAccountId
+          OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
+          SECRET_NAME: !Ref GQLTokenSecret
+          POLLER_CONFIG_URI: !Ref PollerConfigURI
+          EXTERNAL_ROLE_NAME: !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+          WORKSPACE_ID: !Ref WorkspaceID
+          AWS_ACCOUNT_ID: !Ref AWS::AccountId
+          VERBOSITY: '6'
+
+  PollerCustomResource:
+    Type: Custom::PollerTrigger
+    Condition: DeployPollerConfigurator
+    Properties:
+      ServiceToken: !GetAtt PollerConfigurator.Arn
+      StackName: !Ref AWS::StackName
+      PollerConfigURI: !Ref PollerConfigURI
+      WorkspaceID: !Ref WorkspaceID
+      ObserveCustomerAccountId: !Ref ObserveCustomerAccountId
+      ObserveDomainName: !Ref ObserveDomainName
+      ExternalRoleName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      UpdateTimestamp: !Ref UpdateTimestamp
+
 Outputs:
   RoleArn:
+    Condition: IsPrimaryRegion
     Description: >-
       IAM Role ARN. This role will be assumed by Observe in order to pull data.
     Value: !GetAtt Role.Arn

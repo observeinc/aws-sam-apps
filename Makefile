@@ -149,7 +149,33 @@ sam-clean: # @HELP remove SAM build directory.
 sam-clean:
 	rm -rf $(SAM_BUILD_DIR)
 
-SAM_BUILD_TEMPLATES = $(foreach app,$(APPS), $(SAM_BUILD_DIR)/apps/$(app)/template.yaml)
+# ---------------------------------------------------------------------------
+# Lambda ZIPs -- build bootstrap-style ZIPs for Lambdas that SAM doesn't
+# package natively (AWS::Lambda::Function with S3Bucket/S3Key params).
+# ---------------------------------------------------------------------------
+LAMBDA_ZIP_TARGETS = $(foreach bin,$(LAMBDA_ZIP_BINS),$(LAMBDA_ZIP_DIR)/$(bin).zip)
+
+$(LAMBDA_ZIP_DIR):
+	mkdir -p $@
+
+$(LAMBDA_ZIP_TARGETS): go-build | $(LAMBDA_ZIP_DIR)
+	@set -e; tmpdir=$$(mktemp -d); \
+	cp bin/$(OS)_$(ARCH)/$(notdir $(basename $@)) $$tmpdir/bootstrap; \
+	(cd $$tmpdir && zip -j $(CURDIR)/$@ bootstrap); \
+	rm -rf $$tmpdir
+
+.PHONY: lambda-zips
+lambda-zips: # @HELP build Lambda ZIP archives for non-SAM-managed functions.
+lambda-zips: $(LAMBDA_ZIP_TARGETS)
+
+# Add lambda-zips dependency for apps that need Lambda ZIPs
+$(foreach app,logwriter metricstream externalrole stack, \
+  $(foreach region,$(AWS_REGIONS), \
+    $(eval $(SAM_BUILD_DIR)/regions/$(region)/$(app).yaml: $(LAMBDA_ZIP_TARGETS)) \
+  ) \
+)
+
+SAM_BUILD_TEMPLATES = $(foreach app,$(PACKAGEABLE_APPS), $(SAM_BUILD_DIR)/apps/$(app)/template.yaml)
 
 $(foreach template,$(SAM_BUILD_TEMPLATE),$(eval  \
 	$(template): apps/$(call get_app, $(template))/template.yaml \
@@ -164,7 +190,7 @@ $(SAM_BUILD_TEMPLATES): go-build $(LAMBDA_MAKEFILE)
 	  --config-file $(SAM_CONFIG_FILE) \
 	  --config-env $(SAM_CONFIG_ENV)
 
-SAM_PACKAGE_TARGETS = $(foreach app,$(APPS),sam-package-$(app))
+SAM_PACKAGE_TARGETS = $(foreach app,$(PACKAGEABLE_APPS),sam-package-$(app))
 
 .PHONY: $(SAM_PACKAGE_TARGETS)
 # map each SAM_PACKAGE_TARGET to the corresponding SAM_PACKAGE_TEMPLATE for our current region
@@ -185,7 +211,7 @@ $(subst .yaml,,$(lastword $(subst /, ,$(1))))
 endef
 
 SAM_PACKAGE_DIRS = $(foreach region, $(AWS_REGIONS), $(SAM_BUILD_DIR)/regions/$(region))
-SAM_PACKAGE_TEMPLATES = $(foreach dir,$(SAM_PACKAGE_DIRS), $(foreach app,$(APPS),$(dir)/$(app).yaml))
+SAM_PACKAGE_TEMPLATES = $(foreach dir,$(SAM_PACKAGE_DIRS), $(foreach app,$(PACKAGEABLE_APPS),$(dir)/$(app).yaml))
 
 $(foreach template,$(SAM_PACKAGE_TEMPLATES),$(eval  \
 	$(template): $(SAM_BUILD_DIR)/apps/$(call get_app, $(template))/template.yaml \
@@ -196,32 +222,77 @@ $(SAM_PACKAGE_DIRS):
 	cp -r static/* $@
 
 $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
-	if [ ! -z "$(S3_BUCKET_PREFIX)" ]; then \
-	  export FLAGS=" --s3-bucket $(S3_BUCKET_PREFIX)$(call get_region, $@)"; \
-	else \
-	  export FLAGS=" --resolve-s3"; \
-    fi && \
-	  sam package \
-	    --template-file $(SAM_BUILD_DIR)/apps/$(call get_app, $@)/template.yaml \
-	    --output-template-file $@                                               \
-	    --region $(call get_region, $@)                                         \
-	    --s3-prefix aws-sam-apps/$(VERSION)                                     \
-	    --no-progressbar                                                        \
-	    --config-file $(SAM_CONFIG_FILE)                                        \
-	    --config-env $(SAM_CONFIG_ENV)                                          \
-	    $${FLAGS}
+	export BUCKET="$(RESOLVED_S3_BUCKET_PREFIX)$(call get_region, $@)" && \
+	export REGION="$(call get_region, $@)" && \
+	export APP="$(call get_app, $@)" && \
+	export LAMBDA_ZIPS="$(LAMBDA_ZIPS_$(call get_app, $@))" && \
+	if [ ! -z "$${LAMBDA_ZIPS}" ]; then \
+	  echo "# ensuring bucket $${BUCKET} exists" && \
+	  aws s3 mb "s3://$${BUCKET}" --region "$${REGION}" 2>/dev/null || true; \
+	  for bin in $${LAMBDA_ZIPS}; do \
+	    echo "# uploading $${bin}.zip -> s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${bin}.zip" && \
+	    aws s3 cp \
+	      "$(LAMBDA_ZIP_DIR)/$${bin}.zip" \
+	      "s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${bin}.zip" \
+	      --region "$${REGION}"; \
+	  done; \
+	fi && \
+	sam package \
+	  --template-file $(SAM_BUILD_DIR)/apps/$(call get_app, $@)/template.yaml \
+	  --output-template-file $@                                               \
+	  --region $(call get_region, $@)                                         \
+	  --s3-prefix aws-sam-apps/$(VERSION)                                     \
+	  --s3-bucket "$${BUCKET}"                                                \
+	  --no-progressbar                                                        \
+	  --config-file $(SAM_CONFIG_FILE)                                        \
+	  --config-env $(SAM_CONFIG_ENV)                                          \
+	&& \
+	if [ ! -z "$${LAMBDA_ZIPS}" ]; then \
+	  export BUCKET_PREFIX=$$(echo "$(RESOLVED_S3_BUCKET_PREFIX)" | sed 's/-$$//') && \
+	  export DEFAULTS="LambdaS3BucketPrefix=$${BUCKET_PREFIX}" && \
+	  if [ "$${APP}" = "stack" ]; then \
+	    for bin in $${LAMBDA_ZIPS}; do \
+	      case $${bin} in \
+	        subscriber)           DEFAULTS="$${DEFAULTS} SubscriberLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
+	        metricsconfigurator)  DEFAULTS="$${DEFAULTS} MetricsConfiguratorLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
+	        pollerconfigurator)   DEFAULTS="$${DEFAULTS} PollerConfiguratorLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
+	      esac; \
+	    done; \
+	  else \
+	    DEFAULTS="$${DEFAULTS} LambdaS3Key=aws-sam-apps/$(VERSION)/$$(echo $${LAMBDA_ZIPS} | awk '{print $$1}').zip"; \
+	  fi && \
+	  python3 scripts/embed-lambda-defaults.py "$@" $${DEFAULTS}; \
+	fi && \
+	echo "# uploading $${APP}.yaml -> s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}.yaml" && \
+	aws s3 cp "$@" \
+	  "s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}.yaml" \
+	  --region "$${REGION}" && \
+	if [ -f "apps/$${APP}-stackset/template.yaml" ]; then \
+	  echo "# copying $${APP}-stackset.yaml -> $(dir $@)$${APP}-stackset.yaml" && \
+	  cp "apps/$${APP}-stackset/template.yaml" \
+	     "$(dir $@)$${APP}-stackset.yaml" && \
+	  export TEMPLATE_URL="https://$${BUCKET}.s3.$${REGION}.amazonaws.com/aws-sam-apps/$(VERSION)/$${APP}.yaml" && \
+	  echo "# embedding TemplateURL default: $${TEMPLATE_URL}" && \
+	  python3 scripts/embed-lambda-defaults.py \
+	    "$(dir $@)$${APP}-stackset.yaml" \
+	    "TemplateURL=$${TEMPLATE_URL}" && \
+	  echo "# uploading $${APP}-stackset.yaml -> s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}-stackset.yaml" && \
+	  aws s3 cp "$(dir $@)$${APP}-stackset.yaml" \
+	    "s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}-stackset.yaml" \
+	    --region "$${REGION}"; \
+	fi
 
 SAM_PULL_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-pull-$(region))
 
 $(foreach target,$(SAM_PULL_REGION_TARGETS),$(eval  \
-	$(target): $(foreach app,$(APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$(target))) \
+	$(target): $(foreach app,$(PACKAGEABLE_APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$(target))) \
 ))
 
 .PHONY: $(SAM_PULL_REGION_TARGETS)
 $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 	# force ourselves to use the public URLs, verifying ACLs are correctly set
 	cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
-	for app in $(APPS); do \
+	for app in $(PACKAGEABLE_APPS) $(STACKSET_APPS); do \
 	  curl -fs \
 	    -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.$(subst sam-pull-,,$@).amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
 	    -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \
@@ -230,7 +301,7 @@ $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 SAM_PUSH_REGION_TARGETS = $(foreach region,$(AWS_REGIONS),sam-push-$(region))
 
 $(foreach target,$(SAM_PUSH_REGION_TARGETS),$(eval  \
-	$(target): $(foreach app,$(APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$(target))/$(app).yaml) \
+	$(target): $(foreach app,$(PACKAGEABLE_APPS), $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$(target))/$(app).yaml) \
 ))
 
 require_bucket_prefix:
@@ -249,7 +320,7 @@ $(SAM_PUSH_REGION_TARGETS): require_bucket_prefix
 	  --recursive \
 	  $(SAM_BUILD_DIR)/regions/$(subst sam-push-,,$@)/ s3://$(S3_BUCKET_PREFIX)$(subst sam-push-,,$@)/aws-sam-apps/$(VERSION)/
 
-SAM_VALIDATE_TARGETS = $(foreach app,$(APPS),sam-validate-$(app))
+SAM_VALIDATE_TARGETS = $(foreach app,$(SAM_APPS),sam-validate-$(app))
 
 .PHONY: $(SAM_VALIDATE_TARGETS)
 $(SAM_VALIDATE_TARGETS):
@@ -258,6 +329,14 @@ $(SAM_VALIDATE_TARGETS):
 	--template apps/$(lastword $(subst -, ,$@))/template.yaml \
 	--config-file $(SAM_CONFIG_FILE) \
 	--config-env $(SAM_CONFIG_ENV)
+
+CFN_VALIDATE_APPS = $(CFN_APPS) $(STACKSET_APPS)
+CFN_VALIDATE_TARGETS = $(foreach app,$(CFN_VALIDATE_APPS),cfn-validate-$(app))
+
+.PHONY: $(CFN_VALIDATE_TARGETS)
+$(foreach app,$(CFN_VALIDATE_APPS),$(eval \
+  cfn-validate-$(app): ; yamllint apps/$(app)/template.yaml && cfn-lint apps/$(app)/template.yaml \
+))
 
 TEST_INTEGRATION_TARGETS = $(foreach test,$(TF_TESTS),test-integration-$(test))
 
@@ -307,10 +386,12 @@ sam-push: $(SAM_PUSH_REGION_TARGETS)
 sam-push-%: # @HELP push all SAM apps to specific region (e.g sam-push-us-west-2)
 
 .PHONY: sam-validate
-sam-validate: # @HELP validate all SAM templates.
-sam-validate: $(SAM_VALIDATE_TARGETS)
+sam-validate: # @HELP validate all templates (SAM validate for SAM apps, cfn-lint for plain CloudFormation).
+sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS)
 
-sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-logwriter).
+sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-forwarder).
+
+cfn-validate-%: # @HELP validate specific CloudFormation template (e.g. cfn-validate-logwriter).
 
 .PHONY: tag
 tag: # @HELP pull SAM manifests for RELEASE_VERSION, and publish as RELEASE_TAG.
@@ -346,7 +427,9 @@ outputs-%: # @HELP generate outputs list for documentation purposes.
 help: # @HELP displays this message.
 help:
 	echo "VARIABLES:"
-	echo "  APPS          = $(APPS)"
+	echo "  SAM_APPS      = $(SAM_APPS)"
+	echo "  CFN_APPS      = $(CFN_APPS)"
+	echo "  STACKSET_APPS = $(STACKSET_APPS)"
 	echo "  AWS_REGION    = $(AWS_REGION)"
 	echo "  GO_BINS       = $(GO_BINS)"
 	echo "  GO_BUILD_DIRS = $(GO_BUILD_DIRS)"

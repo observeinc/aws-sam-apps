@@ -33,6 +33,14 @@ variables {
           "iam:PutRolePolicy",
           "iam:TagRole",
           "iam:UpdateRole",
+          "lambda:CreateFunction",
+          "lambda:DeleteFunction",
+          "lambda:GetFunction",
+          "lambda:InvokeFunction",
+          "lambda:ListTags",
+          "lambda:TagResource",
+          "lambda:UpdateFunctionCode",
+          "lambda:UpdateFunctionConfiguration",
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:DeleteLogGroup",
@@ -42,7 +50,8 @@ variables {
           "logs:ListTagsForResource",
           "logs:PutRetentionPolicy",
           "logs:TagResource",
-          "logs:UntagResource"
+          "logs:UntagResource",
+          "s3:GetObject"
         ],
         "Resource": "*"
       },
@@ -56,15 +65,6 @@ variables {
           "arn:aws:cloudformation:*:aws:transform/Include",
           "arn:aws:cloudformation:*:aws:transform/LanguageExtensions",
           "arn:aws:cloudformation:*:*:stack/*/*"
-        ]
-      },
-      {
-        "Effect": "Allow",
-        "Action": [
-          "s3:GetObject"
-        ],
-        "Resource": [
-          "arn:aws:s3:::observeinc/cloudwatchmetrics/filters/*"
         ]
       }
     ]
