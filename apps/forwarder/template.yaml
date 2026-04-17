@@ -111,7 +111,6 @@ Parameters:
     Default: ''
     AllowedValues:
       - ''
-      - '64'
       - '128'
       - '256'
       - '512'
