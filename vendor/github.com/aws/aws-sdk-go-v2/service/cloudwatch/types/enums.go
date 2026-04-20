@@ -23,6 +23,27 @@ func (ActionsSuppressedBy) Values() []ActionsSuppressedBy {
 	}
 }
 
+type AlarmMuteRuleStatus string
+
+// Enum values for AlarmMuteRuleStatus
+const (
+	AlarmMuteRuleStatusScheduled AlarmMuteRuleStatus = "SCHEDULED"
+	AlarmMuteRuleStatusActive    AlarmMuteRuleStatus = "ACTIVE"
+	AlarmMuteRuleStatusExpired   AlarmMuteRuleStatus = "EXPIRED"
+)
+
+// Values returns all known values for AlarmMuteRuleStatus. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AlarmMuteRuleStatus) Values() []AlarmMuteRuleStatus {
+	return []AlarmMuteRuleStatus{
+		"SCHEDULED",
+		"ACTIVE",
+		"EXPIRED",
+	}
+}
+
 type AlarmType string
 
 // Enum values for AlarmType
@@ -115,7 +136,9 @@ type EvaluationState string
 
 // Enum values for EvaluationState
 const (
-	EvaluationStatePartialData EvaluationState = "PARTIAL_DATA"
+	EvaluationStatePartialData       EvaluationState = "PARTIAL_DATA"
+	EvaluationStateEvaluationFailure EvaluationState = "EVALUATION_FAILURE"
+	EvaluationStateEvaluationError   EvaluationState = "EVALUATION_ERROR"
 )
 
 // Values returns all known values for EvaluationState. Note that this can be
@@ -125,6 +148,8 @@ const (
 func (EvaluationState) Values() []EvaluationState {
 	return []EvaluationState{
 		"PARTIAL_DATA",
+		"EVALUATION_FAILURE",
+		"EVALUATION_ERROR",
 	}
 }
 
@@ -132,9 +157,11 @@ type HistoryItemType string
 
 // Enum values for HistoryItemType
 const (
-	HistoryItemTypeConfigurationUpdate HistoryItemType = "ConfigurationUpdate"
-	HistoryItemTypeStateUpdate         HistoryItemType = "StateUpdate"
-	HistoryItemTypeAction              HistoryItemType = "Action"
+	HistoryItemTypeConfigurationUpdate         HistoryItemType = "ConfigurationUpdate"
+	HistoryItemTypeStateUpdate                 HistoryItemType = "StateUpdate"
+	HistoryItemTypeAction                      HistoryItemType = "Action"
+	HistoryItemTypeAlarmContributorStateUpdate HistoryItemType = "AlarmContributorStateUpdate"
+	HistoryItemTypeAlarmContributorAction      HistoryItemType = "AlarmContributorAction"
 )
 
 // Values returns all known values for HistoryItemType. Note that this can be
@@ -146,6 +173,8 @@ func (HistoryItemType) Values() []HistoryItemType {
 		"ConfigurationUpdate",
 		"StateUpdate",
 		"Action",
+		"AlarmContributorStateUpdate",
+		"AlarmContributorAction",
 	}
 }
 
@@ -167,6 +196,25 @@ func (MetricStreamOutputFormat) Values() []MetricStreamOutputFormat {
 		"json",
 		"opentelemetry0.7",
 		"opentelemetry1.0",
+	}
+}
+
+type OTelEnrichmentStatus string
+
+// Enum values for OTelEnrichmentStatus
+const (
+	OTelEnrichmentStatusRunning OTelEnrichmentStatus = "Running"
+	OTelEnrichmentStatusStopped OTelEnrichmentStatus = "Stopped"
+)
+
+// Values returns all known values for OTelEnrichmentStatus. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (OTelEnrichmentStatus) Values() []OTelEnrichmentStatus {
+	return []OTelEnrichmentStatus{
+		"Running",
+		"Stopped",
 	}
 }
 
