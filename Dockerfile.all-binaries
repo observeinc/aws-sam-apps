@@ -11,8 +11,9 @@ ARG ARCH
 COPY .go/bin/${OS}_${ARCH}/forwarder /usr/local/bin/forwarder
 COPY .go/bin/${OS}_${ARCH}/subscriber /usr/local/bin/subscriber
 COPY .go/bin/${OS}_${ARCH}/metricsconfigurator /usr/local/bin/metricsconfigurator
+COPY .go/bin/${OS}_${ARCH}/pollerconfigurator /usr/local/bin/pollerconfigurator
 
-RUN chmod +x /usr/local/bin/forwarder /usr/local/bin/subscriber /usr/local/bin/metricsconfigurator
+RUN chmod +x /usr/local/bin/forwarder /usr/local/bin/subscriber /usr/local/bin/metricsconfigurator /usr/local/bin/pollerconfigurator
 
 # Optional: provide a default command or entrypoint
 ENTRYPOINT ["/bin/sh"]
