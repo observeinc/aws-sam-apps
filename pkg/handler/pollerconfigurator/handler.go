@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-logr/logr"
 )
+
+const httpTimeout = 30 * time.Second
 
 type Handler struct {
 	Logger            logr.Logger
@@ -74,7 +77,7 @@ func (h Handler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
 	}
 
 	gql := &gqlClient{
-		httpClient:        &http.Client{},
+		httpClient:        &http.Client{Timeout: httpTimeout},
 		observeAccountID:  h.ObserveAccountID,
 		observeDomainName: h.ObserveDomainName,
 		logger:            logger,
@@ -84,9 +87,9 @@ func (h Handler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
 
 	switch req.RequestType {
 	case "Create":
-		return h.handleCreate(ctx, req, gql, token, assumeRoleArn)
+		return h.handleCreate(ctx, req, gql, token, assumeRoleArn, awsCfg)
 	case "Update":
-		return h.handleUpdate(ctx, req, gql, token, assumeRoleArn)
+		return h.handleUpdate(ctx, req, gql, token, assumeRoleArn, awsCfg)
 	case "Delete":
 		return h.handleDelete(req, gql, token)
 	default:
@@ -94,10 +97,10 @@ func (h Handler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
 	}
 }
 
-func (h Handler) handleCreate(ctx context.Context, req *Request, gql *gqlClient, token *string, assumeRoleArn string) ([]byte, error) {
+func (h Handler) handleCreate(ctx context.Context, req *Request, gql *gqlClient, token *string, assumeRoleArn string, awsCfg aws.Config) ([]byte, error) {
 	logger := h.Logger
 
-	pollerCfg, err := h.downloadConfig(ctx)
+	pollerCfg, err := h.downloadConfig(ctx, awsCfg)
 	if err != nil {
 		return nil, h.reportAndError("failed to download poller config", req, err)
 	}
@@ -117,7 +120,7 @@ func (h Handler) handleCreate(ctx context.Context, req *Request, gql *gqlClient,
 	return []byte{}, nil
 }
 
-func (h Handler) handleUpdate(ctx context.Context, req *Request, gql *gqlClient, token *string, assumeRoleArn string) ([]byte, error) {
+func (h Handler) handleUpdate(ctx context.Context, req *Request, gql *gqlClient, token *string, assumeRoleArn string, awsCfg aws.Config) ([]byte, error) {
 	logger := h.Logger
 
 	pollerID := req.PhysicalResourceId
@@ -125,7 +128,7 @@ func (h Handler) handleUpdate(ctx context.Context, req *Request, gql *gqlClient,
 		return nil, h.reportAndError("update requires PhysicalResourceId (poller ID)", req, nil)
 	}
 
-	pollerCfg, err := h.downloadConfig(ctx)
+	pollerCfg, err := h.downloadConfig(ctx, awsCfg)
 	if err != nil {
 		return nil, h.reportAndError("failed to download poller config", req, err)
 	}
@@ -171,8 +174,8 @@ func (h Handler) uniquePollerName(baseName string) string {
 	return fmt.Sprintf("%s-%s-%s", baseName, h.AWSAccountID, h.Region)
 }
 
-func (h Handler) downloadConfig(ctx context.Context) (*PollerConfig, error) {
-	return downloadPollerConfig(ctx, h.PollerConfigURI)
+func (h Handler) downloadConfig(ctx context.Context, awsCfg aws.Config) (*PollerConfig, error) {
+	return downloadPollerConfig(ctx, h.PollerConfigURI, awsCfg)
 }
 
 func (h Handler) getSecretValue(ctx context.Context, cfg aws.Config) (*string, error) {
@@ -244,7 +247,7 @@ func (h Handler) reportStatusWithPhysicalID(request Request, success bool, reaso
 	req, _ := http.NewRequest("PUT", request.ResponseURL, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: httpTimeout}
 	_, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send response to cloudformation: %w", err)

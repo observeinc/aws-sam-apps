@@ -8,9 +8,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-logr/logr"
 )
 
@@ -34,7 +34,6 @@ const testPollerConfig = `{
 	"queries": [{"namespace": "AWS/EC2", "metricNames": ["CPUUtilization"]}]
 }`
 
-// newConfigServer returns an httptest server that serves a valid poller config.
 func newConfigServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +42,6 @@ func newConfigServer(t *testing.T) *httptest.Server {
 	}))
 }
 
-// cfnCapture tracks the CloudFormation callback response.
 type cfnCapture struct {
 	Response CfResponse
 	server   *httptest.Server
@@ -84,6 +82,12 @@ func newTestRequest(cfnURL string) *Request {
 	}
 }
 
+// capturedGQLRequest holds both the query and variables from an intercepted request.
+type capturedGQLRequest struct {
+	Query     string                 `json:"query"`
+	Variables map[string]interface{} `json:"variables"`
+}
+
 func TestHandleCreate(t *testing.T) {
 	configServer := newConfigServer(t)
 	defer configServer.Close()
@@ -91,14 +95,12 @@ func TestHandleCreate(t *testing.T) {
 	cfn := newCfnServer(t)
 	h := newTestHandler(cfn.server.URL, configServer.URL)
 
-	var capturedQuery string
+	var captured capturedGQLRequest
 	gql := &gqlClient{
 		httpClient: &http.Client{Transport: &mockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
 				body, _ := io.ReadAll(req.Body)
-				var gqlReq graphQLRequest
-				_ = json.Unmarshal(body, &gqlReq)
-				capturedQuery = gqlReq.Query
+				_ = json.Unmarshal(body, &captured)
 				resp := `{"data":{"createPoller":{"id":"poller-abc","name":"test"}}}`
 				return &http.Response{
 					StatusCode: 200,
@@ -116,25 +118,34 @@ func TestHandleCreate(t *testing.T) {
 	req.RequestType = "Create"
 	assumeRoleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", h.AWSAccountID, h.ExternalRoleName)
 
-	_, err := h.handleCreate(context.Background(), req, gql, &token, assumeRoleArn)
+	_, err := h.handleCreate(context.Background(), req, gql, &token, assumeRoleArn, aws.Config{})
 	if err != nil {
 		t.Fatalf("handleCreate() error = %v", err)
 	}
 
-	for _, want := range []string{
-		`createPoller`,
-		`workspaceId: "ws-42"`,
-		fmt.Sprintf(`name: "test-poller-%s-%s"`, h.AWSAccountID, h.Region),
-		`datastreamId: "ds-999"`,
-		`region: "us-east-1"`,
-		`assumeRoleArn: "arn:aws:iam::999888777:role/observe-role"`,
-		`namespace: "AWS/EC2"`,
-		`metricNames: ["CPUUtilization"]`,
-	} {
-		if !strings.Contains(capturedQuery, want) {
-			t.Errorf("createPoller mutation missing %q\ngot: %s", want, capturedQuery)
-		}
+	if captured.Query != createPollerMutation {
+		t.Errorf("query = %q, want createPollerMutation", captured.Query)
 	}
+
+	assertMapField(t, captured.Variables, "workspaceId", "ws-42")
+
+	poller := variableAsMap(t, captured.Variables, "poller")
+	wantName := fmt.Sprintf("test-poller-%s-%s", h.AWSAccountID, h.Region)
+	assertMapField(t, poller, "name", wantName)
+	assertMapField(t, poller, "datastreamId", "ds-999")
+
+	cw := poller["cloudWatchMetricsConfig"].(map[string]interface{})
+	assertMapField(t, cw, "period", "300")
+	assertMapField(t, cw, "delay", "300")
+	assertMapField(t, cw, "region", "us-east-1")
+	assertMapField(t, cw, "assumeRoleArn", "arn:aws:iam::999888777:role/observe-role")
+
+	queries := cw["queries"].([]interface{})
+	if len(queries) != 1 {
+		t.Fatalf("got %d queries, want 1", len(queries))
+	}
+	q := queries[0].(map[string]interface{})
+	assertMapField(t, q, "namespace", "AWS/EC2")
 
 	if cfn.Response.Status != "SUCCESS" {
 		t.Errorf("CFN status = %q, want SUCCESS", cfn.Response.Status)
@@ -151,14 +162,12 @@ func TestHandleUpdate(t *testing.T) {
 	cfn := newCfnServer(t)
 	h := newTestHandler(cfn.server.URL, configServer.URL)
 
-	var capturedQuery string
+	var captured capturedGQLRequest
 	gql := &gqlClient{
 		httpClient: &http.Client{Transport: &mockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
 				body, _ := io.ReadAll(req.Body)
-				var gqlReq graphQLRequest
-				_ = json.Unmarshal(body, &gqlReq)
-				capturedQuery = gqlReq.Query
+				_ = json.Unmarshal(body, &captured)
 				resp := `{"data":{"updatePoller":{"id":"existing-poller-id","name":"updated"}}}`
 				return &http.Response{
 					StatusCode: 200,
@@ -177,22 +186,24 @@ func TestHandleUpdate(t *testing.T) {
 	req.PhysicalResourceId = "existing-poller-id"
 	assumeRoleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", h.AWSAccountID, h.ExternalRoleName)
 
-	_, err := h.handleUpdate(context.Background(), req, gql, &token, assumeRoleArn)
+	_, err := h.handleUpdate(context.Background(), req, gql, &token, assumeRoleArn, aws.Config{})
 	if err != nil {
 		t.Fatalf("handleUpdate() error = %v", err)
 	}
 
-	for _, want := range []string{
-		`updatePoller`,
-		`id: "existing-poller-id"`,
-		fmt.Sprintf(`name: "test-poller-%s-%s"`, h.AWSAccountID, h.Region),
-		`datastreamId: "ds-999"`,
-		`region: "us-east-1"`,
-	} {
-		if !strings.Contains(capturedQuery, want) {
-			t.Errorf("updatePoller mutation missing %q\ngot: %s", want, capturedQuery)
-		}
+	if captured.Query != updatePollerMutation {
+		t.Errorf("query = %q, want updatePollerMutation", captured.Query)
 	}
+
+	assertMapField(t, captured.Variables, "id", "existing-poller-id")
+
+	poller := variableAsMap(t, captured.Variables, "poller")
+	wantName := fmt.Sprintf("test-poller-%s-%s", h.AWSAccountID, h.Region)
+	assertMapField(t, poller, "name", wantName)
+	assertMapField(t, poller, "datastreamId", "ds-999")
+
+	cw := poller["cloudWatchMetricsConfig"].(map[string]interface{})
+	assertMapField(t, cw, "region", "us-east-1")
 
 	if cfn.Response.Status != "SUCCESS" {
 		t.Errorf("CFN status = %q, want SUCCESS", cfn.Response.Status)
@@ -222,7 +233,7 @@ func TestHandleUpdate_MissingPhysicalResourceId(t *testing.T) {
 	req.RequestType = "Update"
 	req.PhysicalResourceId = ""
 
-	_, err := h.handleUpdate(context.Background(), req, gql, &token, "arn:unused")
+	_, err := h.handleUpdate(context.Background(), req, gql, &token, "arn:unused", aws.Config{})
 	if err == nil {
 		t.Fatal("handleUpdate() should error when PhysicalResourceId is empty")
 	}
@@ -239,14 +250,12 @@ func TestHandleDelete(t *testing.T) {
 	cfn := newCfnServer(t)
 	h := newTestHandler(cfn.server.URL, "http://unused")
 
-	var capturedQuery string
+	var captured capturedGQLRequest
 	gql := &gqlClient{
 		httpClient: &http.Client{Transport: &mockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
 				body, _ := io.ReadAll(req.Body)
-				var gqlReq graphQLRequest
-				_ = json.Unmarshal(body, &gqlReq)
-				capturedQuery = gqlReq.Query
+				_ = json.Unmarshal(body, &captured)
 				resp := `{"data":{"deletePoller":{"success":true}}}`
 				return &http.Response{
 					StatusCode: 200,
@@ -269,14 +278,10 @@ func TestHandleDelete(t *testing.T) {
 		t.Fatalf("handleDelete() error = %v", err)
 	}
 
-	for _, want := range []string{
-		`deletePoller`,
-		`id: "poller-to-delete"`,
-	} {
-		if !strings.Contains(capturedQuery, want) {
-			t.Errorf("deletePoller mutation missing %q\ngot: %s", want, capturedQuery)
-		}
+	if captured.Query != deletePollerMutation {
+		t.Errorf("query = %q, want deletePollerMutation", captured.Query)
 	}
+	assertMapField(t, captured.Variables, "id", "poller-to-delete")
 
 	if cfn.Response.Status != "SUCCESS" {
 		t.Errorf("CFN status = %q, want SUCCESS", cfn.Response.Status)
@@ -374,5 +379,30 @@ func TestHandlerNew(t *testing.T) {
 	}
 	if h.AWSAccountID != "999888777" {
 		t.Errorf("AWSAccountID = %q, want %q", h.AWSAccountID, "999888777")
+	}
+}
+
+func variableAsMap(t *testing.T, vars map[string]interface{}, key string) map[string]interface{} {
+	t.Helper()
+	v, ok := vars[key]
+	if !ok {
+		t.Fatalf("variables missing key %q", key)
+	}
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		t.Fatalf("variables[%q] is %T, want map", key, v)
+	}
+	return m
+}
+
+func assertMapField(t *testing.T, m map[string]interface{}, key, want string) {
+	t.Helper()
+	got, ok := m[key]
+	if !ok {
+		t.Errorf("map missing key %q", key)
+		return
+	}
+	if fmt.Sprintf("%v", got) != want {
+		t.Errorf("map[%q] = %v, want %q", key, got, want)
 	}
 }

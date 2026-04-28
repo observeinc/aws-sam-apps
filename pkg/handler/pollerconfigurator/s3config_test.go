@@ -8,17 +8,19 @@ import (
 	"testing"
 )
 
-func TestS3URIToHTTPS(t *testing.T) {
+func TestParseS3URI(t *testing.T) {
 	tests := []struct {
-		name    string
-		uri     string
-		want    string
-		wantErr bool
+		name       string
+		uri        string
+		wantBucket string
+		wantKey    string
+		wantErr    bool
 	}{
 		{
-			name: "valid URI",
-			uri:  "s3://my-bucket/path/to/config.json",
-			want: "https://my-bucket.s3.amazonaws.com/path/to/config.json",
+			name:       "valid URI",
+			uri:        "s3://my-bucket/path/to/config.json",
+			wantBucket: "my-bucket",
+			wantKey:    "path/to/config.json",
 		},
 		{
 			name:    "missing s3 prefix",
@@ -39,13 +41,16 @@ func TestS3URIToHTTPS(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s3URIToHTTPS(tt.uri)
+			bucket, key, err := parseS3URI(tt.uri)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("s3URIToHTTPS() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("parseS3URI() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("s3URIToHTTPS() = %q, want %q", got, tt.want)
+			if bucket != tt.wantBucket {
+				t.Errorf("parseS3URI() bucket = %q, want %q", bucket, tt.wantBucket)
+			}
+			if key != tt.wantKey {
+				t.Errorf("parseS3URI() key = %q, want %q", key, tt.wantKey)
 			}
 		})
 	}

@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type TagFilter struct {
@@ -43,28 +46,43 @@ type PollerConfig struct {
 	Queries      []QueryConfig `json:"queries"`
 }
 
-func s3URIToHTTPS(uri string) (string, error) {
+func parseS3URI(uri string) (bucket, key string, err error) {
 	if !strings.HasPrefix(uri, "s3://") {
-		return "", fmt.Errorf("invalid S3 URI: must start with s3://")
+		return "", "", fmt.Errorf("invalid S3 URI: must start with s3://")
 	}
 	path := strings.TrimPrefix(uri, "s3://")
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) < 2 || parts[1] == "" {
-		return "", fmt.Errorf("invalid S3 URI: must contain bucket and key")
+		return "", "", fmt.Errorf("invalid S3 URI: must contain bucket and key")
 	}
-	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", parts[0], parts[1]), nil
+	return parts[0], parts[1], nil
 }
 
-func downloadPollerConfig(ctx context.Context, uri string) (*PollerConfig, error) {
-	// for testing purposes
+func downloadPollerConfig(ctx context.Context, uri string, awsCfg aws.Config) (*PollerConfig, error) {
+	// for testing: allow direct HTTP URLs so tests can use httptest servers
 	if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
 		return downloadPollerConfigFromURL(ctx, uri)
 	}
-	url, err := s3URIToHTTPS(uri)
+
+	bucket, key, err := parseS3URI(uri)
 	if err != nil {
 		return nil, err
 	}
-	return downloadPollerConfigFromURL(ctx, url)
+	return downloadPollerConfigFromS3(ctx, awsCfg, bucket, key)
+}
+
+func downloadPollerConfigFromS3(ctx context.Context, awsCfg aws.Config, bucket, key string) (*PollerConfig, error) {
+	client := s3.NewFromConfig(awsCfg)
+	out, err := client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get s3://%s/%s: %w", bucket, key, err)
+	}
+	defer func() { _ = out.Body.Close() }()
+
+	return parsePollerConfig(out.Body)
 }
 
 func downloadPollerConfigFromURL(ctx context.Context, url string) (*PollerConfig, error) {
@@ -83,7 +101,11 @@ func downloadPollerConfigFromURL(ctx context.Context, url string) (*PollerConfig
 		return nil, fmt.Errorf("failed to download poller config from %s: HTTP %d", url, resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	return parsePollerConfig(resp.Body)
+}
+
+func parsePollerConfig(r io.Reader) (*PollerConfig, error) {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read poller config body: %w", err)
 	}

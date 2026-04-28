@@ -6,15 +6,27 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/go-logr/logr"
 )
 
 const bearerTokenFormat = "Bearer %s %s"
 
+const createPollerMutation = `mutation CreatePoller($workspaceId: ObjectId!, $poller: PollerInput!) {
+	createPoller(workspaceId: $workspaceId, poller: $poller) { id name }
+}`
+
+const updatePollerMutation = `mutation UpdatePoller($id: ObjectId!, $poller: PollerInput!) {
+	updatePoller(id: $id, poller: $poller) { id name }
+}`
+
+const deletePollerMutation = `mutation DeletePoller($id: ObjectId!) {
+	deletePoller(id: $id) { success }
+}`
+
 type graphQLRequest struct {
-	Query string `json:"query"`
+	Query     string      `json:"query"`
+	Variables interface{} `json:"variables,omitempty"`
 }
 
 type createPollerResponse struct {
@@ -52,104 +64,99 @@ type deletePollerResponse struct {
 	} `json:"errors"`
 }
 
-func buildQueriesGQL(queries []QueryConfig) string {
-	var parts []string
-	for _, q := range queries {
-		var fields []string
-		fields = append(fields, fmt.Sprintf(`namespace: %q`, q.Namespace))
+// GQL variable input types — serialized as JSON and sent in the
+// "variables" field of the GraphQL request. Field names and string
+// encoding (e.g. period as "300") match the Observe v1/meta schema.
 
-		if len(q.MetricNames) > 0 {
-			names := make([]string, len(q.MetricNames))
-			for i, n := range q.MetricNames {
-				names[i] = fmt.Sprintf("%q", n)
-			}
-			fields = append(fields, fmt.Sprintf(`metricNames: [%s]`, strings.Join(names, ", ")))
+type pollerInput struct {
+	Name                    string                `json:"name,omitempty"`
+	DatastreamId            string                `json:"datastreamId,omitempty"`
+	Interval                string                `json:"interval,omitempty"`
+	Retries                 *string               `json:"retries,omitempty"`
+	CloudWatchMetricsConfig *cwMetricsConfigInput `json:"cloudWatchMetricsConfig"`
+}
+
+type cwMetricsConfigInput struct {
+	Period        string             `json:"period"`
+	Delay         string             `json:"delay"`
+	Region        string             `json:"region"`
+	AssumeRoleArn string             `json:"assumeRoleArn"`
+	Queries       []queryVarInput    `json:"queries"`
+}
+
+type queryVarInput struct {
+	Namespace      string                `json:"namespace"`
+	MetricNames    []string              `json:"metricNames,omitempty"`
+	Dimensions     []dimensionVarInput   `json:"dimensions,omitempty"`
+	ResourceFilter *resourceFilterInput  `json:"resourceFilter,omitempty"`
+}
+
+type dimensionVarInput struct {
+	Name  string `json:"name"`
+	Value string `json:"value,omitempty"`
+}
+
+type resourceFilterInput struct {
+	ResourceType  string            `json:"resourceType,omitempty"`
+	Pattern       string            `json:"pattern,omitempty"`
+	DimensionName string            `json:"dimensionName,omitempty"`
+	TagFilters    []tagFilterInput  `json:"tagFilters"`
+}
+
+type tagFilterInput struct {
+	Key    string   `json:"key"`
+	Values []string `json:"values,omitempty"`
+}
+
+func buildPollerInput(cfg *PollerConfig, region, assumeRoleArn string) pollerInput {
+	queries := make([]queryVarInput, len(cfg.Queries))
+	for i, q := range cfg.Queries {
+		qv := queryVarInput{
+			Namespace:   q.Namespace,
+			MetricNames: q.MetricNames,
 		}
-
 		if len(q.Dimensions) > 0 {
-			var dims []string
-			for _, d := range q.Dimensions {
-				if d.Value != "" {
-					dims = append(dims, fmt.Sprintf(`{name: %q, value: %q}`, d.Name, d.Value))
-				} else {
-					dims = append(dims, fmt.Sprintf(`{name: %q}`, d.Name))
-				}
+			qv.Dimensions = make([]dimensionVarInput, len(q.Dimensions))
+			for j, d := range q.Dimensions {
+				qv.Dimensions[j] = dimensionVarInput(d)
 			}
-			fields = append(fields, fmt.Sprintf(`dimensions: [%s]`, strings.Join(dims, ", ")))
 		}
-
 		if q.ResourceFilter != nil {
-			rf := q.ResourceFilter
-			var rfFields []string
-			if rf.ResourceType != "" {
-				rfFields = append(rfFields, fmt.Sprintf(`resourceType: %q`, rf.ResourceType))
+			rf := &resourceFilterInput{
+				ResourceType:  q.ResourceFilter.ResourceType,
+				Pattern:       q.ResourceFilter.Pattern,
+				DimensionName: q.ResourceFilter.DimensionName,
 			}
-			if rf.Pattern != "" {
-				rfFields = append(rfFields, fmt.Sprintf(`pattern: %q`, rf.Pattern))
-			}
-			if rf.DimensionName != "" {
-				rfFields = append(rfFields, fmt.Sprintf(`dimensionName: %q`, rf.DimensionName))
-			}
-			var tagParts []string
-			for _, tf := range rf.TagFilters {
-				if len(tf.Values) > 0 {
-					vals := make([]string, len(tf.Values))
-					for i, v := range tf.Values {
-						vals[i] = fmt.Sprintf("%q", v)
-					}
-					tagParts = append(tagParts, fmt.Sprintf(`{key: %q, values: [%s]}`, tf.Key, strings.Join(vals, ", ")))
-				} else {
-					tagParts = append(tagParts, fmt.Sprintf(`{key: %q}`, tf.Key))
+			if len(q.ResourceFilter.TagFilters) > 0 {
+				rf.TagFilters = make([]tagFilterInput, len(q.ResourceFilter.TagFilters))
+				for k, tf := range q.ResourceFilter.TagFilters {
+					rf.TagFilters[k] = tagFilterInput(tf)
 				}
 			}
-			rfFields = append(rfFields, fmt.Sprintf(`tagFilters: [%s]`, strings.Join(tagParts, ", ")))
-			fields = append(fields, fmt.Sprintf(`resourceFilter: {%s}`, strings.Join(rfFields, ", ")))
+			qv.ResourceFilter = rf
 		}
+		queries[i] = qv
+	}
 
-		parts = append(parts, fmt.Sprintf(`{%s}`, strings.Join(fields, ", ")))
+	input := pollerInput{
+		Name:         cfg.Name,
+		DatastreamId: cfg.DatastreamId,
+		Interval:     cfg.Interval,
+		CloudWatchMetricsConfig: &cwMetricsConfigInput{
+			Period:        fmt.Sprintf("%d", cfg.Period),
+			Delay:         fmt.Sprintf("%d", cfg.Delay),
+			Region:        region,
+			AssumeRoleArn: assumeRoleArn,
+			Queries:       queries,
+		},
 	}
-	return fmt.Sprintf("[%s]", strings.Join(parts, ", "))
-}
 
-func buildPollerInputGQL(cfg *PollerConfig, region, assumeRoleArn string) string {
-	var fields []string
-	if cfg.Name != "" {
-		fields = append(fields, fmt.Sprintf(`name: %q`, cfg.Name))
-	}
-	if cfg.DatastreamId != "" {
-		fields = append(fields, fmt.Sprintf(`datastreamId: %q`, cfg.DatastreamId))
-	}
-	if cfg.Interval != "" {
-		fields = append(fields, fmt.Sprintf(`interval: %q`, cfg.Interval))
-	}
 	if cfg.Retries != nil {
-		fields = append(fields, fmt.Sprintf(`retries: "%d"`, *cfg.Retries))
+		s := fmt.Sprintf("%d", *cfg.Retries)
+		input.Retries = &s
 	}
 
-	cwFields := []string{
-		fmt.Sprintf(`period: "%d"`, cfg.Period),
-		fmt.Sprintf(`delay: "%d"`, cfg.Delay),
-		fmt.Sprintf(`region: %q`, region),
-		fmt.Sprintf(`assumeRoleArn: %q`, assumeRoleArn),
-		fmt.Sprintf(`queries: %s`, buildQueriesGQL(cfg.Queries)),
-	}
-
-	fields = append(fields, fmt.Sprintf(`cloudWatchMetricsConfig: {%s}`, strings.Join(cwFields, ", ")))
-	return fmt.Sprintf(`{%s}`, strings.Join(fields, ", "))
-}
-
-func buildCreatePollerMutation(workspaceID string, cfg *PollerConfig, region, assumeRoleArn string) string {
-	input := buildPollerInputGQL(cfg, region, assumeRoleArn)
-	return fmt.Sprintf(`mutation { createPoller(workspaceId: %q, poller: %s) { id name } }`, workspaceID, input)
-}
-
-func buildUpdatePollerMutation(pollerID string, cfg *PollerConfig, region, assumeRoleArn string) string {
-	input := buildPollerInputGQL(cfg, region, assumeRoleArn)
-	return fmt.Sprintf(`mutation { updatePoller(id: %q, poller: %s) { id name } }`, pollerID, input)
-}
-
-func buildDeletePollerMutation(pollerID string) string {
-	return fmt.Sprintf(`mutation { deletePoller(id: %q) { success } }`, pollerID)
+	return input
 }
 
 type gqlClient struct {
@@ -159,10 +166,10 @@ type gqlClient struct {
 	logger            logr.Logger
 }
 
-func (c *gqlClient) execute(token, query string) ([]byte, error) {
+func (c *gqlClient) execute(token, query string, variables interface{}) ([]byte, error) {
 	fullToken := fmt.Sprintf(bearerTokenFormat, c.observeAccountID, token)
 
-	jsonData, err := json.Marshal(graphQLRequest{Query: query})
+	jsonData, err := json.Marshal(graphQLRequest{Query: query, Variables: variables})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal GQL request: %w", err)
 	}
@@ -199,8 +206,13 @@ func (c *gqlClient) execute(token, query string) ([]byte, error) {
 }
 
 func (c *gqlClient) createPoller(token, workspaceID string, cfg *PollerConfig, region, assumeRoleArn string) (string, error) {
-	query := buildCreatePollerMutation(workspaceID, cfg, region, assumeRoleArn)
-	body, err := c.execute(token, query)
+	input := buildPollerInput(cfg, region, assumeRoleArn)
+	variables := map[string]interface{}{
+		"workspaceId": workspaceID,
+		"poller":      input,
+	}
+
+	body, err := c.execute(token, createPollerMutation, variables)
 	if err != nil {
 		return "", err
 	}
@@ -221,8 +233,13 @@ func (c *gqlClient) createPoller(token, workspaceID string, cfg *PollerConfig, r
 }
 
 func (c *gqlClient) updatePoller(token, pollerID string, cfg *PollerConfig, region, assumeRoleArn string) error {
-	query := buildUpdatePollerMutation(pollerID, cfg, region, assumeRoleArn)
-	body, err := c.execute(token, query)
+	input := buildPollerInput(cfg, region, assumeRoleArn)
+	variables := map[string]interface{}{
+		"id":     pollerID,
+		"poller": input,
+	}
+
+	body, err := c.execute(token, updatePollerMutation, variables)
 	if err != nil {
 		return err
 	}
@@ -240,8 +257,11 @@ func (c *gqlClient) updatePoller(token, pollerID string, cfg *PollerConfig, regi
 }
 
 func (c *gqlClient) deletePoller(token, pollerID string) error {
-	query := buildDeletePollerMutation(pollerID)
-	body, err := c.execute(token, query)
+	variables := map[string]interface{}{
+		"id": pollerID,
+	}
+
+	body, err := c.execute(token, deletePollerMutation, variables)
 	if err != nil {
 		return err
 	}
