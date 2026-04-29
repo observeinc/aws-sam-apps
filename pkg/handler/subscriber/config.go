@@ -16,6 +16,8 @@ var (
 	ErrInvalidARN                  = errors.New("invalid ARN")
 	ErrInvalidLogGroupName         = errors.New("invalid log group name substring")
 	ErrInvalidRegexp               = errors.New("invalid regular expression")
+	ErrInvalidCloudWatchRateLimit  = errors.New("invalid cloudwatch api rate limit")
+	ErrInvalidCloudWatchBurst      = errors.New("invalid cloudwatch api burst")
 
 	logGroupNameRe = regexp.MustCompile(`^[a-zA-Z0-9_\.\-\/]+$`)
 )
@@ -53,6 +55,11 @@ type Config struct {
 
 	// Number of concurrent workers. Defaults to number of CPUs.
 	NumWorkers int
+
+	// CloudWatchAPIRateLimit limits CloudWatch API requests per second per Lambda invocation.
+	CloudWatchAPIRateLimit float64
+	// CloudWatchAPIBurst controls burst size for CloudWatch API limiter per invocation.
+	CloudWatchAPIBurst int
 }
 
 func (c *Config) Validate() error {
@@ -98,11 +105,26 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	if c.CloudWatchAPIRateLimit < 0 {
+		errs = append(errs, fmt.Errorf("%w: %v", ErrInvalidCloudWatchRateLimit, c.CloudWatchAPIRateLimit))
+	}
+	if c.CloudWatchAPIBurst < 0 {
+		errs = append(errs, fmt.Errorf("%w: %d", ErrInvalidCloudWatchBurst, c.CloudWatchAPIBurst))
+	}
+
 	return errors.Join(errs...)
 }
 
 func (c *Config) LogGroupFilter() FilterFunc {
+	return BuildLogGroupFilter(c.LogGroupNamePatterns, c.LogGroupNamePrefixes, c.ExcludeLogGroupNamePatterns)
+}
+
+// BuildLogGroupFilter creates a FilterFunc from the given patterns, prefixes, and exclusion patterns.
+// This function is used by both Config.LogGroupFilter() and the CloudFormation handler to build
+// filters dynamically.
+func BuildLogGroupFilter(patterns, prefixes, excludePatterns []string) FilterFunc {
 	var includeRe, excludeRe *regexp.Regexp
+
 	filterFunc := func(logGroupName string) bool {
 		if excludeRe != nil && excludeRe.MatchString(logGroupName) {
 			return false
@@ -114,21 +136,21 @@ func (c *Config) LogGroupFilter() FilterFunc {
 	}
 
 	// build exclusion regex
-	if len(c.ExcludeLogGroupNamePatterns) != 0 {
-		excludeRe = regexp.MustCompile(strings.Join(c.ExcludeLogGroupNamePatterns, "|"))
+	if len(excludePatterns) != 0 {
+		excludeRe = regexp.MustCompile(strings.Join(excludePatterns, "|"))
 	}
 
 	// build inclusion regex
 	var exprs []string
 
-	for _, pattern := range c.LogGroupNamePatterns {
+	for _, pattern := range patterns {
 		if pattern == "*" {
 			return filterFunc
 		}
 		exprs = append(exprs, pattern)
 	}
 
-	for _, prefix := range c.LogGroupNamePrefixes {
+	for _, prefix := range prefixes {
 		if prefix == "*" {
 			return filterFunc
 		}
