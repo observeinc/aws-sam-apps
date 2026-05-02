@@ -1,0 +1,187 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Enrich Kinesis Firehose metric stream records with AWS resource tags.
+  By default this function uses the IAM role of the account it is deployed in
+  to look up resource tags, and will only successfully enrich metrics for
+  resources in that same account. For cross-account enrichment, set
+  AssumeRoleArn to an IAM role in the target account whose trust policy allows
+  this Lambda's execution role to assume it; otherwise deploy one
+  metricstream + metrictag stack per account.
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: observe-metrictag
+    Description: Enrich Kinesis Firehose metric stream records with AWS resource tags.
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    HomePageUrl: https://github.com/observeinc/aws-sam-apps
+    SemanticVersion: '0.0.1'
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
+
+Parameters:
+  NameOverride:
+    Type: String
+    Description: >-
+      Set Lambda function name. In the absence of a value, the stack name will
+      be used.
+    Default: ''
+    MaxLength: 64
+  ResourceCacheTTLSeconds:
+    Type: Number
+    Default: 600
+    MinValue: 0
+    Description: >-
+      How long (in seconds) to cache tagged resource lists per namespace/region.
+      Set to 0 to disable caching.
+  ResourceTagKeys:
+    Type: String
+    Default: ''
+    Description: >-
+      Comma-separated list of tag keys to include in resource_tags. Leave empty
+      to include all tag keys.
+  YACESearchTags:
+    Type: String
+    Default: ''
+    Description: >-
+      Comma-separated YACE-style search tag filters (e.g. Env=prod,Team=.*).
+      Only resources matching all filters are considered.
+  Verbosity:
+    Type: String
+    Default: ''
+    Description: >-
+      Logging verbosity for Lambda. Highest log verbosity is 9.
+    AllowedPattern: "^[0-9]?$"
+  AssumeRoleArn:
+    Type: String
+    Default: ''
+    Description: >-
+      Optional IAM role ARN for the Lambda to assume before calling AWS tagging
+      and service discovery APIs. Leave empty to use the Lambda execution role.
+      Useful for cross-account tag enrichment: deploy the role in the target
+      account with a trust policy allowing this Lambda's role to assume it.
+    AllowedPattern: "^(arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+)?$"
+
+Conditions:
+  UseStackName: !Equals
+    - !Ref NameOverride
+    - ''
+  UseDefaultVerbosity: !Equals
+    - !Ref Verbosity
+    - ''
+  HasAssumeRoleArn: !Not
+    - !Equals
+      - !Ref AssumeRoleArn
+      - ''
+
+Resources:
+  LogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !If
+            - UseStackName
+            - !Ref AWS::StackName
+            - !Ref NameOverride
+      RetentionInDays: 365
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: logging
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LogGroup.Arn
+        - PolicyName: tagging
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - tag:GetResources
+                  - autoscaling:DescribeAutoScalingGroups
+                  - autoscaling:DescribeAutoScalingInstances
+                  - apigateway:GET
+                  - apigatewayv2:GET
+                  - ec2:DescribeInstances
+                  - ec2:DescribeRegions
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeNatGateways
+                  - dms:DescribeReplicationInstances
+                  - aps:ListWorkspaces
+                  - storagegateway:ListGateways
+                  - shield:ListProtections
+                Resource: '*'
+        - !If
+          - HasAssumeRoleArn
+          - PolicyName: assume-role
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: sts:AssumeRole
+                  Resource: !Ref AssumeRoleArn
+          - !Ref AWS::NoValue
+
+  Metrictag:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !If
+        - UseStackName
+        - !Ref AWS::StackName
+        - !Ref NameOverride
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: ../../bin/linux_arm64
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      LoggingConfig:
+        LogGroup: !Ref LogGroup
+      Environment:
+        Variables:
+          RESOURCE_CACHE_TTL_SECONDS: !Ref ResourceCacheTTLSeconds
+          RESOURCE_TAG_KEYS: !Ref ResourceTagKeys
+          YACE_SEARCH_TAGS: !Ref YACESearchTags
+          ASSUME_ROLE_ARN: !Ref AssumeRoleArn
+          VERBOSITY: !If
+            - UseDefaultVerbosity
+            - '6'
+            - !Ref Verbosity
+
+  FirehoseInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt Metrictag.Arn
+      Action: lambda:InvokeFunction
+      Principal: firehose.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
+Outputs:
+  FunctionArn:
+    Description: >-
+      Metric tag Lambda function ARN. Configure this as the data transformation
+      processor on a Kinesis Firehose delivery stream.
+    Value: !GetAtt Metrictag.Arn
+  FunctionName:
+    Description: Metric tag Lambda function name.
+    Value: !Ref Metrictag
