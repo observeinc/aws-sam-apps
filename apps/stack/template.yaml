@@ -61,6 +61,13 @@ Metadata:
           - ContentTypeOverrides
           - NameOverride
       - Label:
+          default: Lambda Code
+        Parameters:
+          - LambdaS3BucketPrefix
+          - SubscriberLambdaS3Key
+          - MetricsConfiguratorLambdaS3Key
+          - PollerConfiguratorLambdaS3Key
+      - Label:
           default: Debugging Options
         Parameters:
           - DebugEndpoint
@@ -234,6 +241,27 @@ Parameters:
       included when this list is non-empty.
     Default: ''
     AllowedPattern: '^\d*$'
+  LambdaS3BucketPrefix:
+    Type: String
+    Description: >-
+      S3 bucket name prefix for Lambda code ZIPs. The actual bucket is
+      constructed as {prefix}-{region}, e.g. observeinc-us-west-2.
+    Default: ''
+  SubscriberLambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the log subscription Lambda code ZIP.
+    Default: ''
+  MetricsConfiguratorLambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the metrics configurator Lambda code ZIP.
+    Default: ''
+  PollerConfiguratorLambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the poller configurator Lambda code ZIP.
+    Default: ''
 
 Conditions:
   EmptyConfigDeliveryBucketName: !Equals
@@ -265,10 +293,16 @@ Conditions:
       - !Equals
         - !Ref DatasourceID
         - ""
-  DeployLambda: !Not
+  HasLambdaCode: !Not
     - !Equals
-      - !Ref DatasourceID
-      - ""
+      - !Ref LambdaS3BucketPrefix
+      - ''
+  DeployLambda: !Or
+    - !Not
+      - !Equals
+        - !Ref DatasourceID
+        - ""
+    - !Condition HasLambdaCode
   HasLogGroupNamePatterns: !Not
     - !Equals
       - !Join
@@ -467,6 +501,8 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-LogWriter"
           - !Sub "${NameOverride}-LogWriter"
+        LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
+        LambdaS3Key: !Ref SubscriberLambdaS3Key
   MetricStream:
     Type: AWS::Serverless::Application
     Condition: EnableMetricStream
@@ -495,6 +531,8 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
           - !Sub "${NameOverride}-MetricStream"
+        LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
+        LambdaS3Key: !Ref MetricsConfiguratorLambdaS3Key
   MetricsPollerRole:
     Type: AWS::Serverless::Application
     Condition: EnableMetricsPollerRole
@@ -510,6 +548,9 @@ Resources:
           - UseStackName
           - !Sub "${AWS::StackName}-metrics-poller"
           - !Sub "${NameOverride}-metrics-poller"
+        PrimaryRegion: !Ref AWS::Region
+        LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
+        LambdaS3Key: !Ref PollerConfiguratorLambdaS3Key
 Outputs:
   BucketName:
     Description: >-
