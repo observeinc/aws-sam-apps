@@ -1,6 +1,5 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
 Description: 'Stream CloudWatch Metrics to S3.'
 Metadata:
   cfn-lint:
@@ -95,6 +94,18 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+  LambdaS3BucketPrefix:
+    Type: String
+    Description: >-
+      S3 bucket name prefix for the MetricsConfigurator Lambda code ZIP.
+      The actual bucket is constructed as {prefix}-{region}, e.g.
+      observeinc-us-west-2. Required for StackSet deployments.
+    Default: ''
+  LambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the MetricsConfigurator Lambda code ZIP.
+    Default: ''
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
@@ -103,6 +114,13 @@ Conditions:
     - !Equals
       - !Ref DatasourceID
       - ''
+  HasLambdaCode: !Not
+    - !Equals
+      - !Ref LambdaS3BucketPrefix
+      - ''
+  DeployLambda: !Or
+    - !Condition HasDatasourceID
+    - !Condition HasLambdaCode
 
 Resources:
   DeliveryStreamRole:
@@ -230,6 +248,7 @@ Resources:
                 Resource: !GetAtt 'DeliveryStream.Arn'
   MetricsConfiguratorRole:
     Type: AWS::IAM::Role
+    Condition: DeployLambda
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -275,16 +294,17 @@ Resources:
                   Resource: !Ref GQLTokenSecret
           - !Ref AWS::NoValue
   MetricsConfigurator:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: makefile
+    Type: AWS::Lambda::Function
+    Condition: DeployLambda
     Properties:
       FunctionName: !If
         - UseStackName
         - !Ref AWS::StackName
         - !Ref NameOverride
       Role: !GetAtt MetricsConfiguratorRole.Arn
-      CodeUri: ../../bin/linux_arm64
+      Code:
+        S3Bucket: !Sub '${LambdaS3BucketPrefix}-${AWS::Region}'
+        S3Key: !Ref LambdaS3Key
       Handler: bootstrap
       Runtime: provided.al2023
       Architectures:
@@ -318,6 +338,7 @@ Resources:
       SecretString: !Ref GQLToken
   StackCreationUpdateCustomResource:
     Type: Custom::StackCreationUpdateTrigger
+    Condition: DeployLambda
     Properties:
       ServiceToken: !GetAtt MetricsConfigurator.Arn
       StackName: !Ref AWS::StackName
