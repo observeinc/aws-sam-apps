@@ -428,6 +428,11 @@ Resources:
             - !Ref NameOverride
       RetentionInDays: 365
   Subscriber:
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W1031
     Type: AWS::Lambda::Function
     Condition: EnableSubscription
     DependsOn:
