@@ -4,20 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/observeinc/aws-sam-apps/pkg/logging"
-
 	"net/http"
 
-	"github.com/go-logr/logr"
-
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/go-logr/logr"
+	"github.com/observeinc/aws-sam-apps/pkg/logging"
 )
 
 const bearerTokenFormat = "Bearer %s %s"
@@ -37,17 +35,19 @@ type Handler struct {
 	DatasourceID      string
 	ObserveDomainName string
 	SecretName        string
+	FilterUri         string
 }
 
 type Config struct {
 	MetricStreamName  string `env:"METRIC_STREAM_NAME,required"`
-	AccountID         string `env:"ACCOUNT_ID,required"`
-	DatasourceID      string `env:"DATASOURCE_ID,required"`
-	ObserveDomainName string `env:"OBSERVE_DOMAIN_NAME,required"`
-	SecretName        string `env:"SECRET_NAME,required"`
 	FirehoseArn       string `env:"FIREHOSE_ARN,required"`
 	RoleArn           string `env:"ROLE_ARN,required"`
 	OutputFormat      string `env:"OUTPUT_FORMAT,required"`
+	AccountID         string `env:"ACCOUNT_ID"`
+	DatasourceID      string `env:"DATASOURCE_ID"`
+	ObserveDomainName string `env:"OBSERVE_DOMAIN_NAME"`
+	SecretName        string `env:"SECRET_NAME"`
+	FilterUri         string `env:"FILTER_URI"`
 	Logging           *logging.Config
 }
 
@@ -75,6 +75,9 @@ type GraphQLResponse struct {
 }
 
 func New(cfg *Config, logger logr.Logger) (Handler, error) {
+	if cfg.DatasourceID == "" && cfg.FilterUri == "" {
+		return Handler{}, fmt.Errorf("either DATASOURCE_ID or FILTER_URI must be set")
+	}
 	return Handler{
 		Logger:            logger,
 		MetricStreamName:  cfg.MetricStreamName,
@@ -85,6 +88,7 @@ func New(cfg *Config, logger logr.Logger) (Handler, error) {
 		FirehoseArn:       cfg.FirehoseArn,
 		RoleArn:           cfg.RoleArn,
 		OutputFormat:      cfg.OutputFormat,
+		FilterUri:         cfg.FilterUri,
 	}, nil
 }
 
@@ -92,8 +96,6 @@ func (h Handler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
 	logger := h.Logger
 	logger.V(4).Info("handling request to configure metrics via lambda")
 
-	// at this stage, we cannot report an error,
-	// because the request with the response url is not parsed yet
 	req, err := h.parsePayload(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse payload: %w", err)
@@ -101,48 +103,60 @@ func (h Handler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
 
 	logger.V(3).Info("parsed request", "request", *req)
 
-	// Handle Delete case, directly delete
-	if req.RequestType == "Delete" {
-		logger.V(3).Info("delete request received, deleting lambda for metrics configuration")
-		report_err := h.reportStatus(*req, true, "successfully deleted")
-		if report_err != nil {
-			return nil, fmt.Errorf("failed to report status to cloudformation on successful delete: %w", report_err)
-		}
-		return []byte{}, nil
-	}
-
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
+		if req.RequestType == "Delete" {
+			logger.Error(err, "failed to load AWS config during delete, skipping metric stream cleanup")
+			if reportErr := h.reportStatus(*req, true, "deleted (skipped metric stream cleanup: could not load AWS config)"); reportErr != nil {
+				return nil, fmt.Errorf("failed to report status to cloudformation: %w", reportErr)
+			}
+			return []byte{}, nil
+		}
 		return nil, h.reportAndError("failed to load AWS config", req, err)
 	}
 
+	if req.RequestType == "Delete" {
+		return h.handleDelete(ctx, cfg, req)
+	}
+
+	if h.DatasourceID != "" {
+		err = h.invokeDatasourcePath(ctx, cfg, req)
+	} else {
+		err = h.invokeFilterUriPath(ctx, cfg, req)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	logger.V(3).Info("returned response to cloudformation")
+	return []byte{}, nil
+}
+
+func (h Handler) invokeDatasourcePath(ctx context.Context, cfg aws.Config, req *Request) error {
+	logger := h.Logger
+
 	token, err := h.getSecretValue(ctx, cfg)
 	if err != nil {
-		return nil, h.reportAndError("failed to retrieve secret value", req, err)
+		return h.reportAndError("failed to retrieve secret value", req, err)
 	}
 	logger.V(4).Info("retrieved token from secret manager")
 
 	client := &http.Client{}
 	bodyBytes, err := h.getDatasource(token, h.ObserveDomainName, client)
 	if err != nil {
-		return nil, h.reportAndError("failed to retrieve datasource", req, err)
+		return h.reportAndError("failed to retrieve datasource", req, err)
 	}
 	logger.V(4).Info("retrieved datasource details")
 
-	MetricsFilters, err := h.parseResponse(bodyBytes)
+	metricsFilters, err := h.parseResponse(bodyBytes)
 	if err != nil {
-		return nil, h.reportAndError("failed to parse response", req, err)
+		return h.reportAndError("failed to parse response", req, err)
 	}
-	logger.V(4).Info("parsed response, metric filters", "filters", MetricsFilters)
+	logger.V(4).Info("parsed response, metric filters", "filters", metricsFilters)
 
-	// Create a cloudwatch client
 	cwClient := cloudwatch.NewFromConfig(cfg)
 
-	// AWS limits the number of metrics in a metric stream to 1000
-	// https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricStreamFilter.html
-	// Make multiple metric streams to account for this
-	filterGroups := h.makeMetricGroups(MetricsFilters)
-
+	filterGroups := h.makeMetricGroups(metricsFilters)
 	for idx, filterGroup := range filterGroups {
 		name := fmt.Sprintf("%s-%s-%d", h.MetricStreamName, "metric-stream", idx)
 		_, err = cwClient.PutMetricStream(ctx, &cloudwatch.PutMetricStreamInput{
@@ -153,18 +167,102 @@ func (h Handler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
 			IncludeFilters: filterGroup,
 		})
 		if err != nil {
-			return nil, h.reportAndError("failed to add filter to metric stream", req, err)
+			return h.reportAndError("failed to add filter to metric stream", req, err)
 		}
 	}
 
 	logger.V(4).Info("successfully added all filters to metric stream")
-
 	err = h.reportStatus(*req, true, "successfully wrote metrics to metric stream")
 	if err != nil {
-		return nil, fmt.Errorf("failed to report status to cloudformation: %w, during successful write", err)
+		return fmt.Errorf("failed to report status to cloudformation: %w, during successful write", err)
+	}
+	return nil
+}
+
+func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *Request) error {
+	logger := h.Logger
+	logger.V(4).Info("using FilterUri path", "filterUri", h.FilterUri)
+
+	data, err := downloadFilterYAML(ctx, h.FilterUri)
+	if err != nil {
+		return h.reportAndError("failed to download filter YAML", req, err)
+	}
+	logger.V(4).Info("downloaded filter YAML", "size", len(data))
+
+	parsed, err := parseFilterYAML(data)
+	if err != nil {
+		return h.reportAndError("failed to parse filter YAML", req, err)
 	}
 
-	logger.V(3).Info("returned response to cloudformation")
+	cwClient := cloudwatch.NewFromConfig(cfg)
+	name := fmt.Sprintf("%s-%s-%d", h.MetricStreamName, "metric-stream", 0)
+
+	input := &cloudwatch.PutMetricStreamInput{
+		FirehoseArn:  &h.FirehoseArn,
+		RoleArn:      &h.RoleArn,
+		OutputFormat: types.MetricStreamOutputFormat(h.OutputFormat),
+		Name:         &name,
+	}
+
+	if len(parsed.IncludeFilters) > 0 {
+		filterGroups := h.makeMetricGroups(parsed.IncludeFilters)
+		for idx, filterGroup := range filterGroups {
+			streamName := fmt.Sprintf("%s-%s-%d", h.MetricStreamName, "metric-stream", idx)
+			_, err = cwClient.PutMetricStream(ctx, &cloudwatch.PutMetricStreamInput{
+				FirehoseArn:    &h.FirehoseArn,
+				RoleArn:        &h.RoleArn,
+				OutputFormat:   types.MetricStreamOutputFormat(h.OutputFormat),
+				Name:           &streamName,
+				IncludeFilters: filterGroup,
+			})
+			if err != nil {
+				return h.reportAndError("failed to put metric stream with include filters", req, err)
+			}
+		}
+	} else if len(parsed.ExcludeFilters) > 0 {
+		input.ExcludeFilters = parsed.ExcludeFilters
+		_, err = cwClient.PutMetricStream(ctx, input)
+		if err != nil {
+			return h.reportAndError("failed to put metric stream with exclude filters", req, err)
+		}
+	}
+
+	logger.V(4).Info("successfully configured metric stream from FilterUri")
+	err = h.reportStatus(*req, true, "successfully configured metric stream from FilterUri")
+	if err != nil {
+		return fmt.Errorf("failed to report status to cloudformation: %w, during successful write", err)
+	}
+	return nil
+}
+
+func (h Handler) handleDelete(ctx context.Context, cfg aws.Config, req *Request) ([]byte, error) {
+	logger := h.Logger
+	logger.V(3).Info("delete request received, cleaning up metric streams")
+
+	cwClient := cloudwatch.NewFromConfig(cfg)
+
+	var deleted int
+	for idx := 0; ; idx++ {
+		name := fmt.Sprintf("%s-metric-stream-%d", h.MetricStreamName, idx)
+		_, err := cwClient.DeleteMetricStream(ctx, &cloudwatch.DeleteMetricStreamInput{
+			Name: &name,
+		})
+		if err != nil {
+			var rnf *types.ResourceNotFoundException
+			if errors.As(err, &rnf) {
+				break
+			}
+			logger.Error(err, "failed to delete metric stream, continuing", "name", name)
+			break
+		}
+		deleted++
+		logger.V(3).Info("deleted metric stream", "name", name)
+	}
+
+	reason := fmt.Sprintf("successfully deleted %d metric stream(s)", deleted)
+	if reportErr := h.reportStatus(*req, true, reason); reportErr != nil {
+		return nil, fmt.Errorf("failed to report status to cloudformation: %w", reportErr)
+	}
 	return []byte{}, nil
 }
 
