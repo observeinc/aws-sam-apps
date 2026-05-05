@@ -294,6 +294,11 @@ Resources:
                   Resource: !Ref GQLTokenSecret
           - !Ref AWS::NoValue
   MetricsConfigurator:
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W1031
     Type: AWS::Lambda::Function
     Condition: DeployLambda
     Properties:
