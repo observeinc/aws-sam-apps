@@ -226,11 +226,15 @@ Resources:
     # W1030: LambdaS3Key defaults to '' but this resource is gated by
     # the DeployPollerConfigurator condition so it is never created with
     # an empty value.
+    # W1031: LambdaS3BucketPrefix defaults to '' so cfn-lint can't
+    # validate the Fn::Sub bucket name; embed-lambda-defaults.py
+    # populates the real value at package time.
     Metadata:
       cfn-lint:
         config:
           ignore_checks:
             - W1030
+            - W1031
     Type: AWS::Lambda::Function
     Condition: DeployPollerConfigurator
     Properties:
