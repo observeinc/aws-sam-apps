@@ -159,7 +159,7 @@ jobs:
       id: run_test
       env:
         TF_VAR_tags: '{"github_run_id":"${{ github.run_id }}","github_workflow":"${{ github.workflow }}","github_job":"tests","github_testfile":"${{ matrix.testfile }}"}'
-      run: TEST_ARGS='-verbose' make test-integration-${{ matrix.testfile }}
+      run: TF_TEST_ARGS='-verbose' make test-integration-${{ matrix.testfile }}
 
     - name: Show CloudFormation stack events on failure
       if: failure() && steps.run_test.outcome == 'failure'
@@ -238,7 +238,7 @@ jobs:
       id: run_test
       env:
         TF_VAR_tags: '{"github_run_id":"${{ github.run_id }}","github_workflow":"${{ github.workflow }}","github_job":"serial_tests","github_testfile":"${{ matrix.testfile }}"}'
-      run: TEST_ARGS='-verbose' make test-integration-${{ matrix.testfile }}
+      run: TF_TEST_ARGS='-verbose' make test-integration-${{ matrix.testfile }}
 
     - name: Show CloudFormation stack events on failure
       if: failure() && steps.run_test.outcome == 'failure'
