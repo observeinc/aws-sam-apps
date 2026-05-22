@@ -200,7 +200,7 @@ run "install_with_source_accounts" {
       DestinationUri           = "s3://${run.create_bucket.access_point.alias}/"
       ConfigDeliveryBucketName = "example-bucket"
       SourceBucketNames        = "*"
-      LogGroupNamePatterns     = "*"
+      LogGroupNamePatterns     = run.setup.id
       SourceAccounts           = var.test_source_account_id
       NameOverride             = run.setup.id
     }

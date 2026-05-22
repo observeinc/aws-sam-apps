@@ -115,7 +115,7 @@ run "install" {
     app   = "logwriter"
     parameters = {
       BucketArn            = run.create_bucket.arn
-      LogGroupNamePatterns = "*"
+      LogGroupNamePatterns = run.setup.id
       DiscoveryRate        = "24 hours"
       NameOverride         = run.setup.id
       Verbosity            = 3
@@ -152,7 +152,7 @@ run "update" {
     app   = "logwriter"
     parameters = {
       BucketArn            = run.create_bucket.arn
-      LogGroupNamePatterns = "*"
+      LogGroupNamePatterns = run.setup.id
       DiscoveryRate        = "24 hours"
       NameOverride         = run.setup.id
       Verbosity            = 4
