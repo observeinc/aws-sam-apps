@@ -461,7 +461,6 @@ Resources:
         ExcludeLogGroupNamePatterns: !Join
           - ","
           - !Ref ExcludeLogGroupNamePatterns
-        FilterName: 'observe-logs-subscription'
         DiscoveryRate: "24 hours"
         NameOverride: !If
           - UseStackName

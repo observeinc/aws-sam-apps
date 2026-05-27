@@ -197,7 +197,7 @@ run "install_with_org_id" {
       DestinationUri           = "s3://${run.create_bucket.access_point.alias}/"
       ConfigDeliveryBucketName = "example-bucket"
       SourceBucketNames        = "*"
-      LogGroupNamePatterns     = "*"
+      LogGroupNamePatterns     = run.setup.id
       OrgId                    = run.get_org_id.org_id
       NameOverride             = run.setup.id
     }

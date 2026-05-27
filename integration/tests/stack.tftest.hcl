@@ -190,7 +190,7 @@ run "install" {
       DestinationUri           = "s3://${run.create_bucket.access_point.alias}/"
       ConfigDeliveryBucketName = "example-bucket"
       SourceBucketNames        = "*"
-      LogGroupNamePatterns     = "*"
+      LogGroupNamePatterns     = run.setup.id
       NameOverride             = run.setup.id
     }
     capabilities = [
