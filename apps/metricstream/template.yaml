@@ -33,7 +33,7 @@ Parameters:
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
     Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
-    AllowedPattern: "^(s3:\/\/.*)?$"
+    AllowedPattern: '^(s3://.*)?$'
   OutputFormat:
     Type: String
     Description: >-
@@ -99,12 +99,10 @@ Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
-  DeployLambda: !Not
+  HasDatasourceID: !Not
     - !Equals
       - !Ref DatasourceID
-      - ""
-  NotDeployLambda: !Not
-    - !Condition DeployLambda
+      - ''
 
 Resources:
   DeliveryStreamRole:
@@ -230,33 +228,8 @@ Resources:
                   - firehose:PutRecord
                   - firehose:PutRecordBatch
                 Resource: !GetAtt 'DeliveryStream.Arn'
-  MetricStream:
-    Type: AWS::CloudWatch::MetricStream
-    Condition: NotDeployLambda
-    Metadata:
-      cfn-lint:
-        config:
-          ignore_checks:
-            # Disable false positive when using Fn::Transform
-            # https://github.com/aws-cloudformation/cfn-lint/issues/2887
-            - E3002
-    Properties:
-      FirehoseArn: !GetAtt 'DeliveryStream.Arn'
-      RoleArn: !GetAtt MetricStreamRole.Arn
-      'Fn::Transform':
-        Name: "AWS::Include"
-        Parameters:
-          Location: !Ref FilterUri
-      # End of processable content for include.
-      # AWS::Include will be replaced with the file FilterUri references.
-      # This macro always runs, so we must always provide it with a valid
-      # S3 file, even if we overwrite it with a lambda.
-      # filterURI is decided in the parent stack becauseAWS does not
-      # allow an !If function inside an AWS::Include.
-      OutputFormat: !Ref OutputFormat
   MetricsConfiguratorRole:
     Type: AWS::IAM::Role
-    Condition: DeployLambda
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -273,6 +246,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - cloudwatch:PutMetricStream
+                  - cloudwatch:DeleteMetricStream
                 Resource: !Sub |-
                   arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:*
               - Effect: Allow
@@ -287,11 +261,21 @@ Resources:
                 Resource: !GetAtt LambdaLogGroup.Arn
               - Effect: Allow
                 Action:
-                  - secretsmanager:GetSecretValue
-                Resource: !Ref GQLTokenSecret
+                  - s3:GetObject
+                Resource: 'arn:aws:s3:::*'
+        - !If
+          - HasDatasourceID
+          - PolicyName: SecretsManagerAccess
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - secretsmanager:GetSecretValue
+                  Resource: !Ref GQLTokenSecret
+          - !Ref AWS::NoValue
   MetricsConfigurator:
     Type: AWS::Serverless::Function
-    Condition: DeployLambda
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -310,11 +294,7 @@ Resources:
       Environment:
         Variables:
           VERBOSITY: 6
-          ACCOUNT_ID: !Ref ObserveAccountID
-          OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
-          DATASOURCE_ID: !Ref DatasourceID
-          SECRET_NAME: !Ref GQLTokenSecret
-          # fields are necessary to update the metric stream
+          FILTER_URI: !Ref FilterUri
           METRIC_STREAM_NAME: !If
             - UseStackName
             - !Ref AWS::StackName
@@ -322,20 +302,27 @@ Resources:
           FIREHOSE_ARN: !GetAtt DeliveryStream.Arn
           ROLE_ARN: !GetAtt MetricStreamRole.Arn
           OUTPUT_FORMAT: !Ref OutputFormat
+          ACCOUNT_ID: !Ref ObserveAccountID
+          OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
+          DATASOURCE_ID: !Ref DatasourceID
+          SECRET_NAME: !If
+            - HasDatasourceID
+            - !Ref GQLTokenSecret
+            - ''
   GQLTokenSecret:
     Type: AWS::SecretsManager::Secret
-    Condition: DeployLambda
+    Condition: HasDatasourceID
     Properties:
       Description: GQL Token Secret
       Name: !Sub "observe-gql-token-${AWS::StackName}"
       SecretString: !Ref GQLToken
   StackCreationUpdateCustomResource:
     Type: Custom::StackCreationUpdateTrigger
-    Condition: DeployLambda
     Properties:
       ServiceToken: !GetAtt MetricsConfigurator.Arn
       StackName: !Ref AWS::StackName
       UpdateTimestamp: !Ref UpdateTimestamp
+      FilterUri: !Ref FilterUri
 Outputs:
   FirehoseArn:
     Description: >-
