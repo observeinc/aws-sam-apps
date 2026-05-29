@@ -335,3 +335,14 @@ Outputs:
       Firehose Log Group Name. This log group will contain debugging
       information if Firehose fails to deliver data to S3.
     Value: !Ref LogGroup
+  MetricStreamNames:
+    Description: >-
+      Prefix of the CloudWatch metric stream names created by the
+      MetricsConfigurator Lambda. Streams are named <prefix>0, <prefix>1, etc.
+      (one stream per ~1000 metric names). Find them in the CloudWatch console
+      under Metrics > Streams, or run:
+      aws cloudwatch list-metric-streams
+      --query "MetricStreams[?starts_with(Name, '<prefix>')].Name"
+    Value: !Sub
+      - '${Name}-metric-stream-'
+      - Name: !If [UseStackName, !Ref 'AWS::StackName', !Ref NameOverride]
