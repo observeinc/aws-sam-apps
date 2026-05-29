@@ -73,6 +73,17 @@ func parseFilterYAML(data []byte) (*ParsedFilters, error) {
 		return nil, fmt.Errorf("failed to parse filter YAML: %w", err)
 	}
 
+	// Distinguish "key present but empty list" (e.g. `ExcludeFilters: []` in
+	// full.yaml, meaning "stream everything") from "key absent" (malformed
+	// or unrelated content) by re-parsing as a map.
+	var keys map[string]interface{}
+	_ = yaml.Unmarshal(data, &keys)
+	_, hasInclude := keys["IncludeFilters"]
+	_, hasExclude := keys["ExcludeFilters"]
+	if !hasInclude && !hasExclude {
+		return nil, fmt.Errorf("filter YAML must contain IncludeFilters or ExcludeFilters")
+	}
+
 	result := &ParsedFilters{}
 
 	for _, entry := range raw.IncludeFilters {
@@ -89,10 +100,6 @@ func parseFilterYAML(data []byte) (*ParsedFilters, error) {
 			Namespace:   &ns,
 			MetricNames: entry.MetricNames,
 		})
-	}
-
-	if len(result.IncludeFilters) == 0 && len(result.ExcludeFilters) == 0 {
-		return nil, fmt.Errorf("filter YAML must contain IncludeFilters or ExcludeFilters")
 	}
 
 	return result, nil

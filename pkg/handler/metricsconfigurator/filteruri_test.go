@@ -93,11 +93,10 @@ func TestParseFilterYAML(t *testing.T) {
 			checkNamespace: "Default",
 		},
 		{
-			name:         "full filter (empty ExcludeFilters)",
+			name:         "full filter (empty ExcludeFilters means stream everything)",
 			yaml:         `ExcludeFilters: []`,
 			wantIncludes: 0,
 			wantExcludes: 0,
-			wantErr:      true,
 		},
 		{
 			name: "recommended filter with ExcludeFilters",

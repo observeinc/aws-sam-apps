@@ -219,7 +219,7 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 				return h.reportAndError("failed to put metric stream with include filters", req, err)
 			}
 		}
-	} else if len(parsed.ExcludeFilters) > 0 {
+	} else {
 		input.ExcludeFilters = parsed.ExcludeFilters
 		_, err = cwClient.PutMetricStream(ctx, input)
 		if err != nil {
