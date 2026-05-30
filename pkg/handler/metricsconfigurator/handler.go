@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -235,32 +234,18 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 	return nil
 }
 
-func (h Handler) handleDelete(ctx context.Context, cfg aws.Config, req *Request) ([]byte, error) {
+// handleDelete is a no-op for stream cleanup. DeleteMetricStream silently
+// succeeds on nonexistent names, and prefix-match by MetricStreamName has
+// no way to prove a stream was created by this stack vs. another stack
+// with the same NameOverride or a customer's hand-rolled stream.
+// Safe ownership-checked cleanup (tag-on-put + GetResources by tag) lands
+// as a fast-follow; until then streams are orphaned on stack delete (their
+// Firehose target is destroyed by CFN, so the orphans deliver nothing and
+// must be manually deleted by the operator).
+func (h Handler) handleDelete(_ context.Context, _ aws.Config, req *Request) ([]byte, error) {
 	logger := h.Logger
-	logger.V(3).Info("delete request received, cleaning up metric streams")
-
-	cwClient := cloudwatch.NewFromConfig(cfg)
-
-	var deleted int
-	for idx := 0; ; idx++ {
-		name := fmt.Sprintf("%s-metric-stream-%d", h.MetricStreamName, idx)
-		_, err := cwClient.DeleteMetricStream(ctx, &cloudwatch.DeleteMetricStreamInput{
-			Name: &name,
-		})
-		if err != nil {
-			var rnf *types.ResourceNotFoundException
-			if errors.As(err, &rnf) {
-				break
-			}
-			logger.Error(err, "failed to delete metric stream, continuing", "name", name)
-			break
-		}
-		deleted++
-		logger.V(3).Info("deleted metric stream", "name", name)
-	}
-
-	reason := fmt.Sprintf("successfully deleted %d metric stream(s)", deleted)
-	if reportErr := h.reportStatus(*req, true, reason); reportErr != nil {
+	logger.V(3).Info("delete request received; metric stream cleanup deferred to operator (see fast-follow)")
+	if reportErr := h.reportStatus(*req, true, "delete acknowledged; metric stream cleanup not performed"); reportErr != nil {
 		return nil, fmt.Errorf("failed to report status to cloudformation: %w", reportErr)
 	}
 	return []byte{}, nil
