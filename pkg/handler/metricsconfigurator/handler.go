@@ -182,7 +182,7 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 	logger := h.Logger
 	logger.V(4).Info("using FilterUri path", "filterUri", h.FilterUri)
 
-	data, err := downloadFilterYAML(ctx, h.FilterUri)
+	data, err := downloadFilterYAML(ctx, cfg, h.FilterUri)
 	if err != nil {
 		return h.reportAndError("failed to download filter YAML", req, err)
 	}

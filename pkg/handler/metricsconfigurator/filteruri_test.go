@@ -6,22 +6,25 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 )
 
-func TestS3URIToHTTPS(t *testing.T) {
+func TestParseS3URI(t *testing.T) {
 	tests := []struct {
-		name    string
-		uri     string
-		wantURL string
-		wantErr bool
+		name       string
+		uri        string
+		wantBucket string
+		wantKey    string
+		wantErr    bool
 	}{
 		{
-			name:    "valid URI",
-			uri:     "s3://observeinc/cloudwatchmetrics/filters/recommended.yaml",
-			wantURL: "https://observeinc.s3.amazonaws.com/cloudwatchmetrics/filters/recommended.yaml",
+			name:       "valid URI",
+			uri:        "s3://observeinc/cloudwatchmetrics/filters/recommended.yaml",
+			wantBucket: "observeinc",
+			wantKey:    "cloudwatchmetrics/filters/recommended.yaml",
 		},
 		{
-			name:    "valid URI with simple key",
-			uri:     "s3://mybucket/mykey.yaml",
-			wantURL: "https://mybucket.s3.amazonaws.com/mykey.yaml",
+			name:       "valid URI with simple key",
+			uri:        "s3://mybucket/mykey.yaml",
+			wantBucket: "mybucket",
+			wantKey:    "mykey.yaml",
 		},
 		{
 			name:    "missing s3 prefix",
@@ -47,7 +50,7 @@ func TestS3URIToHTTPS(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url, err := s3URIToHTTPS(tt.uri)
+			bucket, key, err := parseS3URI(tt.uri)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error, got nil")
@@ -58,8 +61,11 @@ func TestS3URIToHTTPS(t *testing.T) {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
-			if url != tt.wantURL {
-				t.Errorf("url = %q, want %q", url, tt.wantURL)
+			if bucket != tt.wantBucket {
+				t.Errorf("bucket = %q, want %q", bucket, tt.wantBucket)
+			}
+			if key != tt.wantKey {
+				t.Errorf("key = %q, want %q", key, tt.wantKey)
 			}
 		})
 	}
