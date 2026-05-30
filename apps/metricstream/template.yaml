@@ -114,13 +114,6 @@ Conditions:
     - !Equals
       - !Ref DatasourceID
       - ''
-  HasLambdaCode: !Not
-    - !Equals
-      - !Ref LambdaS3BucketPrefix
-      - ''
-  DeployLambda: !Or
-    - !Condition HasDatasourceID
-    - !Condition HasLambdaCode
 
 Resources:
   DeliveryStreamRole:
@@ -248,7 +241,6 @@ Resources:
                 Resource: !GetAtt 'DeliveryStream.Arn'
   MetricsConfiguratorRole:
     Type: AWS::IAM::Role
-    Condition: DeployLambda
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -300,7 +292,6 @@ Resources:
           ignore_checks:
             - W1031
     Type: AWS::Lambda::Function
-    Condition: DeployLambda
     Properties:
       FunctionName: !If
         - UseStackName
@@ -343,7 +334,6 @@ Resources:
       SecretString: !Ref GQLToken
   StackCreationUpdateCustomResource:
     Type: Custom::StackCreationUpdateTrigger
-    Condition: DeployLambda
     Properties:
       ServiceToken: !GetAtt MetricsConfigurator.Arn
       StackName: !Ref AWS::StackName

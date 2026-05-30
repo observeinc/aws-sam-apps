@@ -293,16 +293,6 @@ Conditions:
       - !Equals
         - !Ref DatasourceID
         - ""
-  HasLambdaCode: !Not
-    - !Equals
-      - !Ref LambdaS3BucketPrefix
-      - ''
-  DeployLambda: !Or
-    - !Not
-      - !Equals
-        - !Ref DatasourceID
-        - ""
-    - !Condition HasLambdaCode
   HasLogGroupNamePatterns: !Not
     - !Equals
       - !Join
@@ -511,16 +501,7 @@ Resources:
         - !Ref Topic
       Parameters:
         BucketArn: !GetAtt Bucket.Arn
-        FilterUri: !If
-          - DeployLambda
-          - 's3://observeinc/cloudwatchmetrics/filters/default.yaml'
-          - !Ref MetricStreamFilterUri
-          # We provide a yaml file URI here where the contents are a sentinel
-          # value that the user would never enter. Then the lambda modifies
-          # the metricstream to reflect the actual config provided. We need
-          # this sentinel value here initially so that if we switch back to the
-          # yaml based approach, the cloudformation stack will recognize that
-          # the value from the yaml file has changed and will update.
+        FilterUri: !Ref MetricStreamFilterUri
         ObserveAccountID: !Ref ObserveAccountID
         ObserveDomainName: !Ref ObserveDomainName
         UpdateTimestamp: !Ref UpdateTimestamp
