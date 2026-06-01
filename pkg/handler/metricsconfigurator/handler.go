@@ -204,6 +204,14 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 		Name:         &name,
 	}
 
+	// Include and exclude are handled asymmetrically: we assume customers can
+	// and do request IncludeFilters lists that exceed AWS's 1000-metric
+	// per-stream limit, so we chunk them into multiple streams (the union
+	// of which is what the customer asked for). We assume ExcludeFilters
+	// lists stay under the limit, and there is no practical way to express
+	// "exclude this whole set" across multiple streams anyway — splitting an
+	// exclude list across streams would just mean each stream emits the
+	// metrics the other stream excludes.
 	if len(parsed.IncludeFilters) > 0 {
 		filterGroups := h.makeMetricGroups(parsed.IncludeFilters)
 		for idx, filterGroup := range filterGroups {
@@ -367,9 +375,11 @@ func (h Handler) getDatasource(token *string, observeDomainName string, client *
 	return bodyBytes, nil
 }
 
+// makeMetricGroups splits filters across multiple streams.
+// AWS limits the number of metrics in a metric stream to 1000
+// https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricStreamFilter.html
+// Make multiple metric streams to account for this.
 func (h Handler) makeMetricGroups(MetricsFilters []types.MetricStreamFilter) [][]types.MetricStreamFilter {
-	// create appropriate number of metric streams for metrics, assign metrics to streams
-
 	currentNameCount := 0
 	filterGroups := make([][]types.MetricStreamFilter, 0)
 	currentFilterGroup := make([]types.MetricStreamFilter, 0)

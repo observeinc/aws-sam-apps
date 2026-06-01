@@ -82,13 +82,24 @@ func TestParseFilterYAML(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "empty yaml",
-			yaml:    ``,
-			wantErr: true,
+			name:         "empty yaml",
+			yaml:         ``,
+			wantIncludes: 0,
+			wantExcludes: 0,
 		},
 		{
-			name:    "yaml with neither field",
-			yaml:    `SomethingElse: value`,
+			name:         "yaml with neither field",
+			yaml:         `SomethingElse: value`,
+			wantIncludes: 0,
+			wantExcludes: 0,
+		},
+		{
+			name: "both IncludeFilters and ExcludeFilters non-empty rejected",
+			yaml: `IncludeFilters:
+  - Namespace: AWS/EC2
+ExcludeFilters:
+  - Namespace: AWS/RDS
+`,
 			wantErr: true,
 		},
 	}
