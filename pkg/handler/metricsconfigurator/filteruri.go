@@ -1,14 +1,9 @@
 package metricsconfigurator
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,42 +15,6 @@ type FilterYAML struct {
 type FilterEntry struct {
 	Namespace   string   `yaml:"Namespace"`
 	MetricNames []string `yaml:"MetricNames,omitempty"`
-}
-
-// parseS3URI splits an s3://bucket/key URI into its bucket and key parts.
-func parseS3URI(uri string) (bucket, key string, err error) {
-	if !strings.HasPrefix(uri, "s3://") {
-		return "", "", fmt.Errorf("invalid S3 URI: must start with s3://")
-	}
-	path := strings.TrimPrefix(uri, "s3://")
-	parts := strings.SplitN(path, "/", 2)
-	if len(parts) < 2 || parts[1] == "" {
-		return "", "", fmt.Errorf("invalid S3 URI: must contain bucket and key")
-	}
-	return parts[0], parts[1], nil
-}
-
-func downloadFilterYAML(ctx context.Context, cfg aws.Config, filterURI string) ([]byte, error) {
-	bucket, key, err := parseS3URI(filterURI)
-	if err != nil {
-		return nil, err
-	}
-
-	s3Client := s3.NewFromConfig(cfg)
-	out, err := s3Client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get s3://%s/%s: %w", bucket, key, err)
-	}
-	defer func() { _ = out.Body.Close() }()
-
-	data, err := io.ReadAll(out.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read s3://%s/%s body: %w", bucket, key, err)
-	}
-	return data, nil
 }
 
 type ParsedFilters struct {

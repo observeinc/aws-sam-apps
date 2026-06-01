@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-logr/logr"
+	"github.com/observeinc/aws-sam-apps/pkg/handler"
 	"github.com/observeinc/aws-sam-apps/pkg/logging"
 )
 
@@ -182,7 +183,7 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 	logger := h.Logger
 	logger.V(4).Info("using FilterUri path", "filterUri", h.FilterUri)
 
-	data, err := downloadFilterYAML(ctx, cfg, h.FilterUri)
+	data, err := handler.GetS3Object(ctx, cfg, h.FilterUri)
 	if err != nil {
 		return h.reportAndError("failed to download filter YAML", req, err)
 	}

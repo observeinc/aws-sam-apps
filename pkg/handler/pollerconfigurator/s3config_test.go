@@ -8,54 +8,6 @@ import (
 	"testing"
 )
 
-func TestParseS3URI(t *testing.T) {
-	tests := []struct {
-		name       string
-		uri        string
-		wantBucket string
-		wantKey    string
-		wantErr    bool
-	}{
-		{
-			name:       "valid URI",
-			uri:        "s3://my-bucket/path/to/config.json",
-			wantBucket: "my-bucket",
-			wantKey:    "path/to/config.json",
-		},
-		{
-			name:    "missing s3 prefix",
-			uri:     "https://my-bucket/config.json",
-			wantErr: true,
-		},
-		{
-			name:    "no key",
-			uri:     "s3://my-bucket",
-			wantErr: true,
-		},
-		{
-			name:    "empty key",
-			uri:     "s3://my-bucket/",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			bucket, key, err := parseS3URI(tt.uri)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseS3URI() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if bucket != tt.wantBucket {
-				t.Errorf("parseS3URI() bucket = %q, want %q", bucket, tt.wantBucket)
-			}
-			if key != tt.wantKey {
-				t.Errorf("parseS3URI() key = %q, want %q", key, tt.wantKey)
-			}
-		})
-	}
-}
-
 func TestDownloadPollerConfig(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -1,6 +1,7 @@
 package pollerconfigurator
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,8 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	"github.com/observeinc/aws-sam-apps/pkg/handler"
 )
 
 type TagFilter struct {
@@ -46,43 +48,17 @@ type PollerConfig struct {
 	Queries      []QueryConfig `json:"queries"`
 }
 
-func parseS3URI(uri string) (bucket, key string, err error) {
-	if !strings.HasPrefix(uri, "s3://") {
-		return "", "", fmt.Errorf("invalid S3 URI: must start with s3://")
-	}
-	path := strings.TrimPrefix(uri, "s3://")
-	parts := strings.SplitN(path, "/", 2)
-	if len(parts) < 2 || parts[1] == "" {
-		return "", "", fmt.Errorf("invalid S3 URI: must contain bucket and key")
-	}
-	return parts[0], parts[1], nil
-}
-
 func downloadPollerConfig(ctx context.Context, uri string, awsCfg aws.Config) (*PollerConfig, error) {
 	// for testing: allow direct HTTP URLs so tests can use httptest servers
 	if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
 		return downloadPollerConfigFromURL(ctx, uri)
 	}
 
-	bucket, key, err := parseS3URI(uri)
+	data, err := handler.GetS3Object(ctx, awsCfg, uri)
 	if err != nil {
 		return nil, err
 	}
-	return downloadPollerConfigFromS3(ctx, awsCfg, bucket, key)
-}
-
-func downloadPollerConfigFromS3(ctx context.Context, awsCfg aws.Config, bucket, key string) (*PollerConfig, error) {
-	client := s3.NewFromConfig(awsCfg)
-	out, err := client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get s3://%s/%s: %w", bucket, key, err)
-	}
-	defer func() { _ = out.Body.Close() }()
-
-	return parsePollerConfig(out.Body)
+	return parsePollerConfig(bytes.NewReader(data))
 }
 
 func downloadPollerConfigFromURL(ctx context.Context, url string) (*PollerConfig, error) {
