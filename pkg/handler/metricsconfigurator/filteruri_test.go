@@ -102,6 +102,19 @@ ExcludeFilters:
 `,
 			wantErr: true,
 		},
+		{
+			// AWS's PutMetricStream accepts a request with both IncludeFilters
+			// and ExcludeFilters set to empty arrays — verified empirically in
+			// blunderdome — and creates an unfiltered ("stream everything")
+			// stream. Match that here: both `[]` parses to no filters, and the
+			// handler hands an input with neither set to PutMetricStream.
+			name: "both IncludeFilters and ExcludeFilters explicitly empty",
+			yaml: `IncludeFilters: []
+ExcludeFilters: []
+`,
+			wantIncludes: 0,
+			wantExcludes: 0,
+		},
 	}
 
 	for _, tt := range tests {
