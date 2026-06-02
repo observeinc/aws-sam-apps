@@ -63,7 +63,7 @@ You can use `curl` to inspect the content of these files, e.g.:
 curl https://observeinc.s3.us-west-2.amazonaws.com/cloudwatchmetrics/filters/recommended.yaml
 ```
 
-You can host your own definition, so long as it conforms with the schema for [AWS::CloudWatch::MetricStream](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-metricstream.html). 
+You can host your own definition, so long as it conforms with the schema for [AWS::CloudWatch::MetricStream](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-metricstream.html). Note that `IncludeFilters` and `ExcludeFilters` are mutually exclusive, because of an AWS [limitation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricStream.html#API_PutMetricStream_RequestParameters).
 
 ### Via Lambda Function
 
