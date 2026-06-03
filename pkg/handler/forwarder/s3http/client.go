@@ -150,6 +150,14 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 
 	putInput := toPutInput(params, seekableBody, getResp.ContentType, getResp.ContentEncoding)
 
+	// Infer content-encoding for gzip files when not already set by override rules.
+	// This handles the case where a custom override sets content-type but not content-encoding,
+	// causing Sets.Apply to stop before infer/v1's gzip rule can run.
+	// We check the source key (getInput.Key) since the destination key may differ or lack the .gz suffix.
+	if aws.ToString(putInput.ContentEncoding) == "" && strings.HasSuffix(aws.ToString(getInput.Key), ".gz") {
+		putInput.ContentEncoding = aws.String("gzip")
+	}
+
 	putResp, err := c.PutObject(ctx, putInput, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to put object: %w", err)

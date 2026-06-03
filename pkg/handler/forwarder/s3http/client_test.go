@@ -2,8 +2,10 @@ package s3http_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -112,5 +114,102 @@ func TestClientPut(t *testing.T) {
 				t.Fatal("response does not match", diff)
 			}
 		})
+	}
+}
+
+// TestCopyObjectGzipInference verifies that when a custom content-type override sets
+// "application/x-aws-elasticloadbalancing" but leaves content-encoding nil, CopyObject
+// still correctly infers "gzip" from the ".gz" key suffix and decompresses the body.
+func TestCopyObjectGzipInference(t *testing.T) {
+	t.Parallel()
+
+	// Build a gzip-compressed body containing two SSV lines:
+	// line 1: header (space-separated field names)
+	// line 2: a single ALB-like log record
+	const (
+		header = "type time elb client:port target:port request_processing_time"
+		record = `https 2024-01-01T00:00:00.000000Z my-alb 1.2.3.4:1234 10.0.0.1:80 0.001`
+	)
+
+	var gzBuf bytes.Buffer
+	gw := gzip.NewWriter(&gzBuf)
+	if _, err := io.WriteString(gw, header+"\n"+record+"\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	gzBytes := gzBuf.Bytes()
+
+	// Capture requests sent to the HTTP destination.
+	var (
+		mu      sync.Mutex
+		reqBody bytes.Buffer
+	)
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		body, _ := io.ReadAll(r.Body)
+		reqBody.Write(body)
+	}))
+	defer srv.Close()
+
+	// Mock S3 client: returns our gzip body with content-type set but NO content-encoding.
+	mockS3 := &awstest.S3Client{
+		GetObjectFunc: func(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			size := int64(len(gzBytes))
+			return &s3.GetObjectOutput{
+				Body:            io.NopCloser(bytes.NewReader(gzBytes)),
+				ContentLength:   &size,
+				ContentType:     aws.String("application/x-aws-elasticloadbalancing"),
+				ContentEncoding: nil, // simulates override setting type but not encoding
+			}, nil
+		},
+	}
+
+	client, err := s3http.New(&s3http.Config{
+		DestinationURI:     srv.URL,
+		GetObjectAPIClient: mockS3,
+		HTTPClient:         srv.Client(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.CopyObject(context.Background(), &s3.CopyObjectInput{
+		Bucket:          aws.String("dst-bucket"),
+		Key:             aws.String("output/alb.log"),
+		CopySource:      aws.String("src-bucket/logs/alb-2024-01-01.log.gz"),
+		ContentType:     aws.String("application/x-aws-elasticloadbalancing"),
+		ContentEncoding: nil,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := reqBody.String()
+	t.Logf("received body:\n%s", got)
+
+	// The decoded output should contain the SSV-decoded JSON record, not raw binary.
+	// Verify no raw gzip magic bytes leaked through.
+	if strings.Contains(got, "\x1f\x8b") {
+		t.Fatal("response body contains raw gzip magic bytes — gzip was not decompressed")
+	}
+
+	// Verify the decoded record fields appear as JSON keys/values.
+	for _, want := range []string{`"type"`, `"https"`, `"elb"`, `"my-alb"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in decoded output, got:\n%s", want, got)
+		}
+	}
+
+	// Ensure it's valid ndjson (each line should be a JSON object).
+	for _, line := range strings.Split(strings.TrimSpace(got), "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.HasPrefix(line, "{") || !strings.HasSuffix(line, "}") {
+			t.Errorf("line is not a JSON object: %q", line)
+		}
 	}
 }
