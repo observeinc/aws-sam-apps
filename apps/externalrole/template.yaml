@@ -221,6 +221,10 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref GQLTokenSecret
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: 'arn:aws:s3:::*'
 
   PollerConfigurator:
     # W1030: LambdaS3Key defaults to '' but this resource is gated by
