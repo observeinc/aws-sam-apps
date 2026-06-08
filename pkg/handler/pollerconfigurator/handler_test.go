@@ -27,7 +27,6 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 // testPollerConfig is the JSON config served by the config httptest server.
 const testPollerConfig = `{
 	"name": "test-poller",
-	"datastreamId": "ds-999",
 	"interval": "5m",
 	"period": 300,
 	"delay": 300,
@@ -65,6 +64,7 @@ func newTestHandler(cfnURL, configURL string) Handler {
 		ObserveAccountID:  "111222333",
 		ObserveDomainName: "observeinc.com",
 		WorkspaceID:       "ws-42",
+		DatastreamID:      "ds-999",
 		Region:            "us-east-1",
 		AWSAccountID:      "999888777",
 		ExternalRoleName:  "observe-role",
@@ -362,6 +362,7 @@ func TestHandlerNew(t *testing.T) {
 		PollerConfigURI:   "s3://bucket/config.json",
 		ExternalRoleName:  "observe-role",
 		WorkspaceID:       "456",
+		DatastreamID:      "ds-789",
 		Region:            "us-east-1",
 		AWSAccountID:      "999888777",
 	}

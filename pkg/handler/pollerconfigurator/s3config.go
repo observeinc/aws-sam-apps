@@ -39,13 +39,12 @@ type QueryConfig struct {
 }
 
 type PollerConfig struct {
-	Name         string        `json:"name"`
-	DatastreamId string        `json:"datastreamId"`
-	Period       int64         `json:"period"`
-	Delay        int64         `json:"delay"`
-	Interval     string        `json:"interval"`
-	Retries      *int64        `json:"retries,omitempty"`
-	Queries      []QueryConfig `json:"queries"`
+	Name     string        `json:"name"`
+	Period   int64         `json:"period"`
+	Delay    int64         `json:"delay"`
+	Interval string        `json:"interval"`
+	Retries  *int64        `json:"retries,omitempty"`
+	Queries  []QueryConfig `json:"queries"`
 }
 
 func downloadPollerConfig(ctx context.Context, uri string, awsCfg aws.Config) (*PollerConfig, error) {
@@ -99,9 +98,6 @@ func parsePollerConfig(r io.Reader) (*PollerConfig, error) {
 	}
 	if cfg.Delay <= 0 {
 		return nil, fmt.Errorf("poller config delay must be positive")
-	}
-	if cfg.DatastreamId == "" {
-		return nil, fmt.Errorf("poller config must include datastreamId")
 	}
 	if cfg.Interval == "" {
 		return nil, fmt.Errorf("poller config must include interval")

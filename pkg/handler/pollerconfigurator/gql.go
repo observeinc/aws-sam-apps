@@ -108,7 +108,7 @@ type tagFilterInput struct {
 	Values []string `json:"values,omitempty"`
 }
 
-func buildPollerInput(cfg *PollerConfig, region, assumeRoleArn string) pollerInput {
+func buildPollerInput(cfg *PollerConfig, datastreamID, region, assumeRoleArn string) pollerInput {
 	queries := make([]queryVarInput, len(cfg.Queries))
 	for i, q := range cfg.Queries {
 		qv := queryVarInput{
@@ -140,7 +140,7 @@ func buildPollerInput(cfg *PollerConfig, region, assumeRoleArn string) pollerInp
 
 	input := pollerInput{
 		Name:         cfg.Name,
-		DatastreamId: cfg.DatastreamId,
+		DatastreamId: datastreamID,
 		Interval:     cfg.Interval,
 		CloudWatchMetricsConfig: &cwMetricsConfigInput{
 			Period:        fmt.Sprintf("%d", cfg.Period),
@@ -205,8 +205,8 @@ func (c *gqlClient) execute(token, query string, variables interface{}) ([]byte,
 	return body, nil
 }
 
-func (c *gqlClient) createPoller(token, workspaceID string, cfg *PollerConfig, region, assumeRoleArn string) (string, error) {
-	input := buildPollerInput(cfg, region, assumeRoleArn)
+func (c *gqlClient) createPoller(token, workspaceID string, cfg *PollerConfig, datastreamID, region, assumeRoleArn string) (string, error) {
+	input := buildPollerInput(cfg, datastreamID, region, assumeRoleArn)
 	variables := map[string]interface{}{
 		"workspaceId": workspaceID,
 		"poller":      input,
@@ -232,8 +232,8 @@ func (c *gqlClient) createPoller(token, workspaceID string, cfg *PollerConfig, r
 	return result.Data.CreatePoller.ID, nil
 }
 
-func (c *gqlClient) updatePoller(token, pollerID string, cfg *PollerConfig, region, assumeRoleArn string) error {
-	input := buildPollerInput(cfg, region, assumeRoleArn)
+func (c *gqlClient) updatePoller(token, pollerID string, cfg *PollerConfig, datastreamID, region, assumeRoleArn string) error {
+	input := buildPollerInput(cfg, datastreamID, region, assumeRoleArn)
 	variables := map[string]interface{}{
 		"id":     pollerID,
 		"poller": input,

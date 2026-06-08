@@ -7,17 +7,16 @@ import (
 
 func TestBuildPollerInput_BasicFields(t *testing.T) {
 	cfg := &PollerConfig{
-		Name:         "test-poller",
-		DatastreamId: "ds-999",
-		Period:       300,
-		Delay:        60,
-		Interval:     "5m",
+		Name:     "test-poller",
+		Period:   300,
+		Delay:    60,
+		Interval: "5m",
 		Queries: []QueryConfig{
 			{Namespace: "AWS/EC2", MetricNames: []string{"CPUUtilization"}},
 		},
 	}
 
-	input := buildPollerInput(cfg, "us-east-1", "arn:aws:iam::999:role/observe")
+	input := buildPollerInput(cfg, "ds-999", "us-east-1", "arn:aws:iam::999:role/observe")
 
 	if input.Name != "test-poller" {
 		t.Errorf("Name = %q, want %q", input.Name, "test-poller")
@@ -67,7 +66,7 @@ func TestBuildPollerInput_WithRetries(t *testing.T) {
 		Queries:  []QueryConfig{{Namespace: "AWS/EC2"}},
 	}
 
-	input := buildPollerInput(cfg, "us-west-2", "arn:aws:iam::123:role/test")
+	input := buildPollerInput(cfg, "ds-999", "us-west-2", "arn:aws:iam::123:role/test")
 
 	if input.Retries == nil || *input.Retries != "3" {
 		t.Errorf("Retries = %v, want pointer to %q", input.Retries, "3")
@@ -88,7 +87,7 @@ func TestBuildPollerInput_Dimensions(t *testing.T) {
 		},
 	}
 
-	input := buildPollerInput(cfg, "us-east-1", "arn:role")
+	input := buildPollerInput(cfg, "ds-1", "us-east-1", "arn:role")
 	dims := input.CloudWatchMetricsConfig.Queries[0].Dimensions
 	if len(dims) != 2 {
 		t.Fatalf("got %d dimensions, want 2", len(dims))
@@ -112,7 +111,7 @@ func TestBuildPollerInput_DimensionWithoutValue_OmittedInJSON(t *testing.T) {
 		},
 	}
 
-	input := buildPollerInput(cfg, "us-east-1", "arn:role")
+	input := buildPollerInput(cfg, "ds-1", "us-east-1", "arn:role")
 	data, err := json.Marshal(input)
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +149,7 @@ func TestBuildPollerInput_ResourceFilter(t *testing.T) {
 		},
 	}
 
-	input := buildPollerInput(cfg, "us-east-1", "arn:role")
+	input := buildPollerInput(cfg, "ds-1", "us-east-1", "arn:role")
 	rf := input.CloudWatchMetricsConfig.Queries[0].ResourceFilter
 	if rf == nil {
 		t.Fatal("ResourceFilter is nil")
@@ -178,12 +177,11 @@ func TestBuildPollerInput_ResourceFilter(t *testing.T) {
 func TestBuildPollerInput_JSONRoundTrip(t *testing.T) {
 	retries := int64(5)
 	cfg := &PollerConfig{
-		Name:         "roundtrip-test",
-		DatastreamId: "ds-42",
-		Period:       600,
-		Delay:        120,
-		Interval:     "10m",
-		Retries:      &retries,
+		Name:     "roundtrip-test",
+		Period:   600,
+		Delay:    120,
+		Interval: "10m",
+		Retries:  &retries,
 		Queries: []QueryConfig{
 			{
 				Namespace:   "AWS/Lambda",
@@ -193,7 +191,7 @@ func TestBuildPollerInput_JSONRoundTrip(t *testing.T) {
 		},
 	}
 
-	input := buildPollerInput(cfg, "eu-west-1", "arn:aws:iam::111:role/obs")
+	input := buildPollerInput(cfg, "ds-42", "eu-west-1", "arn:aws:iam::111:role/obs")
 	data, err := json.Marshal(input)
 	if err != nil {
 		t.Fatalf("json.Marshal failed: %v", err)
