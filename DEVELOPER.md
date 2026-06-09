@@ -35,17 +35,18 @@ and the most important variables, run `make help`, e.g:
 
 ```
 VARIABLES:
-  APPS          = config configsubscription firehose forwarder logwriter metricstream stack
+  APPS          = config configsubscription externalrole externalrole-stackset forwarder logwriter logwriter-stackset metricstream metricstream-stackset stack
   AWS_REGION    = us-west-2
-  GO_BINS       = forwarder subscriber metricsconfigurator
+  GO_BINS       = forwarder subscriber metricsconfigurator pollerconfigurator
   GO_BUILD_DIRS = bin/linux_arm64 .go/bin/linux_arm64 .go/cache .go/pkg
-  TF_TESTS      = config configsubscription firehose forwarder forwarder_s3 logwriter metricstream simple stack
+  TF_TESTS      = config configsubscription externalrole forwarder forwarder_s3 logwriter metricstream simple stack stack_including_metricspollerrole
   VERSION       = v1.19.2-4-gb1238b5-dirty
 
 TARGETS:
   clean                           removes built binaries and temporary files.
   go-build                        build Go binaries.
   go-clean                        clean Go temp files.
+  lambda-zips                     build Lambda ZIP archives for non-SAM-managed functions.
   ...
 ```
 
@@ -57,14 +58,26 @@ TARGETS:
 
 # package a single SAM app, will upload lambda function to S3
 → make sam-package-forwarder
+→ make sam-package-logwriter
 ```
 
 At this point, you will have a functional CloudFormation template under
-`.aws-sam/build/regions/${AWS_REGION}/forwarder.yaml`. You can deploy this by:
+`.aws-sam/build/regions/${AWS_REGION}/${APP}.yaml`. You can deploy this by:
 
 - uploading manually using Cloudformation console
 - deploying through `sam deploy`
 - installing via Terraform
+
+For apps with Lambda functions that SAM doesn't manage natively (logwriter,
+metricstream, externalrole, stack), the packaging step automatically builds
+Lambda ZIPs, uploads them to S3, and embeds the S3 references as parameter
+defaults in the packaged template. An S3 bucket is auto-created using the
+naming convention `aws-sam-apps-${ACCOUNT_ID}-${REGION}`. You can override
+this by setting `S3_BUCKET_PREFIX`:
+
+```
+S3_BUCKET_PREFIX=my-bucket- make sam-package-logwriter
+```
 
 ## Running tests
 
@@ -133,13 +146,37 @@ Go build directory, to the temporary build directory provided through the
 `build-${ResourceName}`. By convention our resource name for a Lambda function
 in the CloudFormation template is always the capitalied binary name.
 
+### Lambda ZIPs
+
+Some apps (logwriter, metricstream, externalrole) use plain
+`AWS::Lambda::Function` resources instead of `AWS::Serverless::Function`
+because CloudFormation StackSets do not support the SAM transform.
+SAM's `package` command does not handle code uploads for these. The Makefile
+builds bootstrap-style ZIPs for each Lambda binary listed in `LAMBDA_ZIP_BINS`
+and uploads them to S3 during `make sam-package`. The ZIPs are stored in
+`.aws-sam/build/lambda-zips/`.
+
+To build only the ZIPs (without packaging): `make lambda-zips`
+
 ### SAM package
 
 `make sam-package` takes the artifact directory created by `sam build`, and
-pushes the assets to S3. If no `S3_BUCKET_PREFIX` is provied, `samcli` will
-create an S3 bucket for you. It will render a new CloudFormation template which
+pushes the assets to S3. If no `S3_BUCKET_PREFIX` is provided, a default
+bucket is auto-created as `aws-sam-apps-${ACCOUNT_ID}-${REGION}` using your
+current AWS credentials. It will render a new CloudFormation template which
 references the resulting S3 URIs. This template is stored in
 `.aws-sam/build/regions/${AWS_REGION}/${APP}.yaml`
+
+For apps with non-SAM-managed Lambdas, the packaging step also uploads the
+Lambda ZIPs to S3 and post-processes the output template to embed the S3
+bucket and key as parameter defaults, making the template self-contained.
+The packaged template is then uploaded to S3. This is necessary because
+StackSet resources require a `TemplateURL` pointing to S3 -- CloudFormation
+must distribute the template to spoke accounts across the organization and
+cannot reference a local file path. This upload means `sam-push` is not
+needed for local StackSet testing. If a corresponding stackset template
+exists (e.g. `apps/logwriter-stackset/`), it is also copied into the build
+output directory and uploaded to S3.
 
 Lambda functions can only reference binaries stored in the same region. For
 this reason, the result of running `sam package` is always region specific.
@@ -306,21 +343,148 @@ during setup and teardown as well
 Upon each release, the SAM applications and their associated artifacts are packaged and uploaded to our S3 buckets. The naming convention and directory structure for these buckets are as follows:
 
 ```
-observeinc-$REGION/apps/$APP/$VERSION/packaged.yaml
-observeinc-$REGION/apps/$APP/latest/packaged.yaml
-observeinc-$REGION/apps/$APP/beta/packaged.yaml
+observeinc-$REGION/aws-sam-apps/$VERSION/
+  forwarder.yaml
+  logwriter.yaml
+  metricstream.yaml
+  externalrole.yaml
+  stack.yaml
+  logwriter-stackset.yaml
+  metricstream-stackset.yaml
+  externalrole-stackset.yaml
+  subscriber.zip
+  metricsconfigurator.zip
+  pollerconfigurator.zip
+  <hash>                          (forwarder code, uploaded by SAM natively)
 ```
 
-For instance:
+Templates for apps with Lambdas (logwriter, metricstream, externalrole, stack)
+have their `LambdaS3BucketPrefix` and `LambdaS3Key*` parameter defaults
+pre-populated with the S3 bucket and key where the Lambda ZIPs were uploaded.
 
-For the collection app, version 1.0.1 being deployed to the us-west-1 region, the artifact would be located at:
-observeinc-us-west-1/apps/collection/1.0.1/packaged.yaml
+The `latest` and `beta` tags are maintained as copies of the corresponding
+versioned directory.
 
-For the latest version of the same app in the same region:
-observeinc-us-west-1/apps/collection/latest/packaged.yaml
+## StackSet Templates
 
-For the beta version of the same app in the same region:
-observeinc-us-west-1/apps/collection/beta/packaged.yaml
+The `apps/` directory contains `-stackset` variants for deploying across an
+AWS Organization via CloudFormation StackSets:
+
+- `logwriter-stackset` -- deploys LogWriter across member accounts
+- `metricstream-stackset` -- deploys MetricStream across member accounts
+- `externalrole-stackset` -- deploys the external IAM role and PollerConfigurator
+
+Each stackset template is a thin wrapper around `AWS::CloudFormation::StackSet`
+that references the underlying app template via a `TemplateURL` parameter. The
+underlying templates (logwriter, metricstream, externalrole) use plain
+`AWS::Lambda::Function` (not `AWS::Serverless::Function`) because StackSets
+do not support the SAM transform.
+
+### Testing StackSets locally
+
+The local StackSet dev workflow has three steps: package, deploy, and iterate.
+
+#### 1. Package the app
+
+`make sam-package-<app>` builds, packages, and uploads everything to S3 in one
+command:
+
+```sh
+make sam-package-logwriter
+```
+
+This produces:
+- `.aws-sam/build/regions/us-west-2/logwriter.yaml` -- packaged template with
+  embedded Lambda S3 defaults
+- `.aws-sam/build/regions/us-west-2/logwriter-stackset.yaml` -- stackset
+  wrapper template (copied from `apps/logwriter-stackset/template.yaml`)
+- Both templates and Lambda ZIPs are uploaded to the auto-created S3 bucket
+
+#### 2. Deploy the stackset
+
+Use `aws cloudformation create-stack` with the local stackset wrapper template.
+The `TemplateURL` parameter points to the packaged template in S3:
+
+```sh
+BUCKET=aws-sam-apps-$(aws sts get-caller-identity --query Account --output text)-us-west-2
+VERSION=$(git describe --tags --always --dirty)
+
+aws cloudformation create-stack \
+  --stack-name obs-logwriter-stackset \
+  --template-body file://.aws-sam/build/regions/us-west-2/logwriter-stackset.yaml \
+  --parameters \
+    ParameterKey=TemplateURL,ParameterValue=https://${BUCKET}.s3.us-west-2.amazonaws.com/aws-sam-apps/${VERSION}/logwriter.yaml \
+    ParameterKey=TargetOUs,ParameterValue=ou-XXXX-XXXXXXXX \
+    ParameterKey=TargetRegions,ParameterValue=us-west-2 \
+    ParameterKey=BucketArn,ParameterValue=arn:aws:s3:::YOUR-COLLECTION-BUCKET \
+    ParameterKey=NameOverride,ParameterValue=obs-logwriter \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --region us-west-2
+```
+
+The stackset wrapper can be deployed from a local file because only the
+management account reads it. The underlying template (`TemplateURL`) must be
+in S3 because CloudFormation distributes it to spoke accounts.
+
+#### 3. Iterate
+
+After making changes to the underlying app template, re-run `make sam-package`
+and update the stack:
+
+```sh
+make sam-package-logwriter
+
+aws cloudformation update-stack \
+  --stack-name obs-logwriter-stackset \
+  --template-body file://.aws-sam/build/regions/us-west-2/logwriter-stackset.yaml \
+  --parameters \
+    ParameterKey=TemplateURL,ParameterValue=https://${BUCKET}.s3.us-west-2.amazonaws.com/aws-sam-apps/${VERSION}/logwriter.yaml \
+    ParameterKey=TargetOUs,UsePreviousValue=true \
+    ParameterKey=TargetRegions,UsePreviousValue=true \
+    ParameterKey=BucketArn,UsePreviousValue=true \
+    ParameterKey=NameOverride,UsePreviousValue=true \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --region us-west-2
+```
+
+If only the stackset wrapper template changed (not the underlying app), you can
+update just the wrapper -- the `TemplateURL` stays the same.
+
+#### Notes
+
+- `NameOverride` is recommended to keep IAM role and resource names within the
+  64-character limit imposed by CloudFormation StackSet naming.
+- For `CommaDelimitedList` parameters (e.g. `AllowedActions`), pass commas
+  literally in the value. Do not backslash-escape them -- the backslashes end
+  up in the IAM policy.
+- Monitor StackSet operations with
+  `aws cloudformation list-stack-set-operations --stack-set-name <name>`.
+
+## Upgrading from SAM-based templates
+
+The logwriter, metricstream, and externalrole templates were converted from
+`AWS::Serverless::Function` to plain `AWS::Lambda::Function` to support
+StackSet deployments. When upgrading an existing stack to the new template
+version, be aware of the following expected behaviors:
+
+### MetricStream (filter URI path)
+
+Customers using the filter URI path (no `DatasourceID`) will experience a
+brief gap in CloudWatch Metrics collection during the stack update. The
+previous CloudFormation-managed `AWS::CloudWatch::MetricStream` resource is
+replaced by a Lambda-managed metric stream. CloudFormation deletes the old
+resource before the Lambda custom resource creates the new one. Metrics
+collection resumes automatically once the custom resource completes
+(typically under one minute).
+
+### LogWriter subscriber
+
+The SQS event source mapping for the Subscriber Lambda changes logical IDs
+during the upgrade (from SAM-generated to explicitly defined). CloudFormation
+deletes the old mapping and creates a new one, causing a brief window where
+SQS messages are not processed. No messages are lost -- the SQS queue retains
+messages for up to 14 days, and processing resumes as soon as the new mapping
+is active.
 
 ## Versioning and Contribution
 

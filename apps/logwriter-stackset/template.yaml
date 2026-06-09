@@ -1,0 +1,283 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  StackSet for deploying Observe LogWriter across an AWS Organization.
+  Deploy this template in the management or delegated admin account.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: StackSet Configuration
+        Parameters:
+          - TemplateURL
+          - TargetOUs
+          - TargetRegions
+          - AutoDeployEnabled
+          - RetainStacksOnAccountRemoval
+          - CallAs
+      - Label:
+          default: StackSet Operation Preferences
+        Parameters:
+          - MaxConcurrentPercentage
+          - FailureTolerancePercentage
+          - RegionConcurrencyType
+      - Label:
+          default: LogWriter Destination
+        Parameters:
+          - BucketArn
+          - Prefix
+      - Label:
+          default: LogWriter Subscription
+        Parameters:
+          - LogGroupNamePatterns
+          - LogGroupNamePrefixes
+          - ExcludeLogGroupNamePatterns
+          - DiscoveryRate
+          - FilterName
+          - FilterPattern
+          - NameOverride
+      - Label:
+          default: LogWriter Sizing
+        Parameters:
+          - BufferingInterval
+          - BufferingSize
+          - NumWorkers
+          - MemorySize
+          - Timeout
+      - Label:
+          default: LogWriter Debugging
+        Parameters:
+          - DebugEndpoint
+          - Verbosity
+
+Parameters:
+  TemplateURL:
+    Type: String
+    Description: >-
+      S3 URL of the packaged logwriter template. This is the URL produced by
+      `sam package` or `sam push`, e.g.
+      https://<bucket>.s3.<region>.amazonaws.com/aws-sam-apps/<version>/logwriter.yaml
+    AllowedPattern: "^https://.*$"
+  TargetOUs:
+    Type: CommaDelimitedList
+    Description: >-
+      Organizational Unit IDs to deploy to, e.g. ou-abc123,ou-def456.
+  TargetRegions:
+    Type: CommaDelimitedList
+    Description: >-
+      AWS Regions to deploy stack instances to, e.g. us-east-1,us-west-2.
+  AutoDeployEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >-
+      Automatically deploy to new accounts added to the target OUs.
+  RetainStacksOnAccountRemoval:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >-
+      Whether to retain stack instances when an account is removed from the
+      target OUs.
+  CallAs:
+    Type: String
+    Default: SELF
+    AllowedValues:
+      - SELF
+      - DELEGATED_ADMIN
+    Description: >-
+      Whether you are acting as the management account (SELF) or a delegated
+      administrator (DELEGATED_ADMIN).
+  MaxConcurrentPercentage:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 100
+    Description: >-
+      Maximum percentage of accounts in which to perform this operation at one
+      time. A value of 100 deploys to all accounts simultaneously.
+  FailureTolerancePercentage:
+    Type: Number
+    Default: 100
+    MinValue: 0
+    MaxValue: 100
+    Description: >-
+      Percentage of accounts per region for which stack operations can fail
+      before StackSets stops the operation in that region.
+  RegionConcurrencyType:
+    Type: String
+    Default: PARALLEL
+    AllowedValues:
+      - SEQUENTIAL
+      - PARALLEL
+    Description: >-
+      Whether to deploy to regions in parallel or sequentially.
+
+  # --- Pass-through parameters for logwriter ---
+  BucketArn:
+    Type: String
+    Description: >-
+      S3 Bucket ARN to write log records to.
+    AllowedPattern: "^arn:.*"
+  Prefix:
+    Type: String
+    Description: >-
+      Optional prefix to write log records to.
+    Default: ''
+  LogGroupNamePatterns:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma separated list of patterns. We will only subscribe to log groups
+      that have names matching any of the provided strings based on a
+      case-sensitive substring search. Use * to subscribe to all log groups.
+    Default: ''
+  LogGroupNamePrefixes:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma separated list of prefixes. The lambda function will only apply to
+      log groups that start with a provided string. Use * to subscribe to all.
+    Default: ''
+  ExcludeLogGroupNamePatterns:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma separated list of patterns to filter out log groups from
+      subscription. Supports regular expressions.
+    Default: ''
+  DiscoveryRate:
+    Type: String
+    Description: >-
+      EventBridge rate expression for periodically triggering discovery.
+      If not set, no eventbridge rules are configured.
+    Default: ''
+  FilterName:
+    Type: String
+    Description: >-
+      Subscription filter name. Existing filters that have this name as a
+      prefix will be removed.
+    Default: ''
+  FilterPattern:
+    Type: String
+    Description: >-
+      Subscription filter pattern.
+    Default: ''
+  NameOverride:
+    Type: String
+    Description: >-
+      Name of Lambda function.
+    Default: ''
+    MaxLength: 64
+  BufferingInterval:
+    Type: Number
+    Default: 60
+    MinValue: 60
+    MaxValue: 900
+    Description: >-
+      Buffer incoming data for the specified period of time, in seconds,
+      before delivering it to S3.
+  BufferingSize:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 64
+    Description: >-
+      Buffer incoming data to the specified size, in MiBs, before delivering
+      it to S3.
+  NumWorkers:
+    Type: String
+    Description: >-
+      Maximum number of concurrent workers when processing log groups.
+    Default: ''
+  MemorySize:
+    Type: String
+    Description: >-
+      The amount of memory, in megabytes, that your function has access to.
+    Default: ''
+  Timeout:
+    Type: String
+    Description: >-
+      The amount of time that Lambda allows a function to run before stopping
+      it. The maximum allowed value is 900 seconds.
+    Default: ''
+  DebugEndpoint:
+    Type: String
+    Description: >-
+      Endpoint to send additional debug telemetry to.
+    Default: ''
+  Verbosity:
+    Type: String
+    Default: ''
+    Description: >-
+      Logging verbosity for Lambda. Highest log verbosity is 9.
+Resources:
+  LogWriterStackSet:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      StackSetName: !Sub '${AWS::StackName}'
+      Description: >-
+        Observe LogWriter - subscribes CloudWatch Log Groups and writes logs
+        to S3 via Kinesis Firehose.
+      TemplateURL: !Ref TemplateURL
+      PermissionModel: SERVICE_MANAGED
+      CallAs: !Ref CallAs
+      AutoDeployment:
+        Enabled: !Ref AutoDeployEnabled
+        RetainStacksOnAccountRemoval: !Ref RetainStacksOnAccountRemoval
+      Capabilities:
+        - CAPABILITY_IAM
+        - CAPABILITY_NAMED_IAM
+      ManagedExecution:
+        Active: true
+      OperationPreferences:
+        MaxConcurrentPercentage: !Ref MaxConcurrentPercentage
+        FailureTolerancePercentage: !Ref FailureTolerancePercentage
+        RegionConcurrencyType: !Ref RegionConcurrencyType
+      StackInstancesGroup:
+        - DeploymentTargets:
+            OrganizationalUnitIds: !Ref TargetOUs
+          Regions: !Ref TargetRegions
+      Parameters:
+        - ParameterKey: BucketArn
+          ParameterValue: !Ref BucketArn
+        - ParameterKey: Prefix
+          ParameterValue: !Ref Prefix
+        - ParameterKey: LogGroupNamePatterns
+          ParameterValue: !Join [',', !Ref LogGroupNamePatterns]
+        - ParameterKey: LogGroupNamePrefixes
+          ParameterValue: !Join [',', !Ref LogGroupNamePrefixes]
+        - ParameterKey: ExcludeLogGroupNamePatterns
+          ParameterValue: !Join [',', !Ref ExcludeLogGroupNamePatterns]
+        - ParameterKey: DiscoveryRate
+          ParameterValue: !Ref DiscoveryRate
+        - ParameterKey: FilterName
+          ParameterValue: !Ref FilterName
+        - ParameterKey: FilterPattern
+          ParameterValue: !Ref FilterPattern
+        - ParameterKey: NameOverride
+          ParameterValue: !Ref NameOverride
+        - ParameterKey: BufferingInterval
+          ParameterValue: !Ref BufferingInterval
+        - ParameterKey: BufferingSize
+          ParameterValue: !Ref BufferingSize
+        - ParameterKey: NumWorkers
+          ParameterValue: !Ref NumWorkers
+        - ParameterKey: MemorySize
+          ParameterValue: !Ref MemorySize
+        - ParameterKey: Timeout
+          ParameterValue: !Ref Timeout
+        - ParameterKey: DebugEndpoint
+          ParameterValue: !Ref DebugEndpoint
+        - ParameterKey: Verbosity
+          ParameterValue: !Ref Verbosity
+
+Outputs:
+  StackSetName:
+    Description: Name of the LogWriter StackSet.
+    Value: !Sub '${AWS::StackName}'
+  StackSetId:
+    Description: ID of the LogWriter StackSet.
+    Value: !Ref LogWriterStackSet
