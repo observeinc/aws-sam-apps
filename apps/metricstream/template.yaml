@@ -1,6 +1,5 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
 Description: 'Stream CloudWatch Metrics to S3.'
 Metadata:
   cfn-lint:
@@ -94,6 +93,18 @@ Parameters:
     NoEcho: true
     Description: >-
       The token used to retrieve metric configuration.
+    Default: ''
+  LambdaS3BucketPrefix:
+    Type: String
+    Description: >-
+      S3 bucket name prefix for the MetricsConfigurator Lambda code ZIP.
+      The actual bucket is constructed as {prefix}-{region}, e.g.
+      observeinc-us-west-2. Required for StackSet deployments.
+    Default: ''
+  LambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the MetricsConfigurator Lambda code ZIP.
     Default: ''
 Conditions:
   UseStackName: !Equals
@@ -275,16 +286,21 @@ Resources:
                   Resource: !Ref GQLTokenSecret
           - !Ref AWS::NoValue
   MetricsConfigurator:
-    Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: makefile
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W1031
+    Type: AWS::Lambda::Function
     Properties:
       FunctionName: !If
         - UseStackName
         - !Ref AWS::StackName
         - !Ref NameOverride
       Role: !GetAtt MetricsConfiguratorRole.Arn
-      CodeUri: ../../bin/linux_arm64
+      Code:
+        S3Bucket: !Sub '${LambdaS3BucketPrefix}-${AWS::Region}'
+        S3Key: !Ref LambdaS3Key
       Handler: bootstrap
       Runtime: provided.al2023
       Architectures:

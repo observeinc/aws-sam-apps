@@ -24,6 +24,7 @@ type Handler struct {
 	PollerConfigURI   string
 	ExternalRoleName  string
 	WorkspaceID       string
+	DatastreamID      string
 	Region            string
 	AWSAccountID      string
 }
@@ -37,6 +38,7 @@ func New(cfg *Config, logger logr.Logger) (Handler, error) {
 		PollerConfigURI:   cfg.PollerConfigURI,
 		ExternalRoleName:  cfg.ExternalRoleName,
 		WorkspaceID:       cfg.WorkspaceID,
+		DatastreamID:      cfg.DatastreamID,
 		Region:            cfg.Region,
 		AWSAccountID:      cfg.AWSAccountID,
 	}, nil
@@ -108,7 +110,7 @@ func (h Handler) handleCreate(ctx context.Context, req *Request, gql *gqlClient,
 
 	pollerCfg.Name = h.uniquePollerName(pollerCfg.Name)
 
-	pollerID, err := gql.createPoller(*token, h.WorkspaceID, pollerCfg, h.Region, assumeRoleArn)
+	pollerID, err := gql.createPoller(*token, h.WorkspaceID, pollerCfg, h.DatastreamID, h.Region, assumeRoleArn)
 	if err != nil {
 		return nil, h.reportAndError("failed to create poller", req, err)
 	}
@@ -136,7 +138,7 @@ func (h Handler) handleUpdate(ctx context.Context, req *Request, gql *gqlClient,
 
 	pollerCfg.Name = h.uniquePollerName(pollerCfg.Name)
 
-	if err := gql.updatePoller(*token, pollerID, pollerCfg, h.Region, assumeRoleArn); err != nil {
+	if err := gql.updatePoller(*token, pollerID, pollerCfg, h.DatastreamID, h.Region, assumeRoleArn); err != nil {
 		return nil, h.reportAndError("failed to update poller", req, err)
 	}
 
