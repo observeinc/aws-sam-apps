@@ -32,6 +32,15 @@ func stackIdTags(stackId string) []types.Tag {
 	}
 }
 
+// cwAPI is the subset of cloudwatch.Client this handler uses. Defined as
+// an interface so tests can swap in a fake without touching real AWS.
+type cwAPI interface {
+	PutMetricStream(ctx context.Context, input *cloudwatch.PutMetricStreamInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricStreamOutput, error)
+	ListMetricStreams(ctx context.Context, input *cloudwatch.ListMetricStreamsInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.ListMetricStreamsOutput, error)
+	ListTagsForResource(ctx context.Context, input *cloudwatch.ListTagsForResourceInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.ListTagsForResourceOutput, error)
+	DeleteMetricStream(ctx context.Context, input *cloudwatch.DeleteMetricStreamInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.DeleteMetricStreamOutput, error)
+}
+
 type GraphQLRequest struct {
 	Query string `json:"query"`
 }
@@ -47,6 +56,17 @@ type Handler struct {
 	ObserveDomainName string
 	SecretName        string
 	FilterUri         string
+
+	// NewCloudWatchClient overrides the default cloudwatch.NewFromConfig
+	// constructor. nil in production; tests inject a fake.
+	NewCloudWatchClient func(aws.Config) cwAPI
+}
+
+func (h Handler) cwClient(cfg aws.Config) cwAPI {
+	if h.NewCloudWatchClient != nil {
+		return h.NewCloudWatchClient(cfg)
+	}
+	return cloudwatch.NewFromConfig(cfg)
 }
 
 type Config struct {
@@ -165,7 +185,7 @@ func (h Handler) invokeDatasourcePath(ctx context.Context, cfg aws.Config, req *
 	}
 	logger.V(4).Info("parsed response, metric filters", "filters", metricsFilters)
 
-	cwClient := cloudwatch.NewFromConfig(cfg)
+	cwClient := h.cwClient(cfg)
 
 	filterGroups := h.makeMetricGroups(metricsFilters)
 	for idx, filterGroup := range filterGroups {
@@ -206,7 +226,7 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 		return h.reportAndError("failed to parse filter YAML", req, err)
 	}
 
-	cwClient := cloudwatch.NewFromConfig(cfg)
+	cwClient := h.cwClient(cfg)
 	name := fmt.Sprintf("%s-%s-%d", h.MetricStreamName, "metric-stream", 0)
 
 	input := &cloudwatch.PutMetricStreamInput{
@@ -267,7 +287,7 @@ func (h Handler) handleDelete(ctx context.Context, cfg aws.Config, req *Request)
 	logger := h.Logger
 	logger.V(3).Info("delete request received, finding metric streams tagged for this stack", "stackId", req.StackId)
 
-	cwClient := cloudwatch.NewFromConfig(cfg)
+	cwClient := h.cwClient(cfg)
 
 	var matchingNames []string
 	var nextToken *string
