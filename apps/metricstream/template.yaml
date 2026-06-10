@@ -258,8 +258,14 @@ Resources:
                 Action:
                   - cloudwatch:PutMetricStream
                   - cloudwatch:DeleteMetricStream
+                  - cloudwatch:TagResource
+                  - cloudwatch:ListTagsForResource
                 Resource: !Sub |-
                   arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:*
+              - Effect: Allow
+                Action:
+                  - cloudwatch:ListMetricStreams
+                Resource: '*'
               - Effect: Allow
                 Action:
                   - iam:PassRole
@@ -303,6 +309,7 @@ Resources:
         S3Key: !Ref LambdaS3Key
       Handler: bootstrap
       Runtime: provided.al2023
+      Timeout: 60
       Architectures:
         - arm64
       LoggingConfig:

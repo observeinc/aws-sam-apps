@@ -21,6 +21,26 @@ import (
 const bearerTokenFormat = "Bearer %s %s"
 const maxNumMetricNames = 1000
 
+// stackIdTagKey identifies metric streams created by this Lambda for a
+// particular CloudFormation stack. It is set on every PutMetricStream and
+// is the basis for ownership-checked cleanup in handleDelete.
+const stackIdTagKey = "aws-sam-apps:stack-id"
+
+func stackIdTags(stackId string) []types.Tag {
+	return []types.Tag{
+		{Key: aws.String(stackIdTagKey), Value: aws.String(stackId)},
+	}
+}
+
+// cwAPI is the subset of cloudwatch.Client this handler uses. Defined as
+// an interface so tests can swap in a fake without touching real AWS.
+type cwAPI interface {
+	PutMetricStream(ctx context.Context, input *cloudwatch.PutMetricStreamInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricStreamOutput, error)
+	ListMetricStreams(ctx context.Context, input *cloudwatch.ListMetricStreamsInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.ListMetricStreamsOutput, error)
+	ListTagsForResource(ctx context.Context, input *cloudwatch.ListTagsForResourceInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.ListTagsForResourceOutput, error)
+	DeleteMetricStream(ctx context.Context, input *cloudwatch.DeleteMetricStreamInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.DeleteMetricStreamOutput, error)
+}
+
 type GraphQLRequest struct {
 	Query string `json:"query"`
 }
@@ -36,6 +56,17 @@ type Handler struct {
 	ObserveDomainName string
 	SecretName        string
 	FilterUri         string
+
+	// NewCloudWatchClient overrides the default cloudwatch.NewFromConfig
+	// constructor. nil in production; tests inject a fake.
+	NewCloudWatchClient func(aws.Config) cwAPI
+}
+
+func (h Handler) cwClient(cfg aws.Config) cwAPI {
+	if h.NewCloudWatchClient != nil {
+		return h.NewCloudWatchClient(cfg)
+	}
+	return cloudwatch.NewFromConfig(cfg)
 }
 
 type Config struct {
@@ -154,7 +185,7 @@ func (h Handler) invokeDatasourcePath(ctx context.Context, cfg aws.Config, req *
 	}
 	logger.V(4).Info("parsed response, metric filters", "filters", metricsFilters)
 
-	cwClient := cloudwatch.NewFromConfig(cfg)
+	cwClient := h.cwClient(cfg)
 
 	filterGroups := h.makeMetricGroups(metricsFilters)
 	for idx, filterGroup := range filterGroups {
@@ -165,6 +196,7 @@ func (h Handler) invokeDatasourcePath(ctx context.Context, cfg aws.Config, req *
 			OutputFormat:   types.MetricStreamOutputFormat(h.OutputFormat),
 			Name:           &name,
 			IncludeFilters: filterGroup,
+			Tags:           stackIdTags(req.StackId),
 		})
 		if err != nil {
 			return h.reportAndError("failed to add filter to metric stream", req, err)
@@ -194,7 +226,7 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 		return h.reportAndError("failed to parse filter YAML", req, err)
 	}
 
-	cwClient := cloudwatch.NewFromConfig(cfg)
+	cwClient := h.cwClient(cfg)
 	name := fmt.Sprintf("%s-%s-%d", h.MetricStreamName, "metric-stream", 0)
 
 	input := &cloudwatch.PutMetricStreamInput{
@@ -202,6 +234,7 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 		RoleArn:      &h.RoleArn,
 		OutputFormat: types.MetricStreamOutputFormat(h.OutputFormat),
 		Name:         &name,
+		Tags:         stackIdTags(req.StackId),
 	}
 
 	// Include and exclude are handled asymmetrically: we assume customers can
@@ -222,6 +255,7 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 				OutputFormat:   types.MetricStreamOutputFormat(h.OutputFormat),
 				Name:           &streamName,
 				IncludeFilters: filterGroup,
+				Tags:           stackIdTags(req.StackId),
 			})
 			if err != nil {
 				return h.reportAndError("failed to put metric stream with include filters", req, err)
@@ -243,18 +277,70 @@ func (h Handler) invokeFilterUriPath(ctx context.Context, cfg aws.Config, req *R
 	return nil
 }
 
-// handleDelete is a no-op for stream cleanup. DeleteMetricStream silently
-// succeeds on nonexistent names, and prefix-match by MetricStreamName has
-// no way to prove a stream was created by this stack vs. another stack
-// with the same NameOverride or a customer's hand-rolled stream.
-// Safe ownership-checked cleanup (tag-on-put + GetResources by tag) lands
-// as a fast-follow; until then streams are orphaned on stack delete (their
-// Firehose target is destroyed by CFN, so the orphans deliver nothing and
-// must be manually deleted by the operator).
-func (h Handler) handleDelete(_ context.Context, _ aws.Config, req *Request) ([]byte, error) {
+// handleDelete cleans up metric streams created by this Lambda for this
+// stack. It pages through all metric streams in the account and deletes
+// the ones tagged with our stack-id (set on every PutMetricStream).
+// Streams without our tag — including streams from other stacks that
+// happen to share a name prefix, customer-managed streams, or pre-PR
+// orphans created before tagging was introduced — are not touched.
+func (h Handler) handleDelete(ctx context.Context, cfg aws.Config, req *Request) ([]byte, error) {
 	logger := h.Logger
-	logger.V(3).Info("delete request received; metric stream cleanup deferred to operator (see fast-follow)")
-	if reportErr := h.reportStatus(*req, true, "delete acknowledged; metric stream cleanup not performed"); reportErr != nil {
+	logger.V(3).Info("delete request received, finding metric streams tagged for this stack", "stackId", req.StackId)
+
+	cwClient := h.cwClient(cfg)
+
+	var matchingNames []string
+	var nextToken *string
+	for {
+		page, err := cwClient.ListMetricStreams(ctx, &cloudwatch.ListMetricStreamsInput{
+			NextToken: nextToken,
+		})
+		if err != nil {
+			return nil, h.reportAndError("failed to list metric streams", req, err)
+		}
+		for _, entry := range page.Entries {
+			if entry.Arn == nil || entry.Name == nil {
+				continue
+			}
+			tagsOut, err := cwClient.ListTagsForResource(ctx, &cloudwatch.ListTagsForResourceInput{
+				ResourceARN: entry.Arn,
+			})
+			if err != nil {
+				logger.Error(err, "failed to list tags for stream, skipping", "name", *entry.Name)
+				continue
+			}
+			for _, tag := range tagsOut.Tags {
+				if tag.Key != nil && *tag.Key == stackIdTagKey &&
+					tag.Value != nil && *tag.Value == req.StackId {
+					matchingNames = append(matchingNames, *entry.Name)
+					break
+				}
+			}
+		}
+		if page.NextToken == nil {
+			break
+		}
+		nextToken = page.NextToken
+	}
+
+	logger.V(3).Info("found metric streams to delete", "count", len(matchingNames))
+
+	var deleted int
+	for i := range matchingNames {
+		name := matchingNames[i]
+		_, err := cwClient.DeleteMetricStream(ctx, &cloudwatch.DeleteMetricStreamInput{
+			Name: &name,
+		})
+		if err != nil {
+			logger.Error(err, "failed to delete metric stream, continuing", "name", name)
+			continue
+		}
+		deleted++
+		logger.V(3).Info("deleted metric stream", "name", name)
+	}
+
+	reason := fmt.Sprintf("deleted %d of %d metric stream(s) tagged for this stack", deleted, len(matchingNames))
+	if reportErr := h.reportStatus(*req, true, reason); reportErr != nil {
 		return nil, fmt.Errorf("failed to report status to cloudformation: %w", reportErr)
 	}
 	return []byte{}, nil
