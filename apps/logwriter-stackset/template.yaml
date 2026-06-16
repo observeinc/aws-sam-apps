@@ -158,9 +158,11 @@ Parameters:
   DiscoveryRate:
     Type: String
     Description: >-
-      EventBridge rate expression for periodically triggering discovery.
-      If not set, no eventbridge rules are configured.
+      Rate at which the subscriber Lambda re-scans for log groups, e.g.
+      "5 minutes" or "1 hour". Pass only the rate body (not the full
+      "rate(...)" expression). Leave empty to disable scheduled discovery.
     Default: ''
+    AllowedPattern: '^([1-9]\d* (minute|hour|day)s?)?$'
   FilterName:
     Type: String
     Description: >-
