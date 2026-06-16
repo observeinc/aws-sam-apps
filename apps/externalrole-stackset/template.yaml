@@ -124,8 +124,10 @@ Parameters:
   NameOverride:
     Type: String
     Description: >-
-      Name of IAM role expected by Poller. In the absence of a value, the
-      stack name will be used.
+      Name of IAM role expected by Poller. If empty, the wrapper stack's
+      own name is passed through (so resource names do not exceed AWS's
+      64-char limit when the StackSet auto-generates the inner stack name
+      as `StackSet-<wrapper>-<uuid>`).
     Default: ''
     MaxLength: 64
   PrimaryRegion:
@@ -171,6 +173,11 @@ Parameters:
       to re-run on stack update.
     Default: ''
     AllowedPattern: '^[0-9]*$'
+Conditions:
+  HasNameOverride: !Not
+    - !Equals
+      - !Ref NameOverride
+      - ''
 Resources:
   ExternalRoleStackSet:
     Type: AWS::CloudFormation::StackSet
@@ -206,7 +213,10 @@ Resources:
         - ParameterKey: DatastreamIds
           ParameterValue: !Join [',', !Ref DatastreamIds]
         - ParameterKey: NameOverride
-          ParameterValue: !Ref NameOverride
+          ParameterValue: !If
+            - HasNameOverride
+            - !Ref NameOverride
+            - !Ref 'AWS::StackName'
         - ParameterKey: PrimaryRegion
           ParameterValue: !Ref PrimaryRegion
         - ParameterKey: ObserveCustomerAccountId

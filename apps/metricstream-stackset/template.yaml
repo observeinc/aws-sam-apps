@@ -142,8 +142,10 @@ Parameters:
   NameOverride:
     Type: String
     Description: >-
-      Set Firehose Delivery Stream name. In the absence of a value, the stack
-      name will be used.
+      Set Firehose Delivery Stream name. If empty, the wrapper stack's own
+      name is passed through (so resource names do not exceed AWS's 64-char
+      limit when the StackSet auto-generates the inner stack name as
+      `StackSet-<wrapper>-<uuid>`).
     Default: ''
     MaxLength: 64
   BufferingInterval:
@@ -188,6 +190,11 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+Conditions:
+  HasNameOverride: !Not
+    - !Equals
+      - !Ref NameOverride
+      - ''
 Resources:
   MetricStreamStackSet:
     Type: AWS::CloudFormation::StackSet
@@ -225,7 +232,10 @@ Resources:
         - ParameterKey: OutputFormat
           ParameterValue: !Ref OutputFormat
         - ParameterKey: NameOverride
-          ParameterValue: !Ref NameOverride
+          ParameterValue: !If
+            - HasNameOverride
+            - !Ref NameOverride
+            - !Ref 'AWS::StackName'
         - ParameterKey: BufferingInterval
           ParameterValue: !Ref BufferingInterval
         - ParameterKey: BufferingSize

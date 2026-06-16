@@ -168,7 +168,10 @@ Parameters:
   NameOverride:
     Type: String
     Description: >-
-      Name of Lambda function.
+      Name of Lambda function. If empty, the wrapper stack's own name is
+      passed through (so resource names do not exceed AWS's 64-char limit
+      when the StackSet auto-generates the inner stack name as
+      `StackSet-<wrapper>-<uuid>`).
     Default: ''
     MaxLength: 64
   BufferingInterval:
@@ -213,6 +216,11 @@ Parameters:
     Default: ''
     Description: >-
       Logging verbosity for Lambda. Highest log verbosity is 9.
+Conditions:
+  HasNameOverride: !Not
+    - !Equals
+      - !Ref NameOverride
+      - ''
 Resources:
   LogWriterStackSet:
     Type: AWS::CloudFormation::StackSet
@@ -258,7 +266,10 @@ Resources:
         - ParameterKey: FilterPattern
           ParameterValue: !Ref FilterPattern
         - ParameterKey: NameOverride
-          ParameterValue: !Ref NameOverride
+          ParameterValue: !If
+            - HasNameOverride
+            - !Ref NameOverride
+            - !Ref 'AWS::StackName'
         - ParameterKey: BufferingInterval
           ParameterValue: !Ref BufferingInterval
         - ParameterKey: BufferingSize
