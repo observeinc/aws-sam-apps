@@ -359,7 +359,6 @@ Resources:
       Timeout: 60
       Architectures:
         - arm64
-      Timeout: 60
       LoggingConfig:
         LogGroup: !Ref LambdaLogGroup
       Environment:
