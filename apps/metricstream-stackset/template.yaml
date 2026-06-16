@@ -104,7 +104,14 @@ Parameters:
     MaxValue: 100
     Description: >-
       Percentage of accounts per region for which stack operations can fail
-      before StackSets stops the operation in that region.
+      before StackSets stops the operation in that region. AWS requires
+      FailureTolerancePercentage + 1 >= MaxConcurrentPercentage, so this
+      defaults to 100 to enable full parallelism. NOTE: with 100, the
+      StackSet operation reports SUCCEEDED even if every instance failed.
+      Always check per-instance status after deploy: in the AWS console,
+      open CloudFormation > StackSets > (this stackset) > Stack instances
+      tab; or via CLI: `aws cloudformation list-stack-instances
+      --stack-set-name <name>`.
   RegionConcurrencyType:
     Type: String
     Default: PARALLEL

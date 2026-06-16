@@ -103,6 +103,29 @@ already succeeded -- it only stops starting new ones.
 
 Default: **100** (never abort).
 
+> **⚠️ Silent-failure warning.** With `FailureTolerancePercentage=100`, the
+> StackSet operation reports `SUCCEEDED` even if every member-account instance
+> failed. The wrapper stack's `CREATE_COMPLETE`/`UPDATE_COMPLETE` only means
+> "the operation ran"; it does **not** mean the stack instances are healthy.
+> Always check per-instance status after deploy:
+>
+> - **AWS console:** open CloudFormation → **StackSets** (left sidebar) →
+>   click the stackset name → **Stack instances** tab. Each row shows
+>   `Status` (e.g. `CURRENT`, `OUTDATED`) and `Detailed status`
+>   (e.g. `SUCCEEDED`, `FAILED`). Failed rows have a `Status reason` you can
+>   click to see the underlying cause.
+> - **CLI:**
+>   ```sh
+>   aws cloudformation list-stack-instances \
+>     --stack-set-name <name> \
+>     --query 'Summaries[].[Account,Region,Status,StackInstanceStatus.DetailedStatus]'
+>   ```
+>
+> AWS requires `MaxConcurrentPercentage <= FailureTolerancePercentage + 1`,
+> so lowering this value below 100 also caps parallelism. For full-fan-out
+> deploys (100% concurrent), you must accept the silent-failure trade-off
+> and check instance status manually.
+
 ### RegionConcurrencyType
 
 When targeting multiple regions:
