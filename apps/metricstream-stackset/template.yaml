@@ -137,6 +137,7 @@ Parameters:
     Description: >-
       A file hosted in S3 containing list of metrics to stream.
     Default: 's3://observeinc/cloudwatchmetrics/filters/empty.yaml'
+    AllowedPattern: '^(s3://.*)?$'
   OutputFormat:
     Type: String
     Description: >-
@@ -175,6 +176,7 @@ Parameters:
     Type: String
     Description: Observe Account ID.
     Default: ''
+    AllowedPattern: '\d*'
   ObserveDomainName:
     Type: String
     Description: >-
@@ -185,12 +187,14 @@ Parameters:
     Description: >-
       Timestamp when the metric stream was created or updated.
     Default: ''
+    AllowedPattern: '^[0-9]*$'
   DatasourceID:
     Type: String
     Description: >-
       The datasource for this metric stream. Providing this will override the
       MetricStreamFilterUri.
     Default: ''
+    AllowedPattern: '\d*'
   GQLToken:
     Type: String
     NoEcho: true

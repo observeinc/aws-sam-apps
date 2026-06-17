@@ -387,7 +387,11 @@ sam-push-%: # @HELP push all SAM apps to specific region (e.g sam-push-us-west-2
 
 .PHONY: sam-validate
 sam-validate: # @HELP validate all templates (SAM validate for SAM apps, cfn-lint for plain CloudFormation).
-sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS)
+sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS) check-stackset-param-parity
+
+.PHONY: check-stackset-param-parity
+check-stackset-param-parity: # @HELP check that StackSet wrappers mirror underlying app param constraints (AllowedPattern, AllowedValues, etc.)
+	python3 scripts/check-stackset-param-parity.py
 
 sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-forwarder).
 

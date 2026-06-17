@@ -143,12 +143,14 @@ Parameters:
       that have names matching any of the provided strings based on a
       case-sensitive substring search. Use * to subscribe to all log groups.
     Default: ''
+    AllowedPattern: '^(\*|[a-zA-Z0-9-_\/]*)$'
   LogGroupNamePrefixes:
     Type: CommaDelimitedList
     Description: >-
       Comma separated list of prefixes. The lambda function will only apply to
       log groups that start with a provided string. Use * to subscribe to all.
     Default: ''
+    AllowedPattern: '^(\*|[a-zA-Z0-9-_\/]*)$'
   ExcludeLogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
@@ -204,27 +206,42 @@ Parameters:
     Description: >-
       Maximum number of concurrent workers when processing log groups.
     Default: ''
+    AllowedPattern: '^[0-9]*$'
   MemorySize:
     Type: String
     Description: >-
       The amount of memory, in megabytes, that your function has access to.
     Default: ''
+    AllowedValues:
+      - ''
+      - '64'
+      - '128'
+      - '256'
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+      - '8128'
+    AllowedPattern: "^[0-9]*$"
   Timeout:
     Type: String
     Description: >-
       The amount of time that Lambda allows a function to run before stopping
       it. The maximum allowed value is 900 seconds.
     Default: ''
+    AllowedPattern: "^[0-9]*$"
   DebugEndpoint:
     Type: String
     Description: >-
       Endpoint to send additional debug telemetry to.
     Default: ''
+    AllowedPattern: '^(http(s)?://.*)?$'
   Verbosity:
     Type: String
     Default: ''
     Description: >-
       Logging verbosity for Lambda. Highest log verbosity is 9.
+    AllowedPattern: "^[0-9]?$"
 Conditions:
   HasNameOverride: !Not
     - !Equals

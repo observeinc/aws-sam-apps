@@ -128,6 +128,7 @@ Parameters:
     Description: >-
       Datastream IDs where data will be ingested to. This ensures Observe
       cannot assume this role outside of this context.
+    AllowedPattern: '\d+'
   NameOverride:
     Type: String
     Description: >-
