@@ -24,8 +24,8 @@ For local development and packaging workflows, see [DEVELOPER.md](../DEVELOPER.m
 4. **A Forwarder stack** deployed in the management account, watching the
    central bucket and forwarding data to Observe. The stacksets do not deploy
    a Forwarder.
-5. **IAM capabilities**: all stackset deployments require `CAPABILITY_IAM`,
-   `CAPABILITY_NAMED_IAM`, and `CAPABILITY_AUTO_EXPAND`.
+5. **IAM capabilities**: all stackset deployments require `CAPABILITY_IAM`
+   and `CAPABILITY_NAMED_IAM`.
 
 ## Central Bucket Permissions
 
@@ -218,7 +218,7 @@ aws cloudformation update-stack \
     ParameterKey=BucketArn,UsePreviousValue=true \
     ParameterKey=NameOverride,UsePreviousValue=true \
     ParameterKey=TemplateURL,UsePreviousValue=true \
-  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
   --region us-west-2
 ```
 
@@ -237,7 +237,7 @@ aws cloudformation update-stack \
     ParameterKey=TargetRegions,UsePreviousValue=true \
     ParameterKey=BucketArn,UsePreviousValue=true \
     ParameterKey=NameOverride,UsePreviousValue=true \
-  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
   --region us-west-2
 ```
 

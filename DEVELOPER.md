@@ -418,7 +418,7 @@ aws cloudformation create-stack \
     ParameterKey=TargetRegions,ParameterValue=us-west-2 \
     ParameterKey=BucketArn,ParameterValue=arn:aws:s3:::YOUR-COLLECTION-BUCKET \
     ParameterKey=NameOverride,ParameterValue=obs-logwriter \
-  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
   --region us-west-2
 ```
 
@@ -443,7 +443,7 @@ aws cloudformation update-stack \
     ParameterKey=TargetRegions,UsePreviousValue=true \
     ParameterKey=BucketArn,UsePreviousValue=true \
     ParameterKey=NameOverride,UsePreviousValue=true \
-  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
   --region us-west-2
 ```
 
