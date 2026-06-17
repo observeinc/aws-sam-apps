@@ -239,6 +239,32 @@ aws s3api put-bucket-notification-configuration --bucket $SOURCE_BUCKET \
 
 This manual setup mirrors the automated testing environment defined in `forwarder.tftest.hcl`, allowing developers to validate the entire event flow end-to-end.
 
+### Deploying the Full Collection Stack
+
+The parent `apps/stack` template wires the individual sub-apps (forwarder,
+logwriter, metricstream, etc.) together. Deploying it requires all
+three CloudFormation capabilities — `CAPABILITY_AUTO_EXPAND` for the SAM
+transform and nested `AWS::Serverless::Application` resources, and
+`CAPABILITY_NAMED_IAM` because the forwarder sub-app declares named IAM
+resources:
+
+```sh
+sam build --template apps/stack/template.yaml
+sam deploy \
+    --template apps/stack/template.yaml \
+    --stack-name observe-collection \
+    --region $AWS_REGION \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+    --resolve-s3 \
+    --no-confirm-changeset \
+    --parameter-overrides \
+        DestinationUri=$S3_DESTINATION \
+        DataAccessPointArn=$ACCESS_POINT_ARN
+```
+
+Omitting any of the three capabilities causes the nested stack update to roll
+back with `Requires capabilities: [CAPABILITY_NAMED_IAM]` (or similar).
+
 ### Cleanup
 
 Finally, it's important to clean up the resources after testing to avoid incurring unnecessary charges:
