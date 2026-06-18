@@ -21,8 +21,8 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc/internal/x"
 	"go.opentelemetry.io/otel/internal/global"
 	"go.opentelemetry.io/otel/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
-	"go.opentelemetry.io/otel/semconv/v1.39.0/otelconv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
+	"go.opentelemetry.io/otel/semconv/v1.41.0/otelconv"
 )
 
 const (
@@ -68,6 +68,7 @@ var (
 
 func get[T any](p *sync.Pool) *[]T { return p.Get().(*[]T) }
 func put[T any](p *sync.Pool, s *[]T) {
+	clear(*s) // erase elements to allow GC to collect what they refer to.
 	*s = (*s)[:0]
 	p.Put(s)
 }
@@ -161,12 +162,12 @@ func NewInstrumentation(id int64, target string) (*Instrumentation, error) {
 // ExportLogs method returns.
 func (i *Instrumentation) ExportLogs(ctx context.Context, count int64) ExportOp {
 	start := time.Now()
-	addOpt := get[metric.AddOption](addOpPool)
-	defer put(addOpPool, addOpt)
-
-	*addOpt = append(*addOpt, i.addOpt)
-
-	i.logInflightMetric.Add(ctx, count, *addOpt...)
+	if i.logInflightMetric.Enabled(ctx) {
+		addOpt := get[metric.AddOption](addOpPool)
+		defer put(addOpPool, addOpt)
+		*addOpt = append(*addOpt, i.addOpt)
+		i.logInflightMetric.Add(ctx, count, *addOpt...)
+	}
 
 	return ExportOp{
 		nLogs: count,
@@ -198,11 +199,14 @@ func (e ExportOp) End(err error) {
 	defer put(addOpPool, addOpt)
 	*addOpt = append(*addOpt, e.inst.addOpt)
 
-	e.inst.logInflightMetric.Add(e.ctx, -e.nLogs, *addOpt...)
+	if e.inst.logInflightMetric.Enabled(e.ctx) {
+		e.inst.logInflightMetric.Add(e.ctx, -e.nLogs, *addOpt...)
+	}
 	success := successful(e.nLogs, err)
-	e.inst.logExportedMetric.Add(e.ctx, success, *addOpt...)
-
-	if err != nil {
+	if e.inst.logExportedMetric.Enabled(e.ctx) {
+		e.inst.logExportedMetric.Add(e.ctx, success, *addOpt...)
+	}
+	if err != nil && e.inst.logExportedMetric.Enabled(e.ctx) {
 		// Add the error.type attribute to the attribute set.
 		attrs := get[attribute.KeyValue](attrsPool)
 		defer put(attrsPool, attrs)
@@ -271,7 +275,10 @@ var errPool = sync.Pool{
 // the provided non-nil err.
 func rejectedCount(n int64, err error) int64 {
 	ps := errPool.Get().(*internal.PartialSuccess)
-	defer errPool.Put(ps)
+	defer func() {
+		*ps = internal.PartialSuccess{} // erase fields to allow GC to collect them.
+		errPool.Put(ps)
+	}()
 
 	// check for partial success
 	if errors.As(err, ps) {
