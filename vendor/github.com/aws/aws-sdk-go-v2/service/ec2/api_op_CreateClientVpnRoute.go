@@ -51,14 +51,6 @@ type CreateClientVpnRouteInput struct {
 	// This member is required.
 	DestinationCidrBlock *string
 
-	// The ID of the subnet through which you want to route traffic. The specified
-	// subnet must be an existing target network of the Client VPN endpoint.
-	//
-	// Alternatively, if you're adding a route for the local network, specify local .
-	//
-	// This member is required.
-	TargetVpcSubnetId *string
-
 	// Unique, case-sensitive identifier that you provide to ensure the idempotency of
 	// the request. For more information, see [Ensuring idempotency].
 	//
@@ -73,6 +65,15 @@ type CreateClientVpnRouteInput struct {
 	// required permissions, the error response is DryRunOperation . Otherwise, it is
 	// UnauthorizedOperation .
 	DryRun *bool
+
+	// The ID of the subnet through which you want to route traffic. The specified
+	// subnet must be an existing target network of the Client VPN endpoint.
+	//
+	// Alternatively, if you're adding a route for the local network, specify local .
+	//
+	// This parameter is required for VPC-based Client VPN endpoints. For Transit
+	// Gateway-based endpoints, this parameter is not required.
+	TargetVpcSubnetId *string
 
 	noSmithyDocumentSerde
 }
@@ -122,7 +123,7 @@ func (c *Client) addOperationCreateClientVpnRouteMiddlewares(stack *middleware.S
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -144,9 +145,6 @@ func (c *Client) addOperationCreateClientVpnRouteMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -185,40 +183,7 @@ func (c *Client) addOperationCreateClientVpnRouteMiddlewares(stack *middleware.S
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -99,6 +99,9 @@ type DescribeNetworkInterfacesInput struct {
 	//
 	//   - availability-zone - The Availability Zone of the network interface.
 	//
+	//   - availability-zone-id - The ID of the Availability Zone of the network
+	//   interface.
+	//
 	//   - description - The description of the network interface.
 	//
 	//   - group-id - The ID of a security group associated with the network interface.
@@ -158,6 +161,11 @@ type DescribeNetworkInterfacesInput struct {
 	//
 	//   - vpc-id - The ID of the VPC for the network interface.
 	Filters []types.Filter
+
+	// Indicates whether to include managed resources in the output. If this parameter
+	// is set to true , the output includes resources that are managed by Amazon Web
+	// Services services, even if managed resource visibility is set to hidden.
+	IncludeManagedResources *bool
 
 	// The maximum number of items to return for this request. To get the next page of
 	// items, make another request with the token returned in the output. You cannot
@@ -228,7 +236,7 @@ func (c *Client) addOperationDescribeNetworkInterfacesMiddlewares(stack *middlew
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -250,9 +258,6 @@ func (c *Client) addOperationDescribeNetworkInterfacesMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -285,40 +290,7 @@ func (c *Client) addOperationDescribeNetworkInterfacesMiddlewares(stack *middlew
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

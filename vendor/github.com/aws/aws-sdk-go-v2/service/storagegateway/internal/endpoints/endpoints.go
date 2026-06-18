@@ -181,6 +181,9 @@ var defaultPartitions = endpoints.Partitions{
 				Region: "ap-southeast-5",
 			}: endpoints.Endpoint{},
 			endpoints.EndpointKey{
+				Region: "ap-southeast-6",
+			}: endpoints.Endpoint{},
+			endpoints.EndpointKey{
 				Region: "ap-southeast-7",
 			}: endpoints.Endpoint{},
 			endpoints.EndpointKey{
@@ -379,9 +382,23 @@ var defaultPartitions = endpoints.Partitions{
 		ID: "aws-eusc",
 		Defaults: map[endpoints.DefaultKey]endpoints.Endpoint{
 			{
+				Variant: endpoints.DualStackVariant,
+			}: {
+				Hostname:          "storagegateway.{region}.api.amazonwebservices.eu",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+			{
 				Variant: endpoints.FIPSVariant,
 			}: {
 				Hostname:          "storagegateway-fips.{region}.amazonaws.eu",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+			{
+				Variant: endpoints.FIPSVariant | endpoints.DualStackVariant,
+			}: {
+				Hostname:          "storagegateway-fips.{region}.api.amazonwebservices.eu",
 				Protocols:         []string{"https"},
 				SignatureVersions: []string{"v4"},
 			},
@@ -395,6 +412,11 @@ var defaultPartitions = endpoints.Partitions{
 		},
 		RegionRegex:    partitionRegexp.AwsEusc,
 		IsRegionalized: true,
+		Endpoints: endpoints.Endpoints{
+			endpoints.EndpointKey{
+				Region: "eusc-de-east-1",
+			}: endpoints.Endpoint{},
+		},
 	},
 	{
 		ID: "aws-iso",
