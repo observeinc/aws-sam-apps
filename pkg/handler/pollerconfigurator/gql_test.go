@@ -2,6 +2,7 @@ package pollerconfigurator
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -211,6 +212,53 @@ func TestBuildPollerInput_JSONRoundTrip(t *testing.T) {
 	if roundtripped.Retries == nil || *roundtripped.Retries != "5" {
 		t.Errorf("Retries = %v after roundtrip, want %q", roundtripped.Retries, "5")
 	}
+}
+
+func TestBuildPollerInput_AttachResourceTags(t *testing.T) {
+	base := func(attachResourceTags *bool) *PollerConfig {
+		return &PollerConfig{
+			Period: 300, Delay: 300, Interval: "5m",
+			Queries:            []QueryConfig{{Namespace: "AWS/EC2"}},
+			AttachResourceTags: attachResourceTags,
+		}
+	}
+
+	t.Run("true", func(t *testing.T) {
+		v := true
+		input := buildPollerInput(base(&v), "ds-1", "us-east-1", "arn:role")
+		cw := input.CloudWatchMetricsConfig
+		if cw.AttachResourceTags == nil || !*cw.AttachResourceTags {
+			t.Errorf("AttachResourceTags = %v, want true", cw.AttachResourceTags)
+		}
+		data, _ := json.Marshal(input)
+		if !strings.Contains(string(data), `"attachResourceTags":true`) {
+			t.Errorf("JSON missing attachResourceTags:true, got %s", data)
+		}
+	})
+
+	t.Run("false", func(t *testing.T) {
+		v := false
+		input := buildPollerInput(base(&v), "ds-1", "us-east-1", "arn:role")
+		cw := input.CloudWatchMetricsConfig
+		if cw.AttachResourceTags == nil || *cw.AttachResourceTags {
+			t.Errorf("AttachResourceTags = %v, want false", cw.AttachResourceTags)
+		}
+		data, _ := json.Marshal(input)
+		if !strings.Contains(string(data), `"attachResourceTags":false`) {
+			t.Errorf("JSON missing attachResourceTags:false, got %s", data)
+		}
+	})
+
+	t.Run("nil omitted from JSON", func(t *testing.T) {
+		input := buildPollerInput(base(nil), "ds-1", "us-east-1", "arn:role")
+		if input.CloudWatchMetricsConfig.AttachResourceTags != nil {
+			t.Errorf("AttachResourceTags = %v, want nil", *input.CloudWatchMetricsConfig.AttachResourceTags)
+		}
+		data, _ := json.Marshal(input)
+		if strings.Contains(string(data), "attachResourceTags") {
+			t.Errorf("JSON should not contain attachResourceTags, got %s", data)
+		}
+	})
 }
 
 func TestMutationConstants(t *testing.T) {

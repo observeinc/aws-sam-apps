@@ -39,12 +39,13 @@ type QueryConfig struct {
 }
 
 type PollerConfig struct {
-	Name     string        `json:"name"`
-	Period   int64         `json:"period"`
-	Delay    int64         `json:"delay"`
-	Interval string        `json:"interval"`
-	Retries  *int64        `json:"retries,omitempty"`
-	Queries  []QueryConfig `json:"queries"`
+	Name               string        `json:"name"`
+	Period             int64         `json:"period"`
+	Delay              int64         `json:"delay"`
+	Interval           string        `json:"interval"`
+	Retries            *int64        `json:"retries,omitempty"`
+	Queries            []QueryConfig `json:"queries"`
+	AttachResourceTags *bool         `json:"attachResourceTags,omitempty"`
 }
 
 func downloadPollerConfig(ctx context.Context, uri string, awsCfg aws.Config) (*PollerConfig, error) {
