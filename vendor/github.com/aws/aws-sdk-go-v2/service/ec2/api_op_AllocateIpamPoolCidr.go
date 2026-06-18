@@ -97,6 +97,15 @@ type AllocateIpamPoolCidrInput struct {
 	// A preview of the next available CIDR in a pool.
 	PreviewNextCidr *bool
 
+	// The key/value combination of a tag assigned to the resource. Use the tag key in
+	// the filter name and the tag value as the filter value. For example, to find all
+	// resources that have a tag with the key Owner and the value TeamA , specify
+	// tag:Owner for the filter name and TeamA for the filter value.
+	//
+	// If you specify tags, the request is authorized against the allocation resource
+	// in addition to the pool resource.
+	TagSpecifications []types.TagSpecification
+
 	noSmithyDocumentSerde
 }
 
@@ -145,7 +154,7 @@ func (c *Client) addOperationAllocateIpamPoolCidrMiddlewares(stack *middleware.S
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -167,9 +176,6 @@ func (c *Client) addOperationAllocateIpamPoolCidrMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -208,40 +214,7 @@ func (c *Client) addOperationAllocateIpamPoolCidrMiddlewares(stack *middleware.S
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

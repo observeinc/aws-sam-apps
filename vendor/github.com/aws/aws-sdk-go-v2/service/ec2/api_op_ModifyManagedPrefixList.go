@@ -52,6 +52,11 @@ type ModifyManagedPrefixListInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
+	// Indicates whether synchronization with an IPAM prefix list resolver should be
+	// enabled for this managed prefix list. When enabled, the prefix list CIDRs are
+	// automatically updated based on the associated resolver's CIDR selection rules.
+	IpamPrefixListResolverSyncEnabled *bool
+
 	// The maximum number of entries for the prefix list. You cannot modify the
 	// entries of a prefix list and modify the size of a prefix list at the same time.
 	//
@@ -114,7 +119,7 @@ func (c *Client) addOperationModifyManagedPrefixListMiddlewares(stack *middlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -136,9 +141,6 @@ func (c *Client) addOperationModifyManagedPrefixListMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -174,40 +176,7 @@ func (c *Client) addOperationModifyManagedPrefixListMiddlewares(stack *middlewar
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

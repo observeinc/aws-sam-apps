@@ -1,3 +1,136 @@
+# v1.40.6 (2026-06-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.5 (2026-06-04)
+
+* **Dependency Update**: Update to smithy-go v1.27.1 to fix several union-related deserialization bugs in schema-serde-enabled services.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.4 (2026-06-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.3 (2026-06-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.2 (2026-05-29)
+
+* **Dependency Update**: Update to smithy-go v1.26.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.1 (2026-05-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.0 (2026-05-21)
+
+* **Feature**: Adding new BDD representation of endpoint ruleset
+
+# v1.39.4 (2026-05-19)
+
+* No change notes available for this release.
+
+# v1.39.3 (2026-04-29)
+
+* **Dependency Update**: Update to smithy-go v1.25.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.2 (2026-04-17)
+
+* **Dependency Update**: Bump smithy-go to 1.25.0 to support endpointBdd trait
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.1 (2026-03-26)
+
+* **Bug Fix**: Fix a bug where a recorded clock skew could persist on the client even if the client and server clock ended up realigning.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.0 (2026-03-13)
+
+* **Feature**: API Gateway now supports an additional security policy "SecurityPolicy-TLS13-1-2-FIPS-PFS-PQ-2025-09" for REST APIs and custom domain names. The new policy is compliant with TLS 1.3, Federal Information Processing Standards (FIPS), Perfect Forward Secrecy (PFS), and post-quantum (PQ) cryptography
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.6 (2026-03-03)
+
+* **Dependency Update**: Bump minimum Go version to 1.24
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.5 (2026-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.4 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.3 (2025-12-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.2 (2025-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.38.1 (2025-11-25)
+
+* **Bug Fix**: Add error check for endpoint param binding during auth scheme resolution to fix panic reported in #3234
+
+# v1.38.0 (2025-11-21)
+
+* **Feature**: API Gateway supports VPC link V2 for REST APIs.
+
+# v1.37.1 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.0 (2025-11-19)
+
+* **Feature**: API Gateway now supports response streaming and new security policies for REST APIs and custom domain names.
+
+# v1.36.3 (2025-11-12)
+
+* **Bug Fix**: Further reduce allocation overhead when the metrics system isn't in-use.
+* **Bug Fix**: Reduce allocation overhead when the client doesn't have any HTTP interceptors configured.
+* **Bug Fix**: Remove blank trace spans towards the beginning of the request that added no additional information. This conveys a slight reduction in overall allocations.
+
+# v1.36.2 (2025-11-11)
+
+* **Bug Fix**: Return validation error if input region is not a valid host label.
+
+# v1.36.1 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.36.0 (2025-10-30)
+
+* **Feature**: Update endpoint ruleset parameters casing
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.9 (2025-10-24)
+
+* No change notes available for this release.
+
+# v1.35.8 (2025-10-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.7 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.6 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.5 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.35.4 (2025-09-10)
 
 * No change notes available for this release.

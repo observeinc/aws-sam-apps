@@ -49,8 +49,16 @@ type UpdateWorkspaceConfigurationInput struct {
 	// sets. Each label name in a label set must be unique.
 	LimitsPerLabelSet []types.LimitsPerLabelSet
 
+	// Specifies the time window in seconds for accepting out of order samples. Out of
+	// order samples older than this window are rejected.
+	OutOfOrderTimeWindowInSeconds *int32
+
 	// Specifies how many days that metrics will be retained in the workspace.
 	RetentionPeriodInDays *int32
+
+	// Specifies the duration in seconds to offset rule evaluation queries into the
+	// past. This allows ingested samples to be available before rule evaluation.
+	RuleQueryOffsetInSeconds *int32
 
 	noSmithyDocumentSerde
 }
@@ -102,7 +110,7 @@ func (c *Client) addOperationUpdateWorkspaceConfigurationMiddlewares(stack *midd
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -124,9 +132,6 @@ func (c *Client) addOperationUpdateWorkspaceConfigurationMiddlewares(stack *midd
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -165,40 +170,7 @@ func (c *Client) addOperationUpdateWorkspaceConfigurationMiddlewares(stack *midd
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

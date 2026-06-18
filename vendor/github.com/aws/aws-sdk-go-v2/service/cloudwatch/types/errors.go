@@ -81,7 +81,7 @@ func (e *DashboardInvalidInputError) ErrorMessage() string {
 }
 func (e *DashboardInvalidInputError) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterInput"
+		return "DashboardInvalidInputError"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -107,7 +107,7 @@ func (e *DashboardNotFoundError) ErrorMessage() string {
 }
 func (e *DashboardNotFoundError) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "ResourceNotFound"
+		return "DashboardNotFoundError"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -133,7 +133,7 @@ func (e *InternalServiceFault) ErrorMessage() string {
 }
 func (e *InternalServiceFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InternalServiceError"
+		return "InternalServiceFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -159,7 +159,7 @@ func (e *InvalidFormatFault) ErrorMessage() string {
 }
 func (e *InvalidFormatFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidFormat"
+		return "InvalidFormatFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -211,7 +211,7 @@ func (e *InvalidParameterCombinationException) ErrorMessage() string {
 }
 func (e *InvalidParameterCombinationException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterCombination"
+		return "InvalidParameterCombinationException"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -239,11 +239,102 @@ func (e *InvalidParameterValueException) ErrorMessage() string {
 }
 func (e *InvalidParameterValueException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterValue"
+		return "InvalidParameterValueException"
 	}
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidParameterValueException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The operation was denied because either the calling principal lacks the
+// required Amazon Web Services Key Management Service (Amazon Web Services KMS)
+// permission on the key, or the key policy does not grant Amazon CloudWatch the
+// permissions it needs to use the key. Verify that the caller has kms:Decrypt
+// permission on the key, and that the key policy grants the CloudWatch service
+// principal the kms:DescribeKey , kms:GenerateDataKey , kms:Encrypt , kms:Decrypt
+// , and kms:ReEncrypt* permissions described in [AssociateDatasetKmsKey].
+//
+// [AssociateDatasetKmsKey]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_AssociateDatasetKmsKey.html
+type KmsAccessDeniedException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsAccessDeniedException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsAccessDeniedException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsAccessDeniedException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsAccessDeniedException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsAccessDeniedException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The specified Amazon Web Services Key Management Service (Amazon Web Services
+// KMS) key is disabled or pending deletion. Re-enable the key (or restore it, if
+// it is pending deletion) and retry the operation.
+type KmsKeyDisabledException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsKeyDisabledException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsKeyDisabledException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsKeyDisabledException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsKeyDisabledException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsKeyDisabledException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The specified Amazon Web Services Key Management Service (Amazon Web Services
+// KMS) key could not be found. Verify that the key Amazon Resource Name (ARN) is
+// correct, that the key exists, and that it is in the same Amazon Web Services
+// Region as the resource.
+type KmsKeyNotFoundException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsKeyNotFoundException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsKeyNotFoundException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsKeyNotFoundException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsKeyNotFoundException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsKeyNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The operation exceeded one or more limits.
 type LimitExceededException struct {
@@ -291,7 +382,7 @@ func (e *LimitExceededFault) ErrorMessage() string {
 }
 func (e *LimitExceededFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "LimitExceeded"
+		return "LimitExceededFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -317,7 +408,7 @@ func (e *MissingRequiredParameterException) ErrorMessage() string {
 }
 func (e *MissingRequiredParameterException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "MissingParameter"
+		return "MissingRequiredParameterException"
 	}
 	return *e.ErrorCodeOverride
 }

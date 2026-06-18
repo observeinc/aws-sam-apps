@@ -24,6 +24,17 @@ import (
 // returns only partial results. If you see a value of Scheduled or Running for
 // the status, you can retry the operation later to see the final results.
 //
+// This operation is used both for retrieving results from interactive queries and
+// from automated scheduled query executions. Scheduled queries use GetQueryResults
+// internally to retrieve query results for processing and delivery to configured
+// destinations.
+//
+// You can retrieve up to 100,000 log event results from a query, if available, by
+// using pagination. Use the nextToken returned in the response to request
+// additional pages of results, with each page returning up to 10,000 log events.
+// This is only supported for Logs Insights QL and is currently not supported for
+// PPL and SQL query languages.
+//
 // If you are using CloudWatch cross-account observability, you can use this
 // operation in a monitoring account to start queries in linked source accounts.
 // For more information, see [CloudWatch cross-account observability].
@@ -54,6 +65,14 @@ type GetQueryResultsInput struct {
 	// This member is required.
 	QueryId *string
 
+	// The maximum number of log events to return in the response. The maximum is
+	// 10,000 log events per request. You can retrieve up to 100,000 log event results
+	// from a query by paginating with the nextToken .
+	MaxItems *int32
+
+	// The token for the next set of items to return. The token expires after 1 hour.
+	NextToken *string
+
 	noSmithyDocumentSerde
 }
 
@@ -65,6 +84,13 @@ type GetQueryResultsOutput struct {
 	//
 	// [StartQuery]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_StartQuery.html
 	EncryptionKey *string
+
+	// If there are more log events remaining in the results, the response includes a
+	// nextToken . You can use this token in a subsequent GetQueryResults request to
+	// get the next set of results. You can retrieve up to 100,000 log event results
+	// from a query by paginating with this token. This is only supported for Logs
+	// Insights QL and is currently not supported for PPL and SQL query languages.
+	NextToken *string
 
 	// The query language used for this query. For more information about the query
 	// languages that CloudWatch Logs supports, see [Supported query languages].
@@ -133,7 +159,7 @@ func (c *Client) addOperationGetQueryResultsMiddlewares(stack *middleware.Stack,
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -157,10 +183,10 @@ func (c *Client) addOperationGetQueryResultsMiddlewares(stack *middleware.Stack,
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetQueryResultsValidationMiddleware(stack); err != nil {
@@ -184,16 +210,13 @@ func (c *Client) addOperationGetQueryResultsMiddlewares(stack *middleware.Stack,
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

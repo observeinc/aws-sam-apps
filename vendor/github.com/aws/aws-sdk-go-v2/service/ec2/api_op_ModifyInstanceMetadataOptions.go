@@ -96,9 +96,9 @@ type ModifyInstanceMetadataOptionsInput struct {
 
 	// Set to enabled to allow access to instance tags from the instance metadata. Set
 	// to disabled to turn off access to instance tags from the instance metadata. For
-	// more information, see [Work with instance tags using the instance metadata].
+	// more information, see [View tags for your EC2 instances using instance metadata].
 	//
-	// [Work with instance tags using the instance metadata]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#work-with-tags-in-IMDS
+	// [View tags for your EC2 instances using instance metadata]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html
 	InstanceMetadataTags types.InstanceMetadataTagsState
 
 	noSmithyDocumentSerde
@@ -152,7 +152,7 @@ func (c *Client) addOperationModifyInstanceMetadataOptionsMiddlewares(stack *mid
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -174,9 +174,6 @@ func (c *Client) addOperationModifyInstanceMetadataOptionsMiddlewares(stack *mid
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -212,40 +209,7 @@ func (c *Client) addOperationModifyInstanceMetadataOptionsMiddlewares(stack *mid
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

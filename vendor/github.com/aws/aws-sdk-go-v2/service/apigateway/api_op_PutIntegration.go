@@ -85,6 +85,9 @@ type PutIntegrationInput struct {
 	// The HTTP method for the integration.
 	IntegrationHttpMethod *string
 
+	//  The ALB or NLB listener to send the request to.
+	IntegrationTarget *string
+
 	// Specifies the pass-through behavior for incoming requests based on the
 	// Content-Type header in the request, and the available mapping templates
 	// specified as the requestTemplates property on the Integration resource. There
@@ -104,6 +107,9 @@ type PutIntegrationInput struct {
 	// based on the value of the Content-Type header sent by the client. The content
 	// type value is the key in this map, and the template (as a String) is the value.
 	RequestTemplates map[string]string
+
+	//  The response transfer mode of the integration.
+	ResponseTransferMode types.ResponseTransferMode
 
 	// Custom timeout between 50 and 29,000 milliseconds. The default value is 29,000
 	// milliseconds or 29 seconds. You can increase the default value to longer than 29
@@ -187,6 +193,9 @@ type PutIntegrationOutput struct {
 	// Specifies the integration's responses.
 	IntegrationResponses map[string]types.IntegrationResponse
 
+	//  The ALB or NLB listener to send the request to.
+	IntegrationTarget *string
+
 	// Specifies how the method request body of an unmapped content type will be
 	// passed through the integration request to the back end without transformation. A
 	// content type is unmapped if no mapping template is defined in the integration or
@@ -219,6 +228,9 @@ type PutIntegrationOutput struct {
 	// based on the value of the Content-Type header sent by the client. The content
 	// type value is the key in this map, and the template (as a String) is the value.
 	RequestTemplates map[string]string
+
+	//  The response transfer mode of the integration.
+	ResponseTransferMode types.ResponseTransferMode
 
 	// Custom timeout between 50 and 29,000 milliseconds. The default value is 29,000
 	// milliseconds or 29 seconds. You can increase the default value to longer than 29
@@ -300,7 +312,7 @@ func (c *Client) addOperationPutIntegrationMiddlewares(stack *middleware.Stack, 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -322,9 +334,6 @@ func (c *Client) addOperationPutIntegrationMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -363,40 +372,7 @@ func (c *Client) addOperationPutIntegrationMiddlewares(stack *middleware.Stack, 
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -1,3 +1,121 @@
+# v1.44.0 (2026-06-10)
+
+* **Feature**: Adds supports for out-of-order sample ingestion (default 1-minute window) and a configurable rule query offset to reduce data loss and improve alerting accuracy.
+
+# v1.43.5 (2026-06-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.4 (2026-06-04)
+
+* **Dependency Update**: Update to smithy-go v1.27.1 to fix several union-related deserialization bugs in schema-serde-enabled services.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.3 (2026-06-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.2 (2026-06-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.1 (2026-05-29)
+
+* **Dependency Update**: Update to smithy-go v1.26.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.0 (2026-05-28)
+
+* **Feature**: Adding new BDD representation of endpoint ruleset
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.11 (2026-04-29)
+
+* **Dependency Update**: Update to smithy-go v1.25.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.10 (2026-04-17)
+
+* **Dependency Update**: Bump smithy-go to 1.25.0 to support endpointBdd trait
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.9 (2026-03-26)
+
+* **Bug Fix**: Fix a bug where a recorded clock skew could persist on the client even if the client and server clock ended up realigning.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.8 (2026-03-13)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.7 (2026-03-03)
+
+* **Dependency Update**: Bump minimum Go version to 1.24
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.6 (2026-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.5 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.4 (2025-12-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.3 (2025-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.42.2 (2025-11-25)
+
+* **Bug Fix**: Add error check for endpoint param binding during auth scheme resolution to fix panic reported in #3234
+
+# v1.42.1 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.0 (2025-11-12)
+
+* **Feature**: Add VPC source configuration support enabling Amazon Managed Service for Prometheus Collector to collect metrics from MSK clusters.
+* **Bug Fix**: Further reduce allocation overhead when the metrics system isn't in-use.
+* **Bug Fix**: Reduce allocation overhead when the client doesn't have any HTTP interceptors configured.
+* **Bug Fix**: Remove blank trace spans towards the beginning of the request that added no additional information. This conveys a slight reduction in overall allocations.
+
+# v1.41.2 (2025-11-11)
+
+* **Bug Fix**: Return validation error if input region is not a valid host label.
+
+# v1.41.1 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.41.0 (2025-10-30)
+
+* **Feature**: Add Anomaly Detection APIs for Amazon Managed Prometheus
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.5 (2025-10-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.4 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.3 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.2 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.40.1 (2025-09-16)
 
 * No change notes available for this release.

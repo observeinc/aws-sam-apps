@@ -17,7 +17,6 @@ import (
 	"github.com/aws/smithy-go/tracing"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"io"
-	"io/ioutil"
 	"math"
 	"strings"
 )
@@ -1553,6 +1552,15 @@ func awsRestjson1_deserializeOpDocumentCreateDomainNameOutput(v **CreateDomainNa
 				sv.DomainNameStatusMessage = ptr.String(jtv)
 			}
 
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
+			}
+
 		case "endpointConfiguration":
 			if err := awsRestjson1_deserializeDocumentEndpointConfiguration(&sv.EndpointConfiguration, value); err != nil {
 				return err
@@ -2625,6 +2633,24 @@ func awsRestjson1_deserializeOpDocumentCreateRestApiOutput(v **CreateRestApiOutp
 				sv.ApiKeySource = types.ApiKeySourceType(jtv)
 			}
 
+		case "apiStatus":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApiStatus to be of type string, got %T instead", value)
+				}
+				sv.ApiStatus = types.ApiStatus(jtv)
+			}
+
+		case "apiStatusMessage":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.ApiStatusMessage = ptr.String(jtv)
+			}
+
 		case "binaryMediaTypes":
 			if err := awsRestjson1_deserializeDocumentListOfString(&sv.BinaryMediaTypes, value); err != nil {
 				return err
@@ -2662,6 +2688,15 @@ func awsRestjson1_deserializeOpDocumentCreateRestApiOutput(v **CreateRestApiOutp
 					return fmt.Errorf("expected Boolean to be of type *bool, got %T instead", value)
 				}
 				sv.DisableExecuteApiEndpoint = jtv
+			}
+
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
 			}
 
 		case "endpointConfiguration":
@@ -2716,6 +2751,15 @@ func awsRestjson1_deserializeOpDocumentCreateRestApiOutput(v **CreateRestApiOutp
 					return fmt.Errorf("expected String to be of type string, got %T instead", value)
 				}
 				sv.RootResourceId = ptr.String(jtv)
+			}
+
+		case "securityPolicy":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected SecurityPolicy to be of type string, got %T instead", value)
+				}
+				sv.SecurityPolicy = types.SecurityPolicy(jtv)
 			}
 
 		case "tags":
@@ -3715,7 +3759,7 @@ func (m *awsRestjson1_deserializeOpDeleteApiKey) HandleDeserialize(ctx context.C
 	output := &DeleteApiKeyOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -3821,7 +3865,7 @@ func (m *awsRestjson1_deserializeOpDeleteAuthorizer) HandleDeserialize(ctx conte
 	output := &DeleteAuthorizerOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -3927,7 +3971,7 @@ func (m *awsRestjson1_deserializeOpDeleteBasePathMapping) HandleDeserialize(ctx 
 	output := &DeleteBasePathMappingOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4033,7 +4077,7 @@ func (m *awsRestjson1_deserializeOpDeleteClientCertificate) HandleDeserialize(ct
 	output := &DeleteClientCertificateOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4139,7 +4183,7 @@ func (m *awsRestjson1_deserializeOpDeleteDeployment) HandleDeserialize(ctx conte
 	output := &DeleteDeploymentOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4248,7 +4292,7 @@ func (m *awsRestjson1_deserializeOpDeleteDocumentationPart) HandleDeserialize(ct
 	output := &DeleteDocumentationPartOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4354,7 +4398,7 @@ func (m *awsRestjson1_deserializeOpDeleteDocumentationVersion) HandleDeserialize
 	output := &DeleteDocumentationVersionOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4460,7 +4504,7 @@ func (m *awsRestjson1_deserializeOpDeleteDomainName) HandleDeserialize(ctx conte
 	output := &DeleteDomainNameOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4566,7 +4610,7 @@ func (m *awsRestjson1_deserializeOpDeleteDomainNameAccessAssociation) HandleDese
 	output := &DeleteDomainNameAccessAssociationOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4672,7 +4716,7 @@ func (m *awsRestjson1_deserializeOpDeleteGatewayResponse) HandleDeserialize(ctx 
 	output := &DeleteGatewayResponseOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4778,7 +4822,7 @@ func (m *awsRestjson1_deserializeOpDeleteIntegration) HandleDeserialize(ctx cont
 	output := &DeleteIntegrationOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4884,7 +4928,7 @@ func (m *awsRestjson1_deserializeOpDeleteIntegrationResponse) HandleDeserialize(
 	output := &DeleteIntegrationResponseOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -4990,7 +5034,7 @@ func (m *awsRestjson1_deserializeOpDeleteMethod) HandleDeserialize(ctx context.C
 	output := &DeleteMethodOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5093,7 +5137,7 @@ func (m *awsRestjson1_deserializeOpDeleteMethodResponse) HandleDeserialize(ctx c
 	output := &DeleteMethodResponseOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5199,7 +5243,7 @@ func (m *awsRestjson1_deserializeOpDeleteModel) HandleDeserialize(ctx context.Co
 	output := &DeleteModelOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5305,7 +5349,7 @@ func (m *awsRestjson1_deserializeOpDeleteRequestValidator) HandleDeserialize(ctx
 	output := &DeleteRequestValidatorOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5411,7 +5455,7 @@ func (m *awsRestjson1_deserializeOpDeleteResource) HandleDeserialize(ctx context
 	output := &DeleteResourceOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5517,7 +5561,7 @@ func (m *awsRestjson1_deserializeOpDeleteRestApi) HandleDeserialize(ctx context.
 	output := &DeleteRestApiOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5623,7 +5667,7 @@ func (m *awsRestjson1_deserializeOpDeleteStage) HandleDeserialize(ctx context.Co
 	output := &DeleteStageOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5732,7 +5776,7 @@ func (m *awsRestjson1_deserializeOpDeleteUsagePlan) HandleDeserialize(ctx contex
 	output := &DeleteUsagePlanOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5838,7 +5882,7 @@ func (m *awsRestjson1_deserializeOpDeleteUsagePlanKey) HandleDeserialize(ctx con
 	output := &DeleteUsagePlanKeyOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -5944,7 +5988,7 @@ func (m *awsRestjson1_deserializeOpDeleteVpcLink) HandleDeserialize(ctx context.
 	output := &DeleteVpcLinkOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -6050,7 +6094,7 @@ func (m *awsRestjson1_deserializeOpFlushStageAuthorizersCache) HandleDeserialize
 	output := &FlushStageAuthorizersCacheOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -6159,7 +6203,7 @@ func (m *awsRestjson1_deserializeOpFlushStageCache) HandleDeserialize(ctx contex
 	output := &FlushStageCacheOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -9552,6 +9596,15 @@ func awsRestjson1_deserializeOpDocumentGetDomainNameOutput(v **GetDomainNameOutp
 				sv.DomainNameStatusMessage = ptr.String(jtv)
 			}
 
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
+			}
+
 		case "endpointConfiguration":
 			if err := awsRestjson1_deserializeDocumentEndpointConfiguration(&sv.EndpointConfiguration, value); err != nil {
 				return err
@@ -10723,6 +10776,15 @@ func awsRestjson1_deserializeOpDocumentGetIntegrationOutput(v **GetIntegrationOu
 				return err
 			}
 
+		case "integrationTarget":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.IntegrationTarget = ptr.String(jtv)
+			}
+
 		case "passthroughBehavior":
 			if value != nil {
 				jtv, ok := value.(string)
@@ -10740,6 +10802,15 @@ func awsRestjson1_deserializeOpDocumentGetIntegrationOutput(v **GetIntegrationOu
 		case "requestTemplates":
 			if err := awsRestjson1_deserializeDocumentMapOfStringToString(&sv.RequestTemplates, value); err != nil {
 				return err
+			}
+
+		case "responseTransferMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ResponseTransferMode to be of type string, got %T instead", value)
+				}
+				sv.ResponseTransferMode = types.ResponseTransferMode(jtv)
 			}
 
 		case "timeoutInMillis":
@@ -12802,6 +12873,24 @@ func awsRestjson1_deserializeOpDocumentGetRestApiOutput(v **GetRestApiOutput, va
 				sv.ApiKeySource = types.ApiKeySourceType(jtv)
 			}
 
+		case "apiStatus":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApiStatus to be of type string, got %T instead", value)
+				}
+				sv.ApiStatus = types.ApiStatus(jtv)
+			}
+
+		case "apiStatusMessage":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.ApiStatusMessage = ptr.String(jtv)
+			}
+
 		case "binaryMediaTypes":
 			if err := awsRestjson1_deserializeDocumentListOfString(&sv.BinaryMediaTypes, value); err != nil {
 				return err
@@ -12839,6 +12928,15 @@ func awsRestjson1_deserializeOpDocumentGetRestApiOutput(v **GetRestApiOutput, va
 					return fmt.Errorf("expected Boolean to be of type *bool, got %T instead", value)
 				}
 				sv.DisableExecuteApiEndpoint = jtv
+			}
+
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
 			}
 
 		case "endpointConfiguration":
@@ -12893,6 +12991,15 @@ func awsRestjson1_deserializeOpDocumentGetRestApiOutput(v **GetRestApiOutput, va
 					return fmt.Errorf("expected String to be of type string, got %T instead", value)
 				}
 				sv.RootResourceId = ptr.String(jtv)
+			}
+
+		case "securityPolicy":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected SecurityPolicy to be of type string, got %T instead", value)
+				}
+				sv.SecurityPolicy = types.SecurityPolicy(jtv)
 			}
 
 		case "tags":
@@ -16059,6 +16166,24 @@ func awsRestjson1_deserializeOpDocumentImportRestApiOutput(v **ImportRestApiOutp
 				sv.ApiKeySource = types.ApiKeySourceType(jtv)
 			}
 
+		case "apiStatus":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApiStatus to be of type string, got %T instead", value)
+				}
+				sv.ApiStatus = types.ApiStatus(jtv)
+			}
+
+		case "apiStatusMessage":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.ApiStatusMessage = ptr.String(jtv)
+			}
+
 		case "binaryMediaTypes":
 			if err := awsRestjson1_deserializeDocumentListOfString(&sv.BinaryMediaTypes, value); err != nil {
 				return err
@@ -16096,6 +16221,15 @@ func awsRestjson1_deserializeOpDocumentImportRestApiOutput(v **ImportRestApiOutp
 					return fmt.Errorf("expected Boolean to be of type *bool, got %T instead", value)
 				}
 				sv.DisableExecuteApiEndpoint = jtv
+			}
+
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
 			}
 
 		case "endpointConfiguration":
@@ -16150,6 +16284,15 @@ func awsRestjson1_deserializeOpDocumentImportRestApiOutput(v **ImportRestApiOutp
 					return fmt.Errorf("expected String to be of type string, got %T instead", value)
 				}
 				sv.RootResourceId = ptr.String(jtv)
+			}
+
+		case "securityPolicy":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected SecurityPolicy to be of type string, got %T instead", value)
+				}
+				sv.SecurityPolicy = types.SecurityPolicy(jtv)
 			}
 
 		case "tags":
@@ -16596,6 +16739,15 @@ func awsRestjson1_deserializeOpDocumentPutIntegrationOutput(v **PutIntegrationOu
 				return err
 			}
 
+		case "integrationTarget":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.IntegrationTarget = ptr.String(jtv)
+			}
+
 		case "passthroughBehavior":
 			if value != nil {
 				jtv, ok := value.(string)
@@ -16613,6 +16765,15 @@ func awsRestjson1_deserializeOpDocumentPutIntegrationOutput(v **PutIntegrationOu
 		case "requestTemplates":
 			if err := awsRestjson1_deserializeDocumentMapOfStringToString(&sv.RequestTemplates, value); err != nil {
 				return err
+			}
+
+		case "responseTransferMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ResponseTransferMode to be of type string, got %T instead", value)
+				}
+				sv.ResponseTransferMode = types.ResponseTransferMode(jtv)
 			}
 
 		case "timeoutInMillis":
@@ -17443,6 +17604,24 @@ func awsRestjson1_deserializeOpDocumentPutRestApiOutput(v **PutRestApiOutput, va
 				sv.ApiKeySource = types.ApiKeySourceType(jtv)
 			}
 
+		case "apiStatus":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApiStatus to be of type string, got %T instead", value)
+				}
+				sv.ApiStatus = types.ApiStatus(jtv)
+			}
+
+		case "apiStatusMessage":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.ApiStatusMessage = ptr.String(jtv)
+			}
+
 		case "binaryMediaTypes":
 			if err := awsRestjson1_deserializeDocumentListOfString(&sv.BinaryMediaTypes, value); err != nil {
 				return err
@@ -17480,6 +17659,15 @@ func awsRestjson1_deserializeOpDocumentPutRestApiOutput(v **PutRestApiOutput, va
 					return fmt.Errorf("expected Boolean to be of type *bool, got %T instead", value)
 				}
 				sv.DisableExecuteApiEndpoint = jtv
+			}
+
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
 			}
 
 		case "endpointConfiguration":
@@ -17534,6 +17722,15 @@ func awsRestjson1_deserializeOpDocumentPutRestApiOutput(v **PutRestApiOutput, va
 					return fmt.Errorf("expected String to be of type string, got %T instead", value)
 				}
 				sv.RootResourceId = ptr.String(jtv)
+			}
+
+		case "securityPolicy":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected SecurityPolicy to be of type string, got %T instead", value)
+				}
+				sv.SecurityPolicy = types.SecurityPolicy(jtv)
 			}
 
 		case "tags":
@@ -17594,7 +17791,7 @@ func (m *awsRestjson1_deserializeOpRejectDomainNameAccessAssociation) HandleDese
 	output := &RejectDomainNameAccessAssociationOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -17700,7 +17897,7 @@ func (m *awsRestjson1_deserializeOpTagResource) HandleDeserialize(ctx context.Co
 	output := &TagResourceOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -18238,7 +18435,7 @@ func (m *awsRestjson1_deserializeOpUntagResource) HandleDeserialize(ctx context.
 	output := &UntagResourceOutput{}
 	out.Result = output
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if _, err = io.Copy(io.Discard, response.Body); err != nil {
 		return out, metadata, &smithy.DeserializationError{
 			Err: fmt.Errorf("failed to discard response body, %w", err),
 		}
@@ -20267,6 +20464,15 @@ func awsRestjson1_deserializeOpDocumentUpdateDomainNameOutput(v **UpdateDomainNa
 				sv.DomainNameStatusMessage = ptr.String(jtv)
 			}
 
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
+			}
+
 		case "endpointConfiguration":
 			if err := awsRestjson1_deserializeDocumentEndpointConfiguration(&sv.EndpointConfiguration, value); err != nil {
 				return err
@@ -20788,6 +20994,15 @@ func awsRestjson1_deserializeOpDocumentUpdateIntegrationOutput(v **UpdateIntegra
 				return err
 			}
 
+		case "integrationTarget":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.IntegrationTarget = ptr.String(jtv)
+			}
+
 		case "passthroughBehavior":
 			if value != nil {
 				jtv, ok := value.(string)
@@ -20805,6 +21020,15 @@ func awsRestjson1_deserializeOpDocumentUpdateIntegrationOutput(v **UpdateIntegra
 		case "requestTemplates":
 			if err := awsRestjson1_deserializeDocumentMapOfStringToString(&sv.RequestTemplates, value); err != nil {
 				return err
+			}
+
+		case "responseTransferMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ResponseTransferMode to be of type string, got %T instead", value)
+				}
+				sv.ResponseTransferMode = types.ResponseTransferMode(jtv)
 			}
 
 		case "timeoutInMillis":
@@ -22237,6 +22461,24 @@ func awsRestjson1_deserializeOpDocumentUpdateRestApiOutput(v **UpdateRestApiOutp
 				sv.ApiKeySource = types.ApiKeySourceType(jtv)
 			}
 
+		case "apiStatus":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApiStatus to be of type string, got %T instead", value)
+				}
+				sv.ApiStatus = types.ApiStatus(jtv)
+			}
+
+		case "apiStatusMessage":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.ApiStatusMessage = ptr.String(jtv)
+			}
+
 		case "binaryMediaTypes":
 			if err := awsRestjson1_deserializeDocumentListOfString(&sv.BinaryMediaTypes, value); err != nil {
 				return err
@@ -22274,6 +22516,15 @@ func awsRestjson1_deserializeOpDocumentUpdateRestApiOutput(v **UpdateRestApiOutp
 					return fmt.Errorf("expected Boolean to be of type *bool, got %T instead", value)
 				}
 				sv.DisableExecuteApiEndpoint = jtv
+			}
+
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
 			}
 
 		case "endpointConfiguration":
@@ -22328,6 +22579,15 @@ func awsRestjson1_deserializeOpDocumentUpdateRestApiOutput(v **UpdateRestApiOutp
 					return fmt.Errorf("expected String to be of type string, got %T instead", value)
 				}
 				sv.RootResourceId = ptr.String(jtv)
+			}
+
+		case "securityPolicy":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected SecurityPolicy to be of type string, got %T instead", value)
+				}
+				sv.SecurityPolicy = types.SecurityPolicy(jtv)
 			}
 
 		case "tags":
@@ -24661,6 +24921,15 @@ func awsRestjson1_deserializeDocumentDomainName(v **types.DomainName, value inte
 				sv.DomainNameStatusMessage = ptr.String(jtv)
 			}
 
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
+			}
+
 		case "endpointConfiguration":
 			if err := awsRestjson1_deserializeDocumentEndpointConfiguration(&sv.EndpointConfiguration, value); err != nil {
 				return err
@@ -25042,6 +25311,15 @@ func awsRestjson1_deserializeDocumentIntegration(v **types.Integration, value in
 				return err
 			}
 
+		case "integrationTarget":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.IntegrationTarget = ptr.String(jtv)
+			}
+
 		case "passthroughBehavior":
 			if value != nil {
 				jtv, ok := value.(string)
@@ -25059,6 +25337,15 @@ func awsRestjson1_deserializeDocumentIntegration(v **types.Integration, value in
 		case "requestTemplates":
 			if err := awsRestjson1_deserializeDocumentMapOfStringToString(&sv.RequestTemplates, value); err != nil {
 				return err
+			}
+
+		case "responseTransferMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ResponseTransferMode to be of type string, got %T instead", value)
+				}
+				sv.ResponseTransferMode = types.ResponseTransferMode(jtv)
 			}
 
 		case "timeoutInMillis":
@@ -27270,6 +27557,24 @@ func awsRestjson1_deserializeDocumentRestApi(v **types.RestApi, value interface{
 				sv.ApiKeySource = types.ApiKeySourceType(jtv)
 			}
 
+		case "apiStatus":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApiStatus to be of type string, got %T instead", value)
+				}
+				sv.ApiStatus = types.ApiStatus(jtv)
+			}
+
+		case "apiStatusMessage":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected String to be of type string, got %T instead", value)
+				}
+				sv.ApiStatusMessage = ptr.String(jtv)
+			}
+
 		case "binaryMediaTypes":
 			if err := awsRestjson1_deserializeDocumentListOfString(&sv.BinaryMediaTypes, value); err != nil {
 				return err
@@ -27307,6 +27612,15 @@ func awsRestjson1_deserializeDocumentRestApi(v **types.RestApi, value interface{
 					return fmt.Errorf("expected Boolean to be of type *bool, got %T instead", value)
 				}
 				sv.DisableExecuteApiEndpoint = jtv
+			}
+
+		case "endpointAccessMode":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected EndpointAccessMode to be of type string, got %T instead", value)
+				}
+				sv.EndpointAccessMode = types.EndpointAccessMode(jtv)
 			}
 
 		case "endpointConfiguration":
@@ -27361,6 +27675,15 @@ func awsRestjson1_deserializeDocumentRestApi(v **types.RestApi, value interface{
 					return fmt.Errorf("expected String to be of type string, got %T instead", value)
 				}
 				sv.RootResourceId = ptr.String(jtv)
+			}
+
+		case "securityPolicy":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected SecurityPolicy to be of type string, got %T instead", value)
+				}
+				sv.SecurityPolicy = types.SecurityPolicy(jtv)
 			}
 
 		case "tags":

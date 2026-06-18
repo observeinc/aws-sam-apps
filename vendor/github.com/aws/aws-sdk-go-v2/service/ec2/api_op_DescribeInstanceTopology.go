@@ -26,10 +26,10 @@ import (
 // not have fully propagated across all subsystems. For more information, see [Eventual consistency in the Amazon EC2 API]in
 // the Amazon EC2 Developer Guide.
 //
-// For more information, see [Amazon EC2 instance topology] in the Amazon EC2 User Guide.
+// For more information, see [Amazon EC2 topology] in the Amazon EC2 User Guide.
 //
 // [Prerequisites for Amazon EC2 instance topology]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology-prerequisites.html
-// [Amazon EC2 instance topology]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology.html
+// [Amazon EC2 topology]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology.html
 // [Eventual consistency in the Amazon EC2 API]: https://docs.aws.amazon.com/ec2/latest/devguide/eventual-consistency.html
 func (c *Client) DescribeInstanceTopology(ctx context.Context, params *DescribeInstanceTopologyInput, optFns ...func(*Options)) (*DescribeInstanceTopologyOutput, error) {
 	if params == nil {
@@ -148,7 +148,7 @@ func (c *Client) addOperationDescribeInstanceTopologyMiddlewares(stack *middlewa
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -170,9 +170,6 @@ func (c *Client) addOperationDescribeInstanceTopologyMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
@@ -205,40 +202,7 @@ func (c *Client) addOperationDescribeInstanceTopologyMiddlewares(stack *middlewa
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

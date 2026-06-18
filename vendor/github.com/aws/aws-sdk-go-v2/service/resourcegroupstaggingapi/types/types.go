@@ -17,6 +17,10 @@ type ComplianceDetails struct {
 	// either incorrect case treatment or noncompliant values.
 	KeysWithNoncompliantValues []string
 
+	// These tag keys are defined as required in the report_required_tag_for block of
+	// the effective tag policy, but are missing from the resource.
+	MissingTagKeys []string
+
 	// These tag keys on the resource are noncompliant with the effective tag policy.
 	NoncompliantKeys []string
 
@@ -61,6 +65,22 @@ type FailureInfo struct {
 
 	// The HTTP status code of the common error.
 	StatusCode int32
+
+	noSmithyDocumentSerde
+}
+
+// Information that describes the required tags for a given resource type.
+type RequiredTag struct {
+
+	// Describes the CloudFormation resource type assigned the required tag keys.
+	CloudFormationResourceTypes []string
+
+	// These tag keys are marked as required in the report_required_tag_for block of
+	// the effective tag policy.
+	ReportingTagKeys []string
+
+	// Describes the resource type for the required tag keys.
+	ResourceType *string
 
 	noSmithyDocumentSerde
 }

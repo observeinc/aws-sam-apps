@@ -131,37 +131,38 @@ type AutoScalingGroup struct {
 	// This member is required.
 	AutoScalingGroupName *string
 
-	// One or more Availability Zones for the group.
+	// One or more Availability Zones for the Auto Scaling group.
 	//
 	// This member is required.
 	AvailabilityZones []string
 
-	// The date and time the group was created.
+	// The date and time the Auto Scaling group was created.
 	//
 	// This member is required.
 	CreatedTime *time.Time
 
-	// The duration of the default cooldown period, in seconds.
+	// The duration of the default cooldown period, in seconds, for the Auto Scaling
+	// group.
 	//
 	// This member is required.
 	DefaultCooldown *int32
 
-	// The desired size of the group.
+	// The desired size of the Auto Scaling group.
 	//
 	// This member is required.
 	DesiredCapacity *int32
 
-	// A comma-separated value string of one or more health check types.
+	// One or more comma-separated health check types for the Auto Scaling group.
 	//
 	// This member is required.
 	HealthCheckType *string
 
-	// The maximum size of the group.
+	// The maximum size of the Auto Scaling group.
 	//
 	// This member is required.
 	MaxSize *int32
 
-	// The minimum size of the group.
+	// The minimum size of the Auto Scaling group.
 	//
 	// This member is required.
 	MinSize *int32
@@ -169,67 +170,80 @@ type AutoScalingGroup struct {
 	// The Amazon Resource Name (ARN) of the Auto Scaling group.
 	AutoScalingGroupARN *string
 
-	//  The instance capacity distribution across Availability Zones.
+	// The EC2 instance capacity distribution across Availability Zones for the Auto
+	// Scaling group.
 	AvailabilityZoneDistribution *AvailabilityZoneDistribution
 
-	//  The Availability Zone impairment policy.
+	//  The Availability Zone IDs where the Auto Scaling group can launch instances.
+	AvailabilityZoneIds []string
+
+	// The Availability Zone impairment policy for the Auto Scaling group.
 	AvailabilityZoneImpairmentPolicy *AvailabilityZoneImpairmentPolicy
 
 	// Indicates whether Capacity Rebalancing is enabled.
 	CapacityRebalance *bool
 
-	//  The capacity reservation specification.
+	// The capacity reservation specification for the Auto Scaling group.
 	CapacityReservationSpecification *CapacityReservationSpecification
 
 	// Reserved.
 	Context *string
 
-	// The duration of the default instance warmup, in seconds.
+	// The duration of the default EC2 instance warmup time, in seconds, for the Auto
+	// Scaling group.
 	DefaultInstanceWarmup *int32
+
+	// The deletion protection setting for the Auto Scaling group.
+	DeletionProtection DeletionProtection
 
 	// The unit of measurement for the value specified for desired capacity. Amazon
 	// EC2 Auto Scaling supports DesiredCapacityType for attribute-based instance type
 	// selection only.
 	DesiredCapacityType *string
 
-	// The metrics enabled for the group.
+	// The metrics enabled for the Auto Scaling group.
 	EnabledMetrics []EnabledMetric
 
-	// The duration of the health check grace period, in seconds.
+	// The duration of the health check grace period, in seconds, for the Auto Scaling
+	// group.
 	HealthCheckGracePeriod *int32
+
+	// The instance lifecycle policy for the Auto Scaling group.
+	InstanceLifecyclePolicy *InstanceLifecyclePolicy
 
 	// An instance maintenance policy.
 	InstanceMaintenancePolicy *InstanceMaintenancePolicy
 
-	// The EC2 instances associated with the group.
+	// The EC2 instances associated with the Auto Scaling group.
 	Instances []Instance
 
-	// The name of the associated launch configuration.
+	// The name of the associated launch configuration for the Auto Scaling group.
 	LaunchConfigurationName *string
 
-	// The launch template for the group.
+	// The launch template for the Auto Scaling group.
 	LaunchTemplate *LaunchTemplateSpecification
 
 	// One or more load balancers associated with the group.
 	LoadBalancerNames []string
 
-	// The maximum amount of time, in seconds, that an instance can be in service.
-	//
-	// Valid Range: Minimum value of 0.
+	// The maximum amount of time, in seconds, that an EC2 instance can be in service
+	// for the Auto Scaling group.
 	MaxInstanceLifetime *int32
 
 	// The mixed instances policy for the group.
 	MixedInstancesPolicy *MixedInstancesPolicy
 
-	// Indicates whether newly launched instances are protected from termination by
-	// Amazon EC2 Auto Scaling when scaling in. For more information about preventing
-	// instances from terminating on scale in, see [Use instance scale-in protection]in the Amazon EC2 Auto Scaling User
-	// Guide.
+	// Indicates whether newly launched EC2 instances are protected from termination
+	// when scaling in for the Auto Scaling group.
+	//
+	// For more information about preventing instances from terminating on scale in,
+	// see [Use instance scale-in protection]in the Amazon EC2 Auto Scaling User Guide.
 	//
 	// [Use instance scale-in protection]: https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-instance-protection.html
 	NewInstancesProtectedFromScaleIn *bool
 
-	// The name of the placement group into which to launch your instances, if any.
+	// The name of the placement group into which to launch EC2 instances for the Auto
+	// Scaling group.
 	PlacementGroup *string
 
 	// The predicted capacity of the group when it has a predictive scaling policy.
@@ -239,27 +253,27 @@ type AutoScalingGroup struct {
 	// group uses to call other Amazon Web Services on your behalf.
 	ServiceLinkedRoleARN *string
 
-	// The current state of the group when the [DeleteAutoScalingGroup] operation is in progress.
+	// The current state of the Auto Scaling group when the [DeleteAutoScalingGroup] operation is in progress.
 	//
 	// [DeleteAutoScalingGroup]: https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_DeleteAutoScalingGroup.html
 	Status *string
 
-	// The suspended processes associated with the group.
+	// The suspended processes associated with the Auto Scaling group.
 	SuspendedProcesses []SuspendedProcess
 
-	// The tags for the group.
+	// The tags for the Auto Scaling group.
 	Tags []TagDescription
 
 	// The Amazon Resource Names (ARN) of the target groups for your load balancer.
 	TargetGroupARNs []string
 
-	// The termination policies for the group.
+	// The termination policies for the Auto Scaling group.
 	TerminationPolicies []string
 
 	// The traffic sources associated with this Auto Scaling group.
 	TrafficSources []TrafficSourceIdentifier
 
-	// One or more subnet IDs, if applicable, separated by commas.
+	// One or more comma-separated subnet IDs for the Auto Scaling group.
 	VPCZoneIdentifier *string
 
 	// The warm pool for the group.
@@ -301,10 +315,14 @@ type AutoScalingInstanceDetails struct {
 	// more information, see [Amazon EC2 Auto Scaling instance lifecycle]in the Amazon EC2 Auto Scaling User Guide.
 	//
 	// Valid values: Pending | Pending:Wait | Pending:Proceed | Quarantined | InService
-	// | Terminating | Terminating:Wait | Terminating:Proceed | Terminated | Detaching
-	// | Detached | EnteringStandby | Standby | Warmed:Pending | Warmed:Pending:Wait |
-	// Warmed:Pending:Proceed | Warmed:Terminating | Warmed:Terminating:Wait |
-	// Warmed:Terminating:Proceed | Warmed:Terminated | Warmed:Stopped | Warmed:Running
+	// | Terminating | Terminating:Wait | Terminating:Proceed | Terminating:Retained |
+	// Terminated | Detaching | Detached | EnteringStandby | Standby |
+	// ReplacingRootVolume | ReplacingRootVolume:Wait | ReplacingRootVolume:Proceed |
+	// RootVolumeReplaced | Warmed:Pending | Warmed:Pending:Wait |
+	// Warmed:Pending:Proceed | Warmed:Pending:Retained | Warmed:Terminating |
+	// Warmed:Terminating:Wait | Warmed:Terminating:Proceed |
+	// Warmed:Terminating:Retained | Warmed:Terminated | Warmed:Stopped |
+	// Warmed:Running | Warmed:Hibernated
 	//
 	// [Amazon EC2 Auto Scaling instance lifecycle]: https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-lifecycle.html
 	//
@@ -316,6 +334,27 @@ type AutoScalingInstanceDetails struct {
 	//
 	// This member is required.
 	ProtectedFromScaleIn *bool
+
+	//  The Availability Zone ID where the instance is located.
+	AvailabilityZoneId *string
+
+	//  The ID of the Amazon Machine Image (AMI) associated with the instance. This
+	// field shows the current AMI ID of the instance's root volume. It may differ from
+	// the original AMI used when the instance was first launched.
+	//
+	// This field appears for:
+	//
+	//   - Instances with root volume replacements through Instance Refresh
+	//
+	//   - Instances launched with AMI overrides
+	//
+	// This field won't appear for:
+	//
+	//   - Existing instances launched from Launch Templates without overrides
+	//
+	//   - Existing instances that didn’t have their root volume replaced through
+	//   Instance Refresh
+	ImageId *string
 
 	// The instance type of the EC2 instance.
 	InstanceType *string
@@ -779,9 +818,9 @@ type Filter struct {
 	// The name of the filter.
 	//
 	// The valid values for Name depend on which API operation you're using with the
-	// filter ([DescribeAutoScalingGroups] or [DescribeTags]).
+	// filter.
 	//
-	// DescribeAutoScalingGroups
+	// [DescribeAutoScalingGroups]
 	//
 	// Valid values for Name include the following:
 	//
@@ -796,7 +835,7 @@ type Filter struct {
 	//   information about the Auto Scaling groups associated with the specified
 	//   key/value combination.
 	//
-	// DescribeTags
+	// [DescribeTags]
 	//
 	// Valid values for Name include the following:
 	//
@@ -814,17 +853,50 @@ type Filter struct {
 	//   propagate to instances at launch. The results only include information about the
 	//   tags associated with the specified Boolean value.
 	//
+	// [DescribeScalingActivities]
+	//
+	// Valid values for Name include the following:
+	//
+	//   - StartTimeLowerBound - The earliest scaling activities to return based on the
+	//   activity start time. Scaling activities with a start time earlier than this
+	//   value are not included in the results. Only activities started within the last
+	//   six weeks can be returned regardless of the value specified.
+	//
+	//   - StartTimeUpperBound - The latest scaling activities to return based on the
+	//   activity start time. Scaling activities with a start time later than this value
+	//   are not included in the results. Only activities started within the last six
+	//   weeks can be returned regardless of the value specified.
+	//
+	//   - Status - The StatusCode value of the scaling activity. This filter can only
+	//   be used in combination with the AutoScalingGroupName parameter. For valid
+	//   StatusCode values, see [Activity]in the Amazon EC2 Auto Scaling API Reference.
+	//
+	// StartTimeLowerBound and StartTimeUpperBound accept ISO 8601 formatted
+	// timestamps. Timestamps without a timezone offset are assumed to be UTC.
+	//
+	//   - 2000-01-18T08:15:00Z
+	//
+	//   - 2000-01-18T16:15:00+08:00
+	//
 	// [DescribeAutoScalingGroups]: https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_DescribeAutoScalingGroups.html
 	// [DescribeTags]: https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_DescribeTags.html
+	// [DescribeScalingActivities]: https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_DescribeScalingActivities.html
+	// [Activity]: https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_Activity.html
 	Name *string
 
 	// One or more filter values. Filter values are case-sensitive.
 	//
 	// If you specify multiple values for a filter, the values are automatically
 	// logically joined with an OR , and the request returns all results that match any
-	// of the specified values. For example, specify "tag:environment" for the filter
+	// of the specified values.
+	//
+	// DescribeAutoScalingGroups example: Specify "tag:environment" for the filter
 	// name and "production,development" for the filter values to find Auto Scaling
 	// groups with the tag "environment=production" or "environment=development".
+	//
+	// DescribeScalingActivities example: Specify "Status" for the filter name and
+	// "Successful,Failed" for the filter values to find scaling activities with a
+	// status of either "Successful" or "Failed".
 	Values []string
 
 	noSmithyDocumentSerde
@@ -865,6 +937,27 @@ type Instance struct {
 	// This member is required.
 	ProtectedFromScaleIn *bool
 
+	//  The Availability Zone ID where the instance was launched.
+	AvailabilityZoneId *string
+
+	//  The ID of the Amazon Machine Image (AMI) used for the instance's current root
+	// volume. This value reflects the most recent AMI applied to the instance,
+	// including updates made through root volume replacement operations.
+	//
+	// This field appears for:
+	//
+	//   - Instances with root volume replacements through Instance Refresh
+	//
+	//   - Instances launched with AMI overrides
+	//
+	// This field won't appear for:
+	//
+	//   - Existing instances launched from Launch Templates without overrides
+	//
+	//   - Existing instances that didn’t have their root volume replaced through
+	//   Instance Refresh
+	ImageId *string
+
 	// The instance type of the EC2 instance.
 	InstanceType *string
 
@@ -879,6 +972,52 @@ type Instance struct {
 	//
 	// Valid Range: Minimum value of 1. Maximum value of 999.
 	WeightedCapacity *string
+
+	noSmithyDocumentSerde
+}
+
+//	Contains details about a collection of instances launched in the Auto Scaling
+//
+// group.
+type InstanceCollection struct {
+
+	//  The Availability Zone where the instances were launched.
+	AvailabilityZone *string
+
+	//  The Availability Zone ID where the instances in this collection were launched.
+	AvailabilityZoneId *string
+
+	//  A list of instance IDs for the successfully launched instances.
+	InstanceIds []string
+
+	//  The instance type of the launched instances.
+	InstanceType *string
+
+	//  The market type for the instances (On-Demand or Spot).
+	MarketType *string
+
+	//  The ID of the subnet where the instances were launched.
+	SubnetId *string
+
+	noSmithyDocumentSerde
+}
+
+//	The instance lifecycle policy for the Auto Scaling group. This policy controls
+//
+// instance behavior when an instance transitions through its lifecycle states.
+// Configure retention triggers to specify when instances should move to a Retained
+// state instead of automatic termination.
+//
+// For more information, see [Control instance retention with instance lifecycle policies] in the Amazon EC2 Auto Scaling User Guide.
+//
+// [Control instance retention with instance lifecycle policies]: https://docs.aws.amazon.com/autoscaling/ec2/userguide/instance-lifecycle-policy.html
+type InstanceLifecyclePolicy struct {
+
+	//  Specifies the conditions that trigger instance retention behavior. These
+	// triggers determine when instances should move to a Retained state instead of
+	// automatic termination. This allows you to maintain control over instance
+	// management when lifecycles transition and operations fail.
+	RetentionTriggers *RetentionTriggers
 
 	noSmithyDocumentSerde
 }
@@ -1030,6 +1169,15 @@ type InstanceRefresh struct {
 
 	// The explanation for the specific status assigned to this operation.
 	StatusReason *string
+
+	//  The strategy to use for the instance refresh. This determines how instances in
+	// the Auto Scaling group are updated. Default is Rolling.
+	//
+	//   - Rolling – Terminates instances and launches replacements in batches
+	//
+	//   - ReplaceRootVolume – Updates instances by replacing only the root volume
+	//   without terminating the instance
+	Strategy RefreshStrategy
 
 	noSmithyDocumentSerde
 }
@@ -1637,6 +1785,35 @@ type LaunchConfiguration struct {
 	noSmithyDocumentSerde
 }
 
+// Contains details about errors encountered during instance launch attempts.
+type LaunchInstancesError struct {
+
+	//  The Availability Zone where the instance launch was attempted.
+	AvailabilityZone *string
+
+	//  The Availability Zone ID where the launch error occurred.
+	AvailabilityZoneId *string
+
+	//  The error code representing the type of error encountered (e.g.,
+	// InsufficientInstanceCapacity).
+	ErrorCode *string
+
+	//  A descriptive message providing details about the error encountered during the
+	// launch attempt.
+	ErrorMessage *string
+
+	//  The instance type that failed to launch.
+	InstanceType *string
+
+	//  The market type (On-Demand or Spot) that encountered the launch error.
+	MarketType *string
+
+	//  The subnet ID where the instance launch was attempted.
+	SubnetId *string
+
+	noSmithyDocumentSerde
+}
+
 // Use this structure to specify the launch templates and instance types
 // (overrides) for a mixed instances policy.
 type LaunchTemplate struct {
@@ -1670,6 +1847,19 @@ type LaunchTemplate struct {
 // Scaling uses the instance requirements of the Auto Scaling group to determine
 // whether a new EC2 instance type can be used.
 type LaunchTemplateOverrides struct {
+
+	//  The ID of the Amazon Machine Image (AMI) to use for instances launched with
+	// this override. When using Instance Refresh with ReplaceRootVolume strategy,
+	// this specifies the AMI for root volume replacement operations.
+	//
+	// For ReplaceRootVolume operations:
+	//
+	//   - All overrides in the MixedInstancesPolicy must specify an ImageId
+	//
+	//   - The AMI must contain only a single root volume
+	//
+	//   - Root volume replacement doesn't support multi-volume AMIs
+	ImageId *string
 
 	// The instance requirements. Amazon EC2 Auto Scaling uses your specified
 	// requirements to identify instance types. Then, it uses your On-Demand and Spot
@@ -2816,6 +3006,26 @@ type RefreshPreferences struct {
 	// Wait (default) Amazon EC2 Auto Scaling waits one hour for you to return the
 	// instances to service. Otherwise, the instance refresh will fail.
 	StandbyInstances StandbyInstances
+
+	noSmithyDocumentSerde
+}
+
+//	Defines the specific triggers that cause instances to be retained in a
+//
+// Retained state rather than terminated. Each trigger corresponds to a different
+// failure scenario during the instance lifecycle. This allows fine-grained control
+// over when to preserve instances for manual intervention.
+type RetentionTriggers struct {
+
+	//  Specifies the action when a termination lifecycle hook is abandoned due to
+	// failure, timeout, or explicit abandonment (calling CompleteLifecycleAction).
+	//
+	// Set to retain to move instances to a retained state. Set to terminate for
+	// default termination behavior.
+	//
+	// Retained instances don't count toward desired capacity and remain until you
+	// call TerminateInstanceInAutoScalingGroup .
+	TerminateHookAbandon RetentionAction
 
 	noSmithyDocumentSerde
 }
