@@ -31,6 +31,9 @@ Metadata:
           - ConfigDeliveryBucketName
           - IncludeResourceTypes
           - ExcludeResourceTypes
+          - IncludeGlobalResourceTypes
+          - ConfigDeliveryFrequency
+          - ConfigPrefix
           - OrgId
           - SourceAccounts
       - Label:
@@ -39,6 +42,12 @@ Metadata:
           - LogGroupNamePatterns
           - LogGroupNamePrefixes
           - ExcludeLogGroupNamePatterns
+          - FilterPattern
+          - LogWriterPrefix
+          - LogWriterBufferingInterval
+          - LogWriterBufferingSize
+          - LogWriterMemorySize
+          - LogWriterTimeout
       - Label:
           default: CloudWatch Metrics
         Parameters:
@@ -50,6 +59,10 @@ Metadata:
           - UpdateTimestamp
           - EnableMetricTag
           - MetricTagResourceCacheTTLSeconds
+          - MetricStreamOutputFormat
+          - MetricStreamPrefix
+          - MetricStreamBufferingInterval
+          - MetricStreamBufferingSize
       - Label:
           default: Enable Observe Metrics Poller
         Parameters:
@@ -60,7 +73,12 @@ Metadata:
           default: Forwarder Options
         Parameters:
           - SourceBucketNames
+          - SourceObjectKeys
+          - SourceKMSKeyArns
           - ContentTypeOverrides
+          - MaxFileSize
+          - ForwarderMemorySize
+          - ForwarderTimeout
           - NameOverride
       - Label:
           default: Lambda Code
@@ -74,6 +92,7 @@ Metadata:
           default: Debugging Options
         Parameters:
           - DebugEndpoint
+          - Verbosity
 
 Parameters:
   DestinationUri:
@@ -109,6 +128,40 @@ Parameters:
       parameter can only be set if IncludeResourceTypes is wildcarded.
     Default: ""
     AllowedPattern: '^([a-zA-Z0-9]+::[a-zA-Z0-9]+::[a-zA-Z0-9]+)?$'
+  IncludeGlobalResourceTypes:
+    Type: String
+    Description: >-
+      Specifies whether AWS Config includes all supported types of global
+      resources with the resources that it records. Only used when this stack
+      enables AWS Config (ConfigDeliveryBucketName is empty). This field only
+      takes
+      effect if all resources are included for collection.
+      IncludeResourceTypes must be set to *, and ExcludeResourceTypes must
+      not be set.
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+  ConfigDeliveryFrequency:
+    Type: String
+    Description: >-
+      The frequency with which AWS Config delivers configuration snapshots.
+      Only used when this stack enables AWS Config
+      (ConfigDeliveryBucketName is empty).
+    Default: Three_Hours
+    AllowedValues:
+      - One_Hour
+      - Three_Hours
+      - Six_Hours
+      - Twelve_Hours
+      - TwentyFour_Hours
+  ConfigPrefix:
+    Type: String
+    Description: >-
+      S3 key prefix within the collection bucket where AWS Config delivers
+      configuration snapshots. Only used when this stack enables AWS Config
+      (ConfigDeliveryBucketName is empty).
+    Default: ''
   LogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
@@ -127,9 +180,61 @@ Parameters:
   ExcludeLogGroupNamePatterns:
     Type: CommaDelimitedList
     Description: >-
-      Comma separated list of patterns. This paramter is used to filter out log
+      Comma separated list of patterns. This parameter is used to filter out log
       groups from subscription, and supports the use of regular expressions.
     Default: ''
+  FilterPattern:
+    Type: String
+    Description: >-
+      CloudWatch Logs subscription filter pattern for the LogWriter. Only log
+      events matching this pattern are delivered to Firehose. Uses AWS
+      CloudWatch filter pattern syntax. An empty string matches all events.
+    Default: ''
+  LogWriterPrefix:
+    Type: String
+    Description: >-
+      Optional S3 key prefix within the collection bucket for log records.
+    Default: ''
+  LogWriterBufferingInterval:
+    Type: Number
+    Default: 60
+    MinValue: 60
+    MaxValue: 900
+    Description: >-
+      Buffer incoming data for the specified period of time, in seconds,
+      before delivering it to S3.
+  LogWriterBufferingSize:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 64
+    Description: >-
+      Buffer incoming data to the specified size, in MiBs, before
+      delivering it to S3.
+  LogWriterMemorySize:
+    Type: String
+    Description: >-
+      Memory in megabytes for the LogWriter Lambda. Leave empty to use the
+      nested stack default.
+    Default: ''
+    AllowedValues:
+      - ''
+      - '64'
+      - '128'
+      - '256'
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+      - '8128'
+    AllowedPattern: "^[0-9]*$"
+  LogWriterTimeout:
+    Type: String
+    Description: >-
+      Timeout in seconds for the LogWriter Lambda. The maximum allowed value
+      is 900. Leave empty to use the nested stack default.
+    Default: ''
+    AllowedPattern: "^[0-9]*$"
   MetricStreamFilterUri:
     Type: String
     Description: >-
@@ -180,6 +285,37 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+  MetricStreamOutputFormat:
+    Type: String
+    Description: >-
+      Output format for the CloudWatch metric stream Firehose delivery (json,
+      opentelemetry0.7, or opentelemetry1.0).
+    Default: 'json'
+    AllowedValues:
+      - json
+      - opentelemetry0.7
+      - opentelemetry1.0
+  MetricStreamPrefix:
+    Type: String
+    Description: >-
+      Optional S3 key prefix within the collection bucket for metric records.
+    Default: ''
+  MetricStreamBufferingInterval:
+    Type: Number
+    Default: 60
+    MinValue: 60
+    MaxValue: 900
+    Description: >-
+      Buffer incoming data for the specified period of time, in seconds,
+      before delivering it to the destination.
+  MetricStreamBufferingSize:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 64
+    Description: >-
+      Buffer incoming data to the specified size, in MiBs, before delivering
+      it to the destination.
   MetricsPollerAllowedActions:
     Type: CommaDelimitedList
     Description: >-
@@ -204,6 +340,21 @@ Parameters:
       A list of bucket names which the forwarder will read from.
     Default: ""
     AllowedPattern: "^[a-z0-9-.]*(\\*)?$"
+  SourceObjectKeys:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma-separated list of S3 object key patterns the Forwarder processes
+      across all source buckets. Supports wildcards. Default * processes all
+      keys.
+    Default: '*'
+  SourceKMSKeyArns:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma-separated list of KMS key ARNs the Forwarder may use to decrypt
+      SSE-KMS encrypted objects in source S3 buckets. Leave empty if source
+      buckets do not use customer-managed KMS encryption.
+    Default: ''
+    AllowedPattern: "^(arn:.*)?$"
   ContentTypeOverrides:
     Type: CommaDelimitedList
     Description: >-
@@ -214,6 +365,36 @@ Parameters:
       as newline delimited JSON
       files.
     Default: ''
+  MaxFileSize:
+    Type: String
+    Description: >-
+      Maximum S3 object size in bytes for the Forwarder to process. Leave
+      empty for the default (1 GB).
+    Default: ''
+    AllowedPattern: '^[0-9]*$'
+  ForwarderMemorySize:
+    Type: String
+    Description: >-
+      Memory in megabytes for the Forwarder Lambda. Leave empty to use the
+      nested stack default.
+    Default: ''
+    AllowedValues:
+      - ''
+      - '128'
+      - '256'
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+      - '8128'
+    AllowedPattern: "^[0-9]*$"
+  ForwarderTimeout:
+    Type: String
+    Description: >-
+      Timeout in seconds for the Forwarder Lambda. The maximum allowed value
+      is 900. Leave empty to use the nested stack default.
+    Default: ''
+    AllowedPattern: "^[0-9]*$"
   NameOverride:
     Type: String
     Description: >-
@@ -227,6 +408,13 @@ Parameters:
       OpenTelemetry endpoint to send additional telemetry to.
     Default: ''
     AllowedPattern: "^(http(s)?:\/\/.*)?$"
+  Verbosity:
+    Type: String
+    Default: ''
+    Description: >-
+      Log verbosity for the Forwarder and LogWriter Lambdas (0-9). Leave
+      empty for the default (1).
+    AllowedPattern: "^[0-9]?$"
   OrgId:
     Type: String
     Description: >-
@@ -460,6 +648,12 @@ Resources:
               - !Ref AWS::NoValue
               - !Ref ConfigDeliveryBucketName
         SourceTopicArns: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*"
+        SourceObjectKeys: !Join
+          - ","
+          - !Ref SourceObjectKeys
+        SourceKMSKeyArns: !Join
+          - ","
+          - !Ref SourceKMSKeyArns
         ContentTypeOverrides: !Join
           - ","
           - !Ref ContentTypeOverrides
@@ -468,6 +662,10 @@ Resources:
           - !Ref AWS::StackName
           - !Ref NameOverride
         DebugEndpoint: !Ref DebugEndpoint
+        MaxFileSize: !Ref MaxFileSize
+        MemorySize: !Ref ForwarderMemorySize
+        Timeout: !Ref ForwarderTimeout
+        Verbosity: !Ref Verbosity
   TopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
@@ -489,6 +687,9 @@ Resources:
         TopicArn: !Ref Topic
         IncludeResourceTypes: !Join [",", !Ref IncludeResourceTypes]
         ExcludeResourceTypes: !Join [",", !Ref ExcludeResourceTypes]
+        IncludeGlobalResourceTypes: !Ref IncludeGlobalResourceTypes
+        DeliveryFrequency: !Ref ConfigDeliveryFrequency
+        Prefix: !Ref ConfigPrefix
   ConfigSubscription:
     Type: AWS::Serverless::Application
     Condition: EnableConfigSubscription
@@ -521,6 +722,13 @@ Resources:
           - !Sub "${NameOverride}-LogWriter"
         LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
         LambdaS3Key: !Ref SubscriberLambdaS3Key
+        FilterPattern: !Ref FilterPattern
+        Prefix: !Ref LogWriterPrefix
+        BufferingInterval: !Ref LogWriterBufferingInterval
+        BufferingSize: !Ref LogWriterBufferingSize
+        MemorySize: !Ref LogWriterMemorySize
+        Timeout: !Ref LogWriterTimeout
+        Verbosity: !Ref Verbosity
   MetricStream:
     Type: AWS::Serverless::Application
     Condition: EnableMetricStream
@@ -545,6 +753,10 @@ Resources:
         LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
         LambdaS3Key: !Ref MetricsConfiguratorLambdaS3Key
         MetricTagLambdaS3Key: !Ref MetricTagLambdaS3Key
+        OutputFormat: !Ref MetricStreamOutputFormat
+        Prefix: !Ref MetricStreamPrefix
+        BufferingInterval: !Ref MetricStreamBufferingInterval
+        BufferingSize: !Ref MetricStreamBufferingSize
   MetricsPollerRole:
     Type: AWS::Serverless::Application
     Condition: EnableMetricsPollerRole
