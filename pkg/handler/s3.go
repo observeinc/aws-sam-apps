@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -25,12 +26,29 @@ func ParseS3URI(uri string) (bucket, key string, err error) {
 
 // GetS3Object fetches an s3://bucket/key object and returns the body as bytes.
 // The caller interprets the bytes (YAML, JSON, etc.).
+//
+// Handles cross-region buckets: discovers the bucket's region via the
+// x-amz-bucket-region header (manager.GetBucketRegion), then issues the
+// GetObject from a region-specific client. Without this, an S3 client
+// configured for the Lambda's region would 301 PermanentRedirect against a
+// bucket living elsewhere.
 func GetS3Object(ctx context.Context, awsCfg aws.Config, uri string) ([]byte, error) {
 	bucket, key, err := ParseS3URI(uri)
 	if err != nil {
 		return nil, err
 	}
 	client := s3.NewFromConfig(awsCfg)
+
+	bucketRegion, err := manager.GetBucketRegion(ctx, client, bucket)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine region for bucket %s: %w", bucket, err)
+	}
+	if bucketRegion != awsCfg.Region {
+		client = s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+			o.Region = bucketRegion
+		})
+	}
+
 	out, err := client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: &bucket,
 		Key:    &key,

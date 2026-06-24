@@ -279,6 +279,11 @@ $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 	  echo "# copying $${APP}-stackset.yaml -> $(dir $@)$${APP}-stackset.yaml" && \
 	  cp "apps/$${APP}-stackset/template.yaml" \
 	     "$(dir $@)$${APP}-stackset.yaml" && \
+	  export TEMPLATE_URL="https://$${BUCKET}.s3.$${REGION}.amazonaws.com/aws-sam-apps/$(VERSION)/$${APP}.yaml" && \
+	  echo "# embedding TemplateURL default: $${TEMPLATE_URL}" && \
+	  python3 scripts/embed-lambda-defaults.py \
+	    "$(dir $@)$${APP}-stackset.yaml" \
+	    "TemplateURL=$${TEMPLATE_URL}" && \
 	  echo "# uploading $${APP}-stackset.yaml -> s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}-stackset.yaml" && \
 	  aws s3 cp "$(dir $@)$${APP}-stackset.yaml" \
 	    "s3://$${BUCKET}/aws-sam-apps/$(VERSION)/$${APP}-stackset.yaml" \
@@ -295,7 +300,7 @@ $(foreach target,$(SAM_PULL_REGION_TARGETS),$(eval  \
 $(SAM_PULL_REGION_TARGETS): require_bucket_prefix
 	# force ourselves to use the public URLs, verifying ACLs are correctly set
 	cd $(SAM_BUILD_DIR)/regions/$(subst sam-pull-,,$@) && \
-	for app in $(PACKAGEABLE_APPS); do \
+	for app in $(PACKAGEABLE_APPS) $(STACKSET_APPS); do \
 	  curl -fs \
 	    -O https://$(S3_BUCKET_PREFIX)$(subst sam-pull-,,$@).s3.$(subst sam-pull-,,$@).amazonaws.com/aws-sam-apps/$(VERSION)/$${app}.yaml \
 	    -w "Pulled %{url_effective} status=%{http_code} size=%{size_download}\n" || exit 1; \
@@ -390,7 +395,11 @@ sam-push-%: # @HELP push all SAM apps to specific region (e.g sam-push-us-west-2
 
 .PHONY: sam-validate
 sam-validate: # @HELP validate all templates (SAM validate for SAM apps, cfn-lint for plain CloudFormation).
-sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS)
+sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS) check-stackset-param-parity
+
+.PHONY: check-stackset-param-parity
+check-stackset-param-parity: # @HELP check that StackSet wrappers mirror underlying app param constraints (AllowedPattern, AllowedValues, etc.)
+	python3 scripts/check-stackset-param-parity.py
 
 sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-forwarder).
 

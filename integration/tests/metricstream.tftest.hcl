@@ -100,7 +100,6 @@ run "install" {
     }
     capabilities = [
       "CAPABILITY_IAM",
-      "CAPABILITY_AUTO_EXPAND",
     ]
   }
 }
@@ -116,7 +115,6 @@ run "update" {
     }
     capabilities = [
       "CAPABILITY_IAM",
-      "CAPABILITY_AUTO_EXPAND",
     ]
   }
 }

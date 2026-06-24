@@ -73,7 +73,6 @@ run "install" {
     capabilities = [
       "CAPABILITY_IAM",
       "CAPABILITY_NAMED_IAM",
-      "CAPABILITY_AUTO_EXPAND",
     ]
   }
 }
