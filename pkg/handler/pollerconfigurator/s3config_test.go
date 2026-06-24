@@ -8,15 +8,18 @@ import (
 	"testing"
 )
 
+func boolPtr(b bool) *bool { return &b }
+
 func TestDownloadPollerConfig(t *testing.T) {
 	tests := []struct {
-		name       string
-		body       string
-		statusCode int
-		wantErr    bool
-		errSubstr  string
-		wantName   string
-		wantPeriod int64
+		name                   string
+		body                   string
+		statusCode             int
+		wantErr                bool
+		errSubstr              string
+		wantName               string
+		wantPeriod             int64
+		wantAttachResourceTags *bool
 	}{
 		{
 			name:       "valid config",
@@ -24,6 +27,30 @@ func TestDownloadPollerConfig(t *testing.T) {
 			statusCode: http.StatusOK,
 			wantName:   "test-poller",
 			wantPeriod: 300,
+		},
+		{
+			name:                   "attachResourceTags true",
+			body:                   `{"name":"test-poller","interval":"5m","period":300,"delay":300,"queries":[{"namespace":"AWS/EC2"}],"attachResourceTags":true}`,
+			statusCode:             http.StatusOK,
+			wantName:               "test-poller",
+			wantPeriod:             300,
+			wantAttachResourceTags: boolPtr(true),
+		},
+		{
+			name:                   "attachResourceTags false",
+			body:                   `{"name":"test-poller","interval":"5m","period":300,"delay":300,"queries":[{"namespace":"AWS/EC2"}],"attachResourceTags":false}`,
+			statusCode:             http.StatusOK,
+			wantName:               "test-poller",
+			wantPeriod:             300,
+			wantAttachResourceTags: boolPtr(false),
+		},
+		{
+			name:       "attachResourceTags absent",
+			body:       `{"name":"test-poller","interval":"5m","period":300,"delay":300,"queries":[{"namespace":"AWS/EC2"}]}`,
+			statusCode: http.StatusOK,
+			wantName:   "test-poller",
+			wantPeriod: 300,
+			// wantAttachResourceTags nil — field should be absent from parsed config
 		},
 		{
 			name:       "missing queries",
@@ -91,6 +118,14 @@ func TestDownloadPollerConfig(t *testing.T) {
 				}
 				if cfg.Period != tt.wantPeriod {
 					t.Errorf("cfg.Period = %d, want %d", cfg.Period, tt.wantPeriod)
+				}
+				switch {
+				case tt.wantAttachResourceTags == nil && cfg.AttachResourceTags != nil:
+					t.Errorf("cfg.AttachResourceTags = %v, want nil", *cfg.AttachResourceTags)
+				case tt.wantAttachResourceTags != nil && cfg.AttachResourceTags == nil:
+					t.Errorf("cfg.AttachResourceTags = nil, want %v", *tt.wantAttachResourceTags)
+				case tt.wantAttachResourceTags != nil && cfg.AttachResourceTags != nil && *cfg.AttachResourceTags != *tt.wantAttachResourceTags:
+					t.Errorf("cfg.AttachResourceTags = %v, want %v", *cfg.AttachResourceTags, *tt.wantAttachResourceTags)
 				}
 			}
 		})

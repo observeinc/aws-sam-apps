@@ -77,18 +77,19 @@ type pollerInput struct {
 }
 
 type cwMetricsConfigInput struct {
-	Period        string             `json:"period"`
-	Delay         string             `json:"delay"`
-	Region        string             `json:"region"`
-	AssumeRoleArn string             `json:"assumeRoleArn"`
-	Queries       []queryVarInput    `json:"queries"`
+	Period             string          `json:"period"`
+	Delay              string          `json:"delay"`
+	Region             string          `json:"region"`
+	AssumeRoleArn      string          `json:"assumeRoleArn"`
+	Queries            []queryVarInput `json:"queries"`
+	AttachResourceTags *bool           `json:"attachResourceTags,omitempty"`
 }
 
 type queryVarInput struct {
-	Namespace      string                `json:"namespace"`
-	MetricNames    []string              `json:"metricNames,omitempty"`
-	Dimensions     []dimensionVarInput   `json:"dimensions,omitempty"`
-	ResourceFilter *resourceFilterInput  `json:"resourceFilter,omitempty"`
+	Namespace      string               `json:"namespace"`
+	MetricNames    []string             `json:"metricNames,omitempty"`
+	Dimensions     []dimensionVarInput  `json:"dimensions,omitempty"`
+	ResourceFilter *resourceFilterInput `json:"resourceFilter,omitempty"`
 }
 
 type dimensionVarInput struct {
@@ -97,10 +98,10 @@ type dimensionVarInput struct {
 }
 
 type resourceFilterInput struct {
-	ResourceType  string            `json:"resourceType,omitempty"`
-	Pattern       string            `json:"pattern,omitempty"`
-	DimensionName string            `json:"dimensionName,omitempty"`
-	TagFilters    []tagFilterInput  `json:"tagFilters"`
+	ResourceType  string           `json:"resourceType,omitempty"`
+	Pattern       string           `json:"pattern,omitempty"`
+	DimensionName string           `json:"dimensionName,omitempty"`
+	TagFilters    []tagFilterInput `json:"tagFilters"`
 }
 
 type tagFilterInput struct {
@@ -143,11 +144,12 @@ func buildPollerInput(cfg *PollerConfig, datastreamID, region, assumeRoleArn str
 		DatastreamId: datastreamID,
 		Interval:     cfg.Interval,
 		CloudWatchMetricsConfig: &cwMetricsConfigInput{
-			Period:        fmt.Sprintf("%d", cfg.Period),
-			Delay:         fmt.Sprintf("%d", cfg.Delay),
-			Region:        region,
-			AssumeRoleArn: assumeRoleArn,
-			Queries:       queries,
+			Period:             fmt.Sprintf("%d", cfg.Period),
+			Delay:              fmt.Sprintf("%d", cfg.Delay),
+			Region:             region,
+			AssumeRoleArn:      assumeRoleArn,
+			Queries:            queries,
+			AttachResourceTags: cfg.AttachResourceTags,
 		},
 	}
 
