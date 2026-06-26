@@ -189,3 +189,7 @@ Both rules will send requests to the SQS queue, which in turn are consumed by th
 Uninstalling this app will not clean up configured subscription filters. This is because the time required to uninstall subscription filters varies according to the number of log groups. For a sufficient number of log groups the uninstall timeout would be systematically exceeded, making the app uninstall very brittle.
 
 Given the Firehose will be deleted on uninstall, any existing subscription filters which reference the Firehose will have no effect. If you wish to delete these subscription filters, you should delete them prior to uninstall by setting `ExcludeLogGroupMatches` to `*` and updating your stack. This will work because the inclusion filters `LogGroupPrefixes` and `LogGroupPatterns` determine the set of log groups the Subscriber is allowed to operate on, whereas the exclusion set `ExcludeLogGroupMatches` determines the subset of log groups which cannot have our filter set.
+
+## Multi-account deployment
+
+For deploying LogWriter across many accounts in an AWS Organization, use the `logwriter-stackset` wrapper template instead of deploying this app directly. The wrapper creates an `AWS::CloudFormation::StackSet` resource that fans out LogWriter to every account in a target OU. See [docs/multi-account.md](multi-account.md) for the cross-cutting concerns (central bucket policy, concurrency, per-instance verification).

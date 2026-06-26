@@ -94,3 +94,7 @@ To replicate this behavior, you will need to retrieve a token from Observe. You 
 ```
 
 You will receive a response containing a token. You can then provide this token to the stack as the `GQLToken` parameter.
+
+## Multi-account deployment
+
+For deploying MetricStream across many accounts in an AWS Organization, use the `metricstream-stackset` wrapper template instead of deploying this app directly. The wrapper creates an `AWS::CloudFormation::StackSet` resource that fans out MetricStream to every account in a target OU. See [docs/multi-account.md](multi-account.md) for the cross-cutting concerns (central bucket policy, concurrency, per-instance verification).
