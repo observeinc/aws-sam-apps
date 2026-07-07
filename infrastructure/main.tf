@@ -45,9 +45,14 @@ resource "aws_iam_role" "github_actions_ci" {
   }
 }
 
-resource "aws_iam_role_policy_attachment" "admin_policy_attachment" {
+resource "aws_iam_role_policy_attachment" "release_upload" {
   role       = aws_iam_role.github_actions_ci.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  policy_arn = aws_iam_policy.ci_release_upload.arn
+}
+
+resource "aws_iam_role_policy_attachment" "integration_tests" {
+  role       = aws_iam_role.github_actions_ci.name
+  policy_arn = aws_iam_policy.ci_integration_tests.arn
 }
 
 resource "github_actions_secret" "aws_ci_role" {
