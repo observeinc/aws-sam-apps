@@ -24,6 +24,9 @@ The application is configurable through several parameters that determine how da
 | `UpdateTimestamp` | String | Unix timestamp when metric stream was created or updated.  |
 | `LambdaS3BucketPrefix` | String | Prefix for the S3 bucket that holds the MetricsConfigurator Lambda ZIP (`{prefix}-{region}`). Published `metricstream.yaml` embeds a default. |
 | `LambdaS3Key` | String | S3 key for the MetricsConfigurator Lambda ZIP. |
+| `MetricTagLambdaS3Key` | String | S3 key for the MetricTag Lambda ZIP. Embedded in released templates. |
+| `EnableMetricTag` | String | Enable the metrictag Lambda as a Firehose data transformation processor that enriches CloudWatch metric stream records with AWS resource tags. Allowed values: `true`, `false`. Default: `false`. |
+| `MetricTagResourceCacheTTLSeconds` | Number | How long (in seconds) the metrictag Lambda caches tagged resource lists per namespace/region. Set to 0 to disable caching. Default: 600. Minimum: 0. |
 
 The template is **plain CloudFormation** (no SAM transform on this app). The MetricsConfigurator runs as a standard `AWS::Lambda::Function` with code loaded from S3.
 
@@ -42,6 +45,20 @@ If **both** **`DatasourceID`** and a non-empty **`FilterUri`** are supplied, the
 |-----------------|-------------|
 | FirehoseArn | Kinesis Firehose Delivery Stream ARN. CloudWatch Metric Streams subscribed to this Firehose will have their metrics batched and written to S3. |
 | LogGroupName | Firehose Log Group Name. This log group will contain debugging information if Firehose fails to deliver data to S3. |
+| MetricTagFunctionArn | MetricTag Lambda ARN used as the Firehose data transformation processor. Only present when EnableMetricTag is set to `true`. |
+| MetricStreamNames | Prefix of the CloudWatch metric stream names created by the MetricsConfigurator Lambda. Streams are named `<prefix>0`, `<prefix>1`, etc. (one stream per ~1000 metric names). |
+
+## Metric Enrichment with AWS Resource Tags
+
+When `EnableMetricTag` is set to `true`, the MetricStream stack adds a Lambda function as a Firehose data transformation processor that enriches CloudWatch metric stream records with AWS resource tags. This allows you to:
+
+- Filter and group metrics by resource tags in Observe
+- Correlate metrics with tagged resources across your infrastructure
+- Apply tag-based policies and analysis to your metric data
+
+The MetricTag Lambda uses the same resource discovery primitives as [YACE (Yet Another CloudWatch Exporter)](https://github.com/prometheus-community/yet-another-cloudwatch-exporter) to efficiently fetch resource tags from various AWS services. It caches tagged resource lists per namespace/region to minimize API calls (configurable via `MetricTagResourceCacheTTLSeconds`).
+
+**Note:** Enabling this feature adds Lambda invocation costs for each batch of metrics processed by Firehose. The cache TTL helps balance freshness of tag data against API call volume.
 
 ## Resources Created
 
@@ -58,6 +75,13 @@ When the **MetricsConfigurator** path is enabled (see **Datasource vs S3 filter 
 - **Lambda IAM Role**: `cloudwatch:PutMetricStream` / `DeleteMetricStream`, `iam:PassRole`, and (when using a datasource) Secrets Manager access for **`GQLToken`**.
 - **Secrets Manager Secret**: Created only when **`DatasourceID`** is set; stores **`GQLToken`** for the GraphQL path.
 - **Custom resource**: Triggers the configurator on create/update (uses **`UpdateTimestamp`** and **`FilterUri`** as appropriate).
+
+When **`EnableMetricTag`** is set to **`true`**, the stack additionally creates:
+
+- **MetricTag Lambda**: Firehose data transformation processor that enriches metric stream records with AWS resource tags.
+- **Lambda IAM Role**: Permissions for tag discovery APIs (`tag:GetResources`, `autoscaling:DescribeAutoScalingGroups`, `apigateway:GET`, `ec2:Describe*`, etc.).
+- **CloudWatch Log Group**: Logging for the MetricTag Lambda.
+- **Lambda Permission**: Allows Firehose to invoke the MetricTag Lambda.
 
 Static **`AWS::CloudWatch::MetricStream`** resources with **`AWS::Include`** from S3 are not used; metric streams are managed by the Lambda for compatibility with StackSets and S3-based code deployment.
 
