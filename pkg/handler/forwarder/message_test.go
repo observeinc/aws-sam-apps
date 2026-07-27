@@ -123,6 +123,33 @@ func TestObjectCreated(t *testing.T) {
 				},
 			},
 		},
+		{
+			// eventVersion 2.5: AWS added awsGeneratedTags to s3.bucket for
+			// CloudFormation-managed buckets (Jul 16, 2026). Verify the SQS/SNS
+			// S3 notification path handles this field without dropping the record.
+			Message: `{
+				"messageId": "00000000-0000-0000-0000-000000000099",
+				"receiptHandle": "fake",
+				"body": "{\"Type\":\"Notification\",\"MessageId\":\"00000000-0000-0000-0000-000000000001\",\"TopicArn\":\"arn:aws:sns:us-east-1:123456789012:s3-events\",\"Subject\":\"Amazon S3 Notification\",\"Message\":\"{\\\"Records\\\":[{\\\"eventVersion\\\":\\\"2.5\\\",\\\"eventSource\\\":\\\"aws:s3\\\",\\\"awsRegion\\\":\\\"us-east-1\\\",\\\"eventTime\\\":\\\"2026-07-24T14:00:00.000Z\\\",\\\"eventName\\\":\\\"ObjectCreated:Put\\\",\\\"userIdentity\\\":{\\\"principalId\\\":\\\"AWS:EXAMPLE\\\"},\\\"requestParameters\\\":{\\\"sourceIPAddress\\\":\\\"1.2.3.4\\\"},\\\"responseElements\\\":{\\\"x-amz-request-id\\\":\\\"EXAMPLE\\\",\\\"x-amz-id-2\\\":\\\"EXAMPLE\\\"},\\\"s3\\\":{\\\"s3SchemaVersion\\\":\\\"1.0\\\",\\\"configurationId\\\":\\\"myNotification\\\",\\\"bucket\\\":{\\\"name\\\":\\\"my-bucket\\\",\\\"ownerIdentity\\\":{\\\"principalId\\\":\\\"A21JCN1A8EHLG1\\\"},\\\"arn\\\":\\\"arn:aws:s3:::my-bucket\\\",\\\"awsGeneratedTags\\\":{\\\"aws:cloudformation:stack-name\\\":\\\"my-stack\\\"}},\\\"object\\\":{\\\"key\\\":\\\"test.json\\\",\\\"size\\\":42,\\\"eTag\\\":\\\"abc\\\",\\\"sequencer\\\":\\\"ABC\\\"}}}]}\",\"Timestamp\":\"2026-07-24T14:00:01.000Z\",\"SignatureVersion\":\"1\",\"Signature\":\"FAKE==\",\"SigningCertUrl\":\"https://sns.us-east-1.amazonaws.com/cert.pem\",\"UnsubscribeUrl\":\"https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe\"}",
+				"attributes": {
+					"ApproximateReceiveCount": "1",
+					"SentTimestamp": "1721829601000",
+					"SenderId": "AIDAEXAMPLE",
+					"ApproximateFirstReceiveTimestamp": "1721829601001"
+				},
+				"messageAttributes": {},
+				"md5OfBody": "",
+				"eventSource": "aws:sqs",
+				"eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:my-queue",
+				"awsRegion": "us-east-1"
+			}`,
+			Expected: []forwarder.CopyRecord{
+				{
+					URI:  "s3://my-bucket/test.json",
+					Size: pointerToInt64(42),
+				},
+			},
+		},
 	}
 
 	for i, tc := range testcases {
