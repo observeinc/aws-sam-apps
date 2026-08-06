@@ -1,9 +1,16 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 # This test verifies our forwarder can write to an S3 bucket directly,
 # without being fronted by a DataAccessPoint
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/setup"
-    version = "2.9.0"
+    source = "./modules/setup"
   }
 }
 

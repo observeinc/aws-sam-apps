@@ -1,3 +1,11 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 data "aws_region" "current" {}
 
 resource "aws_cloudformation_stack" "this" {
@@ -6,14 +14,16 @@ resource "aws_cloudformation_stack" "this" {
   parameters    = var.parameters
   capabilities  = var.capabilities
   iam_role_arn  = var.install_policy_json == null ? null : aws_iam_role.this[0].arn
-  tags          = var.tags
+  tags          = merge({ "managed-by" = "integration-test" }, var.tags)
 
   depends_on = [aws_iam_role_policy.this]
 }
 
 resource "aws_iam_role" "this" {
-  count       = var.install_policy_json == null ? 0 : 1
-  name_prefix = "${var.setup.short}-"
+  count                = var.install_policy_json == null ? 0 : 1
+  name_prefix          = "${var.setup.short}-"
+  path                 = "/integration-test/"
+  permissions_boundary = "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",

@@ -395,11 +395,15 @@ sam-push-%: # @HELP push all SAM apps to specific region (e.g sam-push-us-west-2
 
 .PHONY: sam-validate
 sam-validate: # @HELP validate all templates (SAM validate for SAM apps, cfn-lint for plain CloudFormation).
-sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS) check-stackset-param-parity
+sam-validate: $(SAM_VALIDATE_TARGETS) $(CFN_VALIDATE_TARGETS) check-stackset-param-parity check-integration-test-provider
 
 .PHONY: check-stackset-param-parity
 check-stackset-param-parity: # @HELP check that StackSet wrappers mirror underlying app param constraints (AllowedPattern, AllowedValues, etc.)
 	python3 scripts/check-stackset-param-parity.py
+
+.PHONY: check-integration-test-provider
+check-integration-test-provider: # @HELP ensure every integration test file declares the tagging provider block (required for the scoped GHA role policy).
+	./scripts/check-integration-test-provider.sh
 
 sam-validate-%: # @HELP validate specific SAM app (e.g. sam-validate-forwarder).
 
