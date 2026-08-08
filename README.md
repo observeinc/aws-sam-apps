@@ -57,6 +57,10 @@ The repository includes StackSet wrapper templates:
 Each StackSet template references the underlying app template via a
 `TemplateURL` parameter pointing to the packaged template on S3.
 
+See [Multi-Account Deployment with StackSets](docs/multi-account.md) for
+per-region Quick-Create links, prerequisites (central bucket policy,
+target OUs), concurrency knobs, and troubleshooting.
+
 ## Getting Started
 
 To begin using these applications, you'll need to have the AWS CLI and SAM CLI installed and configured. See below for quick instructions on building and deploying an application. For a full development guide, check out the `DEVELOPER.md` file.
@@ -117,6 +121,7 @@ Each SAM application has its own documentation, providing specific details and u
 - [ExternalRole](docs/externalrole.md)
 - [Config](docs/config.md)
 - [ConfigSubscription](docs/configsubscription.md)
+- [Multi-Account Deployment with StackSets](docs/multi-account.md)
 
 For development practices, build and release processes, and testing workflows, see the `DEVELOPER.md` file.
 
