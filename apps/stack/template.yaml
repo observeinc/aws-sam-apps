@@ -458,17 +458,20 @@ Parameters:
     Description: >-
       Enable the metrictag Lambda as a Firehose data transformation that
       enriches CloudWatch metric stream records with AWS resource tags.
+      Leave blank to use the default ('false').
     AllowedValues:
+      - ''
       - 'true'
       - 'false'
     Default: 'false'
   MetricTagResourceCacheTTLSeconds:
-    Type: Number
-    Default: 600
-    MinValue: 0
+    Type: String
+    Default: '600'
+    AllowedPattern: '^[0-9]*$'
     Description: >-
       How long (in seconds) the metrictag Lambda caches tagged resource lists
-      per namespace/region. Set to 0 to disable caching.
+      per namespace/region. Set to 0 to disable caching. Leave blank to use the
+      default (600).
   MetricTagLambdaS3Key:
     Type: String
     Description: >-
