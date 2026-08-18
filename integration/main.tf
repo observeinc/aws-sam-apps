@@ -8,10 +8,17 @@ provider "aws" {
 
 data "aws_region" "current" {}
 
+locals {
+  install_boundary_arn = "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
+  stack_parameters = var.install_policy_json == null ? var.parameters : merge(var.parameters, {
+    PermissionsBoundary = local.install_boundary_arn
+  })
+}
+
 resource "aws_cloudformation_stack" "this" {
   name          = var.setup.stack_name
   template_body = file("../.aws-sam/build/regions/${data.aws_region.current.name}/${var.app}.yaml")
-  parameters    = var.parameters
+  parameters    = local.stack_parameters
   capabilities  = var.capabilities
   iam_role_arn  = var.install_policy_json == null ? null : aws_iam_role.this[0].arn
   tags          = merge({ "managed-by" = "integration-test" }, var.tags)

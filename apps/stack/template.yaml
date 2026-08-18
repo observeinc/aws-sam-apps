@@ -474,6 +474,13 @@ Parameters:
     Description: >-
       S3 key for the MetricTag Lambda code ZIP.
     Default: ''
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN applied to IAM roles created by
+      this template and its nested stacks. Leave empty to not apply a boundary.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::[0-9]{12}:policy/.+)?$"
 
 Conditions:
   EmptyConfigDeliveryBucketName: !Equals
@@ -666,6 +673,7 @@ Resources:
         MemorySize: !Ref ForwarderMemorySize
         Timeout: !Ref ForwarderTimeout
         Verbosity: !Ref Verbosity
+        PermissionsBoundary: !Ref PermissionsBoundary
   TopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
@@ -690,6 +698,7 @@ Resources:
         IncludeGlobalResourceTypes: !Ref IncludeGlobalResourceTypes
         DeliveryFrequency: !Ref ConfigDeliveryFrequency
         Prefix: !Ref ConfigPrefix
+        PermissionsBoundary: !Ref PermissionsBoundary
   ConfigSubscription:
     Type: AWS::Serverless::Application
     Condition: EnableConfigSubscription
@@ -729,6 +738,7 @@ Resources:
         MemorySize: !Ref LogWriterMemorySize
         Timeout: !Ref LogWriterTimeout
         Verbosity: !Ref Verbosity
+        PermissionsBoundary: !Ref PermissionsBoundary
   MetricStream:
     Type: AWS::Serverless::Application
     Condition: EnableMetricStream
@@ -757,6 +767,7 @@ Resources:
         Prefix: !Ref MetricStreamPrefix
         BufferingInterval: !Ref MetricStreamBufferingInterval
         BufferingSize: !Ref MetricStreamBufferingSize
+        PermissionsBoundary: !Ref PermissionsBoundary
   MetricsPollerRole:
     Type: AWS::Serverless::Application
     Condition: EnableMetricsPollerRole
@@ -775,6 +786,7 @@ Resources:
         PrimaryRegion: !Ref AWS::Region
         LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
         LambdaS3Key: !Ref PollerConfiguratorLambdaS3Key
+        PermissionsBoundary: !Ref PermissionsBoundary
 Outputs:
   BucketName:
     Description: >-

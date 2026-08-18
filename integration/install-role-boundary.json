@@ -75,22 +75,6 @@
             }
         },
         {
-            "Sid": "IamCreateRoleViaCfnService",
-            "Effect": "Allow",
-            "Action": "iam:CreateRole",
-            "Resource": [
-                "arn:aws:iam::723346149663:role/integration-test/*",
-                "arn:aws:iam::723346149663:role/integration-test-*"
-            ],
-            "Condition": {
-                "ForAnyValue:StringEquals": {
-                    "aws:CalledVia": [
-                        "cloudformation.amazonaws.com"
-                    ]
-                }
-            }
-        },
-        {
             "Sid": "S3PrefixedBuckets",
             "Effect": "Allow",
             "Action": "s3:*",

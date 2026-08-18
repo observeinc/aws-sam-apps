@@ -201,6 +201,13 @@ Parameters:
     Description: >-
       The token used to retrieve metric configuration.
     Default: ''
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN applied to IAM roles created by
+      this template. Leave empty to not apply a boundary.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::[0-9]{12}:policy/.+)?$"
 Conditions:
   HasNameOverride: !Not
     - !Equals
@@ -261,6 +268,8 @@ Resources:
           ParameterValue: !Ref DatasourceID
         - ParameterKey: GQLToken
           ParameterValue: !Ref GQLToken
+        - ParameterKey: PermissionsBoundary
+          ParameterValue: !Ref PermissionsBoundary
 
 Outputs:
   StackSetName:

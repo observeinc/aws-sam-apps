@@ -179,7 +179,18 @@ Parameters:
     Description: >-
       S3 key for the subscriber Lambda code ZIP.
     Default: ''
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN applied to IAM roles created by
+      this template. Leave empty to not apply a boundary.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::[0-9]{12}:policy/.+)?$"
 Conditions:
+  HasPermissionsBoundary: !Not
+    - !Equals
+      - !Ref PermissionsBoundary
+      - ""
   UseDefaultFilterName: !Equals
     - !Ref FilterName
     - ''
@@ -223,6 +234,10 @@ Resources:
   FirehoseRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -299,6 +314,10 @@ Resources:
   DestinationRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -367,6 +386,10 @@ Resources:
     Type: 'AWS::IAM::Role'
     Condition: EnableSubscription
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -530,6 +553,10 @@ Resources:
     Type: 'AWS::IAM::Role'
     Condition: HasDiscoveryRate
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:

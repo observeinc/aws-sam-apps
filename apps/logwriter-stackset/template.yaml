@@ -242,6 +242,13 @@ Parameters:
     Description: >-
       Logging verbosity for Lambda. Highest log verbosity is 9.
     AllowedPattern: "^[0-9]?$"
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN applied to IAM roles created by
+      this template. Leave empty to not apply a boundary.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::[0-9]{12}:policy/.+)?$"
 Conditions:
   HasNameOverride: !Not
     - !Equals
@@ -310,6 +317,8 @@ Resources:
           ParameterValue: !Ref DebugEndpoint
         - ParameterKey: Verbosity
           ParameterValue: !Ref Verbosity
+        - ParameterKey: PermissionsBoundary
+          ParameterValue: !Ref PermissionsBoundary
 
 Outputs:
   StackSetName:
