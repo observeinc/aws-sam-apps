@@ -29,7 +29,6 @@ resource "aws_cloudformation_stack" "this" {
 resource "aws_iam_role" "this" {
   count                = var.install_policy_json == null ? 0 : 1
   name_prefix          = "${var.setup.short}-"
-  path                 = "/integration-test/"
   permissions_boundary = "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
 
   assume_role_policy = jsonencode({

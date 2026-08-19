@@ -78,13 +78,13 @@
         "iam:GetRolePolicy",
         "iam:DeleteRolePolicy"
       ],
-      "Resource": "arn:aws:iam::723346149663:role/integration-test/*"
+      "Resource": "arn:aws:iam::723346149663:role/integration-test-*"
     },
     {
       "Sid": "IamPassRoleToCloudFormation",
       "Effect": "Allow",
       "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::723346149663:role/integration-test/*",
+      "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
       "Condition": {
         "StringEquals": {
           "iam:PassedToService": "cloudformation.amazonaws.com"
@@ -95,7 +95,10 @@
       "Sid": "OrganizationsRead",
       "Effect": "Allow",
       "Action": [
-        "organizations:DescribeOrganization"
+        "organizations:DescribeOrganization",
+        "organizations:ListAccounts",
+        "organizations:ListRoots",
+        "organizations:ListAWSServiceAccessForOrganization"
       ],
       "Resource": "*"
     },
@@ -354,6 +357,64 @@
         "logs:FilterLogEvents"
       ],
       "Resource": "arn:aws:logs:*:723346149663:log-group:/aws/lambda/*:*"
+    },
+    {
+      "Sid": "CfnLogGroupsInline",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource",
+        "logs:AssociateKmsKey",
+        "logs:DisassociateKmsKey"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:723346149663:log-group:/aws/lambda/integration-test-*",
+        "arn:aws:logs:*:723346149663:log-group:/aws/lambda/integration-test-*:*",
+        "arn:aws:logs:*:723346149663:log-group:/aws/firehose/integration-test-*",
+        "arn:aws:logs:*:723346149663:log-group:/aws/firehose/integration-test-*:*",
+        "arn:aws:logs:*:723346149663:log-group:/aws/kinesisfirehose/integration-test-*",
+        "arn:aws:logs:*:723346149663:log-group:/aws/kinesisfirehose/integration-test-*:*",
+        "arn:aws:logs:*:723346149663:log-group:integration-test-*",
+        "arn:aws:logs:*:723346149663:log-group:integration-test-*:*"
+      ]
+    },
+    {
+      "Sid": "CfnLogsDescribe",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CfnEventBridgeRules",
+      "Effect": "Allow",
+      "Action": "events:*",
+      "Resource": "arn:aws:events:*:723346149663:rule/integration-test-*"
+    },
+    {
+      "Sid": "CfnFirehoseDeliveryStreams",
+      "Effect": "Allow",
+      "Action": "firehose:*",
+      "Resource": "arn:aws:firehose:*:723346149663:deliverystream/integration-test-*"
+    },
+    {
+      "Sid": "CfnCloudwatchMetricStreams",
+      "Effect": "Allow",
+      "Action": "cloudwatch:*",
+      "Resource": "arn:aws:cloudwatch:*:723346149663:metric-stream/integration-test-*"
+    },
+    {
+      "Sid": "CfnSchedulerSchedules",
+      "Effect": "Allow",
+      "Action": "scheduler:*",
+      "Resource": "arn:aws:scheduler:*:723346149663:schedule/*/integration-test-*"
     },
     {
       "Sid": "ScriptResetConfigService",
