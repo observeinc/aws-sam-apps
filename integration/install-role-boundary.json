@@ -55,19 +55,13 @@
                 "iam:DetachRolePolicy",
                 "iam:PassRole"
             ],
-            "Resource": [
-                "arn:aws:iam::723346149663:role/integration-test/*",
-                "arn:aws:iam::723346149663:role/integration-test-*"
-            ]
+            "Resource": "arn:aws:iam::723346149663:role/integration-test-*"
         },
         {
             "Sid": "IamCreateRoleRequiresBoundary",
             "Effect": "Allow",
             "Action": "iam:CreateRole",
-            "Resource": [
-                "arn:aws:iam::723346149663:role/integration-test/*",
-                "arn:aws:iam::723346149663:role/integration-test-*"
-            ],
+            "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
             "Condition": {
                 "StringEquals": {
                     "iam:PermissionsBoundary": "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
@@ -154,7 +148,10 @@
             "Effect": "Allow",
             "Action": [
                 "logs:DescribeLogGroups",
-                "logs:DescribeLogStreams"
+                "logs:DescribeLogStreams",
+                "logs:DescribeSubscriptionFilters",
+                "logs:PutSubscriptionFilter",
+                "logs:DeleteSubscriptionFilter"
             ],
             "Resource": "*"
         },
@@ -203,6 +200,26 @@
             "Sid": "Ec2DescribeStructural",
             "Effect": "Allow",
             "Action": "ec2:DescribeNetworkInterfaces",
+            "Resource": "*"
+        },
+        {
+            "Sid": "RuntimeReadOnlyStructural",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:ListMetricStreams",
+                "cloudwatch:GetMetricStream",
+                "cloudwatch:ListMetrics",
+                "cloudwatch:GetMetricData",
+                "cloudwatch:ListTagsForResource",
+                "firehose:ListDeliveryStreams",
+                "firehose:DescribeDeliveryStream",
+                "firehose:ListTagsForDeliveryStream",
+                "ec2:DescribeSpotFleetRequests",
+                "ec2:DescribeTransitGatewayAttachments",
+                "iam:ListAccountAliases",
+                "tag:GetResources",
+                "lambda:GetFunctionConfiguration"
+            ],
             "Resource": "*"
         },
         {
