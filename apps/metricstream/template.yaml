@@ -116,17 +116,20 @@ Parameters:
     Description: >-
       Enable the metrictag Lambda as a Firehose data transformation processor
       that enriches CloudWatch metric stream records with AWS resource tags.
+      Leave blank to use the default ('false').
     AllowedValues:
+      - ''
       - 'true'
       - 'false'
     Default: 'false'
   MetricTagResourceCacheTTLSeconds:
-    Type: Number
-    Default: 600
-    MinValue: 0
+    Type: String
+    Default: '600'
+    AllowedPattern: '^[0-9]*$'
     Description: >-
       How long (in seconds) the metrictag Lambda caches tagged resource lists
-      per namespace/region. Set to 0 to disable caching.
+      per namespace/region. Set to 0 to disable caching. Leave blank to use the
+      default (600).
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
@@ -138,6 +141,10 @@ Conditions:
   EnableMetricTag: !Equals
     - !Ref EnableMetricTag
     - 'true'
+  HasMetricTagResourceCacheTTLSeconds: !Not
+    - !Equals
+      - !Ref MetricTagResourceCacheTTLSeconds
+      - ''
 
 Resources:
   DeliveryStreamRole:
@@ -458,7 +465,10 @@ Resources:
         LogGroup: !Ref MetrictagLogGroup
       Environment:
         Variables:
-          RESOURCE_CACHE_TTL_SECONDS: !Ref MetricTagResourceCacheTTLSeconds
+          RESOURCE_CACHE_TTL_SECONDS: !If
+            - HasMetricTagResourceCacheTTLSeconds
+            - !Ref MetricTagResourceCacheTTLSeconds
+            - '600'
           VERBOSITY: '1'
   MetrictagFirehosePermission:
     Type: AWS::Lambda::Permission
