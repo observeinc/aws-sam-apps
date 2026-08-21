@@ -60,10 +60,20 @@
       "Resource": "*"
     },
     {
+      "Sid": "IamCreateInstallRoleRequiresBoundary",
+      "Effect": "Allow",
+      "Action": "iam:CreateRole",
+      "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
+        }
+      }
+    },
+    {
       "Sid": "IamInstallRoleLifecycle",
       "Effect": "Allow",
       "Action": [
-        "iam:CreateRole",
         "iam:DeleteRole",
         "iam:GetRole",
         "iam:UpdateRole",
