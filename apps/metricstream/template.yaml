@@ -130,10 +130,22 @@ Parameters:
       How long (in seconds) the metrictag Lambda caches tagged resource lists
       per namespace/region. Set to 0 to disable caching. Leave blank to use the
       default (600).
+  MetricTagLambdaNameOverride:
+    Type: String
+    Description: >-
+      Optional explicit name for the metrictag Lambda. Leave blank (default) to
+      let CloudFormation generate a name that always fits AWS's 64-character
+      limit. If set, you are responsible for keeping it within 64 characters.
+    Default: ''
+    MaxLength: 64
 Conditions:
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
+  HasMetricTagLambdaNameOverride: !Not
+    - !Equals
+      - !Ref MetricTagLambdaNameOverride
+      - ''
   HasDatasourceID: !Not
     - !Equals
       - !Ref DatasourceID
@@ -449,9 +461,9 @@ Resources:
     Condition: EnableMetricTag
     Properties:
       FunctionName: !If
-        - UseStackName
-        - !Sub '${AWS::StackName}-tag'
-        - !Sub '${NameOverride}-tag'
+        - HasMetricTagLambdaNameOverride
+        - !Ref MetricTagLambdaNameOverride
+        - !Ref 'AWS::NoValue'
       Role: !GetAtt MetrictagRole.Arn
       Code:
         S3Bucket: !Sub '${LambdaS3BucketPrefix}-${AWS::Region}'

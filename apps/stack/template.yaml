@@ -59,6 +59,7 @@ Metadata:
           - UpdateTimestamp
           - EnableMetricTag
           - MetricTagResourceCacheTTLSeconds
+          - MetricTagLambdaNameOverride
           - MetricStreamOutputFormat
           - MetricStreamPrefix
           - MetricStreamBufferingInterval
@@ -477,6 +478,14 @@ Parameters:
     Description: >-
       S3 key for the MetricTag Lambda code ZIP.
     Default: ''
+  MetricTagLambdaNameOverride:
+    Type: String
+    Description: >-
+      Optional explicit name for the metrictag Lambda. Leave blank (default) to
+      let CloudFormation generate a name that always fits AWS's 64-character
+      limit.
+    Default: ''
+    MaxLength: 64
 
 Conditions:
   EmptyConfigDeliveryBucketName: !Equals
@@ -749,6 +758,7 @@ Resources:
         DatasourceID: !Ref DatasourceID
         EnableMetricTag: !Ref EnableMetricTag
         MetricTagResourceCacheTTLSeconds: !Ref MetricTagResourceCacheTTLSeconds
+        MetricTagLambdaNameOverride: !Ref MetricTagLambdaNameOverride
         NameOverride: !If
           - UseStackName
           - !Sub "${AWS::StackName}-MetricStream"
