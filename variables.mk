@@ -45,7 +45,8 @@ AWS_REGIONS  := $(filter-out $(SKIP_REGIONS), \
                 me-south-1     \
                 me-central-1   \
                 il-central-1   \
-                mx-central-1)
+                mx-central-1   \
+                ap-east-1)
 
 # Assume lambda functions are linux/arm64
 # These variables must be defined before GO_BUILD_DIRS
