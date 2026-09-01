@@ -25,8 +25,8 @@ The application is configurable through several parameters that determine how da
 | `LambdaS3BucketPrefix` | String | Prefix for the S3 bucket that holds the MetricsConfigurator Lambda ZIP (`{prefix}-{region}`). Published `metricstream.yaml` embeds a default. |
 | `LambdaS3Key` | String | S3 key for the MetricsConfigurator Lambda ZIP. |
 | `MetricTagLambdaS3Key` | String | S3 key for the MetricTag Lambda ZIP. Embedded in released templates. |
-| `EnableMetricTag` | String | Enable the metrictag Lambda as a Firehose data transformation processor that enriches CloudWatch metric stream records with AWS resource tags. Allowed values: `true`, `false`. Default: `false`. |
-| `MetricTagResourceCacheTTLSeconds` | Number | How long (in seconds) the metrictag Lambda caches tagged resource lists per namespace/region. Set to 0 to disable caching. Default: 600. Minimum: 0. |
+| `EnableMetricTag` | String | Enable the metrictag Lambda as a Firehose data transformation processor that enriches CloudWatch metric stream records with AWS resource tags. Allowed values: `true`, `false`, or blank. Default: `false`. A blank value is treated as `false`. |
+| `MetricTagResourceCacheTTLSeconds` | String | How long (in seconds) the metrictag Lambda caches tagged resource lists per namespace/region. Set to 0 to disable caching. Default: 600. Accepts a non-negative integer or a blank value; blank uses the default (600). |
 
 The template is **plain CloudFormation** (no SAM transform on this app). The MetricsConfigurator runs as a standard `AWS::Lambda::Function` with code loaded from S3.
 
