@@ -66,7 +66,8 @@
       "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
       "Condition": {
         "StringEquals": {
-          "iam:PermissionsBoundary": "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
+          "iam:PermissionsBoundary": "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary",
+          "aws:RequestTag/managed-by": "integration-test"
         }
       }
     },
@@ -88,7 +89,12 @@
         "iam:GetRolePolicy",
         "iam:DeleteRolePolicy"
       ],
-      "Resource": "arn:aws:iam::723346149663:role/integration-test-*"
+      "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/managed-by": "integration-test"
+        }
+      }
     },
     {
       "Sid": "IamPassRoleToCloudFormation",
@@ -97,7 +103,8 @@
       "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
       "Condition": {
         "StringEquals": {
-          "iam:PassedToService": "cloudformation.amazonaws.com"
+          "iam:PassedToService": "cloudformation.amazonaws.com",
+          "aws:ResourceTag/managed-by": "integration-test"
         }
       }
     },
