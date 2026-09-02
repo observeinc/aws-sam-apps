@@ -1,0 +1,270 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "CfnStackOps",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:CreateStack",
+                "cloudformation:UpdateStack",
+                "cloudformation:DeleteStack",
+                "cloudformation:DescribeStacks",
+                "cloudformation:DescribeStackEvents",
+                "cloudformation:DescribeStackResource",
+                "cloudformation:DescribeStackResources",
+                "cloudformation:GetTemplate",
+                "cloudformation:ListStackResources",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:DeleteChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:ListChangeSets",
+                "cloudformation:TagResource",
+                "cloudformation:UntagResource"
+            ],
+            "Resource": "arn:aws:cloudformation:*:723346149663:stack/*/*"
+        },
+        {
+            "Sid": "CfnTransforms",
+            "Effect": "Allow",
+            "Action": "cloudformation:CreateChangeSet",
+            "Resource": [
+                "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31",
+                "arn:aws:cloudformation:*:aws:transform/Include",
+                "arn:aws:cloudformation:*:aws:transform/LanguageExtensions"
+            ]
+        },
+        {
+            "Sid": "IamRolesUnderPath",
+            "Effect": "Allow",
+            "Action": [
+                "iam:DeleteRole",
+                "iam:GetRole",
+                "iam:UpdateRole",
+                "iam:UpdateAssumeRolePolicy",
+                "iam:TagRole",
+                "iam:UntagRole",
+                "iam:ListRoleTags",
+                "iam:ListInstanceProfilesForRole",
+                "iam:PutRolePolicy",
+                "iam:GetRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:ListRolePolicies",
+                "iam:ListAttachedRolePolicies",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:PassRole"
+            ],
+            "Resource": "arn:aws:iam::723346149663:role/integration-test-*"
+        },
+        {
+            "Sid": "IamCreateRoleRequiresBoundary",
+            "Effect": "Allow",
+            "Action": "iam:CreateRole",
+            "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
+            "Condition": {
+                "StringEquals": {
+                    "iam:PermissionsBoundary": "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
+                }
+            }
+        },
+        {
+            "Sid": "S3PrefixedBuckets",
+            "Effect": "Allow",
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::integration-test-*",
+                "arn:aws:s3:::integration-test-*/*"
+            ]
+        },
+        {
+            "Sid": "S3SamAssetBucketRead",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::aws-sam-apps-723346149663-*",
+                "arn:aws:s3:::aws-sam-apps-723346149663-*/*"
+            ]
+        },
+        {
+            "Sid": "S3AccessPoints",
+            "Effect": "Allow",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:*:723346149663:accesspoint/integration-test-*"
+        },
+        {
+            "Sid": "SqsPrefixed",
+            "Effect": "Allow",
+            "Action": "sqs:*",
+            "Resource": "arn:aws:sqs:*:723346149663:integration-test-*"
+        },
+        {
+            "Sid": "SnsPrefixed",
+            "Effect": "Allow",
+            "Action": "sns:*",
+            "Resource": "arn:aws:sns:*:723346149663:integration-test-*"
+        },
+        {
+            "Sid": "LambdaPrefixed",
+            "Effect": "Allow",
+            "Action": "lambda:*",
+            "Resource": "arn:aws:lambda:*:723346149663:function:integration-test-*"
+        },
+        {
+            "Sid": "LambdaEventSourceMappings",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:CreateEventSourceMapping",
+                "lambda:DeleteEventSourceMapping",
+                "lambda:GetEventSourceMapping",
+                "lambda:ListEventSourceMappings",
+                "lambda:UpdateEventSourceMapping",
+                "lambda:TagResource",
+                "lambda:UntagResource",
+                "lambda:ListTags"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "LogsPrefixedGroups",
+            "Effect": "Allow",
+            "Action": "logs:*",
+            "Resource": [
+                "arn:aws:logs:*:723346149663:log-group:/aws/lambda/integration-test-*",
+                "arn:aws:logs:*:723346149663:log-group:/aws/lambda/integration-test-*:*",
+                "arn:aws:logs:*:723346149663:log-group:/aws/firehose/integration-test-*",
+                "arn:aws:logs:*:723346149663:log-group:/aws/firehose/integration-test-*:*",
+                "arn:aws:logs:*:723346149663:log-group:/aws/kinesisfirehose/integration-test-*",
+                "arn:aws:logs:*:723346149663:log-group:/aws/kinesisfirehose/integration-test-*:*",
+                "arn:aws:logs:*:723346149663:log-group:integration-test-*",
+                "arn:aws:logs:*:723346149663:log-group:integration-test-*:*"
+            ]
+        },
+        {
+            "Sid": "LogsDescribeStructural",
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:DescribeSubscriptionFilters",
+                "logs:PutSubscriptionFilter",
+                "logs:DeleteSubscriptionFilter"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "KmsTagged",
+            "Effect": "Allow",
+            "Action": "kms:*",
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:ResourceTag/managed-by": "integration-test"
+                }
+            }
+        },
+        {
+            "Sid": "FirehoseDeliveryStreams",
+            "Effect": "Allow",
+            "Action": "firehose:*",
+            "Resource": "arn:aws:firehose:*:723346149663:deliverystream/integration-test-*"
+        },
+        {
+            "Sid": "CloudwatchMetricStreams",
+            "Effect": "Allow",
+            "Action": "cloudwatch:*",
+            "Resource": "arn:aws:cloudwatch:*:723346149663:metric-stream/integration-test-*"
+        },
+        {
+            "Sid": "EventsRules",
+            "Effect": "Allow",
+            "Action": "events:*",
+            "Resource": "arn:aws:events:*:723346149663:rule/integration-test-*"
+        },
+        {
+            "Sid": "SchedulerSchedules",
+            "Effect": "Allow",
+            "Action": "scheduler:*",
+            "Resource": "arn:aws:scheduler:*:723346149663:schedule/*/integration-test-*"
+        },
+        {
+            "Sid": "ConfigServiceStructural",
+            "Effect": "Allow",
+            "Action": "config:*",
+            "Resource": "*"
+        },
+        {
+            "Sid": "Ec2DescribeStructural",
+            "Effect": "Allow",
+            "Action": "ec2:DescribeNetworkInterfaces",
+            "Resource": "*"
+        },
+        {
+            "Sid": "RuntimeReadOnlyStructural",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:ListMetricStreams",
+                "cloudwatch:GetMetricStream",
+                "cloudwatch:ListMetrics",
+                "cloudwatch:GetMetricData",
+                "cloudwatch:ListTagsForResource",
+                "firehose:ListDeliveryStreams",
+                "firehose:DescribeDeliveryStream",
+                "firehose:ListTagsForDeliveryStream",
+                "ec2:DescribeSpotFleetRequests",
+                "ec2:DescribeTransitGatewayAttachments",
+                "iam:ListAccountAliases",
+                "tag:GetResources",
+                "lambda:GetFunctionConfiguration"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "DenyIdentityAndOrgEscalation",
+            "Effect": "Deny",
+            "Action": [
+                "iam:CreateUser",
+                "iam:DeleteUser",
+                "iam:UpdateUser",
+                "iam:PutUserPolicy",
+                "iam:DeleteUserPolicy",
+                "iam:AttachUserPolicy",
+                "iam:DetachUserPolicy",
+                "iam:PutUserPermissionsBoundary",
+                "iam:DeleteUserPermissionsBoundary",
+                "iam:CreateAccessKey",
+                "iam:DeleteAccessKey",
+                "iam:UpdateAccessKey",
+                "iam:CreateLoginProfile",
+                "iam:UpdateLoginProfile",
+                "iam:DeleteLoginProfile",
+                "iam:CreateOpenIDConnectProvider",
+                "iam:DeleteOpenIDConnectProvider",
+                "iam:UpdateOpenIDConnectProviderThumbprint",
+                "iam:AddClientIDToOpenIDConnectProvider",
+                "iam:RemoveClientIDFromOpenIDConnectProvider",
+                "iam:CreateSAMLProvider",
+                "iam:DeleteSAMLProvider",
+                "iam:UpdateSAMLProvider",
+                "iam:CreateGroup",
+                "iam:DeleteGroup",
+                "iam:AttachGroupPolicy",
+                "iam:DetachGroupPolicy",
+                "iam:PutGroupPolicy",
+                "iam:CreatePolicy",
+                "iam:DeletePolicy",
+                "iam:CreatePolicyVersion",
+                "iam:DeletePolicyVersion",
+                "iam:SetDefaultPolicyVersion",
+                "iam:DeleteRolePermissionsBoundary",
+                "iam:PutRolePermissionsBoundary",
+                "organizations:*",
+                "account:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

@@ -21,6 +21,14 @@ Parameters:
     Description: >-
       Where to forward EventBridge events.
     AllowedPattern: "^(arn:.*)?$"
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN. This template does not create
+      any IAM roles, so this parameter is accepted for interface parity with
+      other apps and has no effect.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::[0-9]{12}:policy/.+)?$"
 
 Resources:
   CopyRule:
