@@ -92,7 +92,7 @@
       "Resource": "arn:aws:iam::723346149663:role/integration-test-*",
       "Condition": {
         "StringEquals": {
-          "aws:ResourceTag/managed-by": "integration-test"
+          "iam:ResourceTag/managed-by": "integration-test"
         }
       }
     },
@@ -104,7 +104,7 @@
       "Condition": {
         "StringEquals": {
           "iam:PassedToService": "cloudformation.amazonaws.com",
-          "aws:ResourceTag/managed-by": "integration-test"
+          "iam:ResourceTag/managed-by": "integration-test"
         }
       }
     },
