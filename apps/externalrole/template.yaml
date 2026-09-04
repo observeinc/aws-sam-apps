@@ -112,8 +112,19 @@ Parameters:
     Description: >-
       S3 key for the PollerConfigurator Lambda code ZIP.
     Default: ''
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN applied to IAM roles created by
+      this template. Leave empty to not apply a boundary.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::(aws|[0-9]{12}):policy/.+)?$"
 
 Conditions:
+  HasPermissionsBoundary: !Not
+    - !Equals
+      - !Ref PermissionsBoundary
+      - ""
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
@@ -137,6 +148,10 @@ Resources:
     Type: 'AWS::IAM::Role'
     Condition: IsPrimaryRegion
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       RoleName: !If
         - UseStackName
         - !Ref AWS::StackName
@@ -200,6 +215,10 @@ Resources:
     Type: AWS::IAM::Role
     Condition: DeployPollerConfigurator
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:

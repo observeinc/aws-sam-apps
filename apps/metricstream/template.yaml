@@ -138,7 +138,18 @@ Parameters:
       limit. If set, you are responsible for keeping it within 64 characters.
     Default: ''
     MaxLength: 64
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN applied to IAM roles created by
+      this template. Leave empty to not apply a boundary.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::(aws|[0-9]{12}):policy/.+)?$"
 Conditions:
+  HasPermissionsBoundary: !Not
+    - !Equals
+      - !Ref PermissionsBoundary
+      - ""
   UseStackName: !Equals
     - !Ref NameOverride
     - ''
@@ -162,6 +173,10 @@ Resources:
   DeliveryStreamRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -282,6 +297,10 @@ Resources:
   MetricStreamRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -308,6 +327,10 @@ Resources:
   MetricsConfiguratorRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -411,6 +434,10 @@ Resources:
     Type: AWS::IAM::Role
     Condition: EnableMetricTag
     Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
