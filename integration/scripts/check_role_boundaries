@@ -1,0 +1,51 @@
+#!/bin/bash
+# Verify every IAM::Role created by a CloudFormation stack (including any
+# nested stacks) carries the expected PermissionsBoundary.
+set -euo pipefail
+
+DIE() { echo "$*" 1>&2; exit 1; }
+
+[[ -n "${STACK_NAME:-}" ]] || DIE "STACK_NAME not set"
+[[ -n "${EXPECTED_BOUNDARY:-}" ]] || DIE "EXPECTED_BOUNDARY not set"
+[[ -n "${AWS_REGION:-}" ]] || DIE "AWS_REGION not set"
+
+# Walk STACK_NAME and any nested stacks, collect every AWS::IAM::Role.
+collect_roles() {
+    local stack="$1"
+    aws cloudformation describe-stack-resources \
+        --region "${AWS_REGION}" \
+        --stack-name "${stack}" \
+        --query 'StackResources[].[ResourceType,PhysicalResourceId]' \
+        --output text 2>/dev/null | while read -r rtype rid; do
+        case "${rtype}" in
+            AWS::IAM::Role)
+                echo "${rid}"
+                ;;
+            AWS::CloudFormation::Stack)
+                collect_roles "${rid}"
+                ;;
+        esac
+    done
+}
+
+roles=$(collect_roles "${STACK_NAME}")
+[[ -n "${roles}" ]] || DIE "no IAM roles found in stack ${STACK_NAME}"
+
+fail=0
+count=0
+while IFS= read -r role; do
+    count=$((count + 1))
+    actual=$(aws iam get-role \
+        --role-name "${role}" \
+        --query 'Role.PermissionsBoundary.PermissionsBoundaryArn' \
+        --output text 2>/dev/null || echo "None")
+    if [[ "${actual}" != "${EXPECTED_BOUNDARY}" ]]; then
+        echo "role ${role}: got=${actual} want=${EXPECTED_BOUNDARY}" 1>&2
+        fail=1
+    fi
+done <<< "${roles}"
+
+if [[ ${fail} -ne 0 ]]; then
+    exit 1
+fi
+echo "OK: ${count} role(s) carry boundary ${EXPECTED_BOUNDARY}"
