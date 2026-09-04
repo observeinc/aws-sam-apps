@@ -1,7 +1,12 @@
 # Dockerfile used for Orca scanning 
 
-#alpine:3.21.3 
-FROM alpine:3.23.3
+#alpine:3.23.3
+FROM alpine:3.23.5
+
+# Pull latest security patches for base image packages (libssl3/libcrypto3, musl,
+# etc.) so scanners see the current v3.23 branch versions rather than whatever
+# was baked into the base image tag.
+RUN apk update && apk upgrade --no-cache
 
 ARG OS
 ARG ARCH
