@@ -94,7 +94,7 @@ Parameters:
       Optional IAM permissions boundary ARN applied to IAM roles created by
       this template. Leave empty to not apply a boundary.
     Default: ""
-    AllowedPattern: "^(arn:aws:iam::[0-9]{12}:policy/.+)?$"
+    AllowedPattern: "^(arn:aws:iam::(aws|[0-9]{12}):policy/.+)?$"
 
 Conditions:
   HasPermissionsBoundary: !Not

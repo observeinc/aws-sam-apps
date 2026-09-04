@@ -28,7 +28,7 @@ Parameters:
       any IAM roles, so this parameter is accepted for interface parity with
       other apps and has no effect.
     Default: ""
-    AllowedPattern: "^(arn:aws:iam::[0-9]{12}:policy/.+)?$"
+    AllowedPattern: "^(arn:aws:iam::(aws|[0-9]{12}):policy/.+)?$"
 
 Resources:
   CopyRule:
