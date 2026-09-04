@@ -444,6 +444,44 @@ type EvaluationCriteriaMemberPromQLCriteria struct {
 
 func (*EvaluationCriteriaMemberPromQLCriteria) isEvaluationCriteria() {}
 
+// The evaluation window that an alarm uses to select the range of metric data
+// that it evaluates each time it runs. This is a union type. Set exactly one of
+// its members, SlidingWindow or WallClockWindow . If you don't set
+// EvaluationWindow , the alarm uses a SlidingWindow by default.
+//
+// For more information, see [Alarm evaluation windows] in the CloudWatch User Guide.
+//
+// The following types satisfy this interface:
+//
+//	EvaluationWindowMemberSlidingWindow
+//	EvaluationWindowMemberWallClockWindow
+//
+// [Alarm evaluation windows]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarm-evaluation-window.html
+type EvaluationWindow interface {
+	isEvaluationWindow()
+}
+
+// A sliding window, which advances each time the alarm is evaluated, forming a
+// rolling time window. This is the default evaluation window.
+type EvaluationWindowMemberSlidingWindow struct {
+	Value SlidingWindow
+
+	noSmithyDocumentSerde
+}
+
+func (*EvaluationWindowMemberSlidingWindow) isEvaluationWindow() {}
+
+// A wall clock window, which aligns the evaluated range to fixed clock boundaries
+// that match the alarm's period, such as the top of the hour, midnight, or the
+// start of the calendar week.
+type EvaluationWindowMemberWallClockWindow struct {
+	Value WallClockWindow
+
+	noSmithyDocumentSerde
+}
+
+func (*EvaluationWindowMemberWallClockWindow) isEvaluationWindow() {}
+
 // This structure contains the definition for a Contributor Insights rule. For
 // more information about this rule, see[Using Constributor Insights to analyze high-cardinality data] in the Amazon CloudWatch User Guide.
 //
@@ -628,6 +666,104 @@ type LabelOptions struct {
 	noSmithyDocumentSerde
 }
 
+// The details about a log alarm.
+type LogAlarm struct {
+
+	// The number of log lines from the most recent scheduled query execution that are
+	// included in alarm action notifications. Valid range is 0 through 50. A value of
+	// 0 means no log lines are included.
+	ActionLogLineCount *int32
+
+	// The Amazon Resource Name (ARN) of the IAM role that CloudWatch assumes to
+	// retrieve log events for inclusion in alarm action notifications. Set when
+	// ActionLogLineCount is greater than 0.
+	ActionLogLineRoleArn *string
+
+	// Indicates whether actions should be executed during any changes to the alarm
+	// state.
+	ActionsEnabled *bool
+
+	// The actions to execute when this alarm transitions to the ALARM state from any
+	// other state. Each action is specified as an Amazon Resource Name (ARN).
+	AlarmActions []string
+
+	// The Amazon Resource Name (ARN) of the alarm.
+	AlarmArn *string
+
+	// The time stamp of the last update to the alarm configuration.
+	AlarmConfigurationUpdatedTimestamp *time.Time
+
+	// The description of the alarm.
+	AlarmDescription *string
+
+	// The name of the alarm.
+	AlarmName *string
+
+	// The arithmetic operation to use when comparing the aggregated query result and
+	// the threshold. The aggregated query result is used as the first operand.
+	ComparisonOperator ComparisonOperator
+
+	// If the value of this field is EVALUATION_ERROR , it indicates configuration
+	// errors in the alarm setup that require review and correction. Refer to the
+	// StateReason field of the alarm for more details.
+	//
+	// If the value of this field is EVALUATION_FAILURE , it indicates temporary
+	// CloudWatch issues. We recommend manual monitoring until the issue is resolved.
+	//
+	// If the value of this field is PARTIAL_DATA , it indicates that the query
+	// returned the maximum 500 contributor groups but more matched. The alarm
+	// evaluates the available contributors, but results might be incomplete.
+	EvaluationState EvaluationState
+
+	// The actions to execute when this alarm transitions to the INSUFFICIENT_DATA
+	// state from any other state. Each action is specified as an Amazon Resource Name
+	// (ARN).
+	InsufficientDataActions []string
+
+	// The actions to execute when this alarm transitions to the OK state from any
+	// other state. Each action is specified as an Amazon Resource Name (ARN).
+	OKActions []string
+
+	// The number of query results, out of the most recent QueryResultsToEvaluate
+	// results, that must breach the threshold to trigger the alarm to transition to
+	// ALARM (the M in M-of-N evaluation).
+	QueryResultsToAlarm *int32
+
+	// The number of most recent scheduled query results that the alarm evaluates
+	// against the threshold (the N in M-of-N evaluation).
+	QueryResultsToEvaluate *int32
+
+	// The configuration of the underlying CloudWatch Logs scheduled query, including
+	// the query string, log groups, schedule, aggregation expression, and the ARN of
+	// the managed scheduled query.
+	ScheduledQueryConfiguration *ScheduledQueryConfiguration
+
+	// An explanation for the alarm state, in text format.
+	StateReason *string
+
+	// An explanation for the alarm state, in JSON format.
+	StateReasonData *string
+
+	// The date and time that the alarm's StateValue most recently changed.
+	StateTransitionedTimestamp *time.Time
+
+	// The time stamp of the last update to the value of either the StateValue or
+	// EvaluationState parameters.
+	StateUpdatedTimestamp *time.Time
+
+	// The state value for the alarm.
+	StateValue StateValue
+
+	// The value to compare with the aggregated query result.
+	Threshold *float64
+
+	// How this alarm handles missing data points. Valid values are breaching ,
+	// notBreaching , ignore , and missing .
+	TreatMissingData *string
+
+	noSmithyDocumentSerde
+}
+
 //	Contains the information that's required to enable a managed Contributor
 //
 // Insights rule for an Amazon Web Services resource.
@@ -790,6 +926,13 @@ type MetricAlarm struct {
 	//
 	// [Create alarms on Metrics Insights queries]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Create_Metrics_Insights_Alarm.html
 	EvaluationState EvaluationState
+
+	// The evaluation window that the alarm uses to select the range of metric data
+	// that it evaluates. This is either a sliding window or a wall clock window. For
+	// more information, see [Alarm evaluation windows]in the CloudWatch User Guide.
+	//
+	// [Alarm evaluation windows]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarm-evaluation-window.html
+	EvaluationWindow EvaluationWindow
 
 	// The percentile statistic for the metric associated with the alarm. Specify a
 	// value between p0.0 and p100.
@@ -1437,6 +1580,75 @@ type Schedule struct {
 	noSmithyDocumentSerde
 }
 
+// Contains the schedule expression and time-range offsets that define when a
+// scheduled query runs and what time range each execution covers.
+type ScheduleConfiguration struct {
+
+	// The schedule expression that defines how often the underlying CloudWatch Logs
+	// scheduled query runs. Specify a rate() expression, for example rate(5 minutes) .
+	//
+	// This member is required.
+	ScheduleExpression *string
+
+	// The offset, in seconds, before the scheduled execution time at which the query
+	// time range ends. Must be non-negative and less than StartTimeOffset . The
+	// default is 0.
+	EndTimeOffset *int64
+
+	// The offset, in seconds, before the scheduled execution time at which the query
+	// time range begins. For example, an offset of 360 (6 minutes) on a query running
+	// at 12:05:00 starts the query time range at 11:59:00.
+	StartTimeOffset *int64
+
+	noSmithyDocumentSerde
+}
+
+// The configuration of the CloudWatch Logs scheduled query that backs a log alarm.
+type ScheduledQueryConfiguration struct {
+
+	// The expression that defines how to aggregate query results into one or more
+	// scalar values for alarm evaluation. For example, count(*) or avg(latency) by
+	// host | sort desc . Length constraints: minimum 1 character, maximum 2048
+	// characters.
+	//
+	// This member is required.
+	AggregationExpression *string
+
+	// The CloudWatch Logs query to execute on each scheduled run. Length constraints:
+	// maximum of 10,000 characters.
+	//
+	// This member is required.
+	QueryString *string
+
+	// The schedule and time-range offset configuration for the underlying scheduled
+	// query.
+	//
+	// This member is required.
+	ScheduleConfiguration *ScheduleConfiguration
+
+	// The Amazon Resource Name (ARN) of the IAM role that CloudWatch assumes when
+	// executing the scheduled query against the configured log groups.
+	//
+	// This member is required.
+	ScheduledQueryRoleARN *string
+
+	// The log groups to query. Each entry can be a log group name or ARN. Use the ARN
+	// form when querying log groups in a different account (for example, when running
+	// cross-account queries from a monitoring account). The list must contain between
+	// 1 and 50 entries.
+	LogGroupIdentifiers []string
+
+	// The Amazon Resource Name (ARN) of the CloudWatch Logs scheduled query that the
+	// alarm uses. This field is populated in DescribeAlarms responses.
+	QueryARN *string
+
+	// A list of key-value pairs to associate with the underlying scheduled query
+	// resource.
+	Tags []Tag
+
+	noSmithyDocumentSerde
+}
+
 // Designates the CloudWatch metric and statistic that provides the time series
 // the anomaly detector uses as input. If you have enabled unified cross-account
 // observability, and this account is a monitoring account, the metric can be in
@@ -1460,6 +1672,17 @@ type SingleMetricAnomalyDetector struct {
 	// The statistic to use for the metric and anomaly detection model.
 	Stat *string
 
+	noSmithyDocumentSerde
+}
+
+// An evaluation window that advances each time the alarm is evaluated, forming a
+// rolling time window. This is the default evaluation window. A sliding window has
+// no additional configuration options.
+//
+// Choose a sliding window when you need the fastest detection and the calendar
+// boundaries of the data don't matter, such as for continuous performance,
+// latency, or resource-exhaustion monitoring.
+type SlidingWindow struct {
 	noSmithyDocumentSerde
 }
 
@@ -1506,6 +1729,34 @@ type Tag struct {
 	noSmithyDocumentSerde
 }
 
+// An evaluation window that aligns the evaluated range to fixed clock boundaries
+// that match the alarm's period, such as the top of the hour, midnight, or the
+// start of the calendar week, optionally in a specific time zone.
+//
+// When you use a wall clock window, the alarm's period must be 1 minute (60
+// seconds), 5 minutes (300 seconds), 1 hour (3,600 seconds), 1 day (86,400
+// seconds), or 1 week (604,800 seconds). Other period values aren't supported with
+// a wall clock window.
+//
+// Choose a wall clock window when your monitoring is tied to a business or
+// calendar period, such as daily reports, batch jobs, or backups, or when you want
+// alarm evaluations to match the periods shown on a metric dashboard.
+type WallClockWindow struct {
+
+	// The time zone to use when the alarm aligns the evaluation window to clock
+	// boundaries. You can specify an IANA time zone name (for example,
+	// America/New_York ), a fixed UTC offset (for example, +05:30 ), or an
+	// offset-prefixed identifier (for example, UTC+05:30 ). The offset must be aligned
+	// to a multiple of 5 minutes. If you don't specify a time zone, CloudWatch uses
+	// UTC .
+	//
+	// The time zone affects window alignment for all periods, including periods of
+	// one hour or shorter.
+	Timezone *string
+
+	noSmithyDocumentSerde
+}
+
 type noSmithyDocumentSerde = smithydocument.NoSerde
 
 // UnknownUnionMember is returned when a union member is returned over the wire,
@@ -1518,3 +1769,4 @@ type UnknownUnionMember struct {
 }
 
 func (*UnknownUnionMember) isEvaluationCriteria() {}
+func (*UnknownUnionMember) isEvaluationWindow()   {}

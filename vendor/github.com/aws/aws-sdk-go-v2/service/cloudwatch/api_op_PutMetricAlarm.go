@@ -4,8 +4,6 @@ package cloudwatch
 
 import (
 	"context"
-	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -203,6 +201,22 @@ type PutMetricAlarmInput struct {
 	// points be breaching to trigger the alarm, this value specifies that number. If
 	// you are setting an "M out of N" alarm, this value is the N.
 	EvaluationPeriods *int32
+
+	// The evaluation window that the alarm uses to select the range of metric data
+	// that it evaluates. Specify either a sliding window or a wall clock window. If
+	// you omit this parameter, the alarm uses a sliding window.
+	//
+	// A sliding window advances each time the alarm is evaluated, forming a rolling
+	// time window. A wall clock window aligns the evaluated range to fixed clock
+	// boundaries, such as the top of the hour or the start of the day.
+	//
+	// You can use EvaluationWindow with any type of metric alarm except alarms that
+	// are based on a PromQL query.
+	//
+	// For more information, see [Alarm evaluation windows] in the CloudWatch User Guide.
+	//
+	// [Alarm evaluation windows]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarm-evaluation-window.html
+	EvaluationWindow types.EvaluationWindow
 
 	// The extended statistic for the metric specified in MetricName . When you call
 	// PutMetricAlarm and specify a MetricName , you must specify either Statistic or
@@ -482,9 +496,6 @@ type PutMetricAlarmOutput struct {
 }
 
 func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpPutMetricAlarm{}, middleware.After)
 	if err != nil {
 		return err
@@ -493,17 +504,8 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "PutMetricAlarm"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
 	if err = addComputeContentLength(stack); err != nil {
@@ -515,31 +517,13 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options, c); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
 	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -551,10 +535,7 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addOpPutMetricAlarmValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutMetricAlarm(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "PutMetricAlarm"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -569,22 +550,8 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
 	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
-}
-
-func newServiceMetadataMiddleware_opPutMetricAlarm(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "PutMetricAlarm",
-	}
 }
