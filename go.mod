@@ -1,6 +1,6 @@
 module github.com/observeinc/aws-sam-apps
 
-go 1.25.7
+go 1.25.11
 
 require (
 	github.com/aws/aws-lambda-go v1.54.0
