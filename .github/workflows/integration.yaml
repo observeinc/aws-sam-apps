@@ -46,7 +46,7 @@ jobs:
       serial_tests: ${{ steps.find_hcl_files.outputs.serial_tests }}
     steps:
     - name: checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v4
@@ -129,7 +129,7 @@ jobs:
         testfile: ${{fromJson(needs.provision.outputs.parallel_tests)}}
     steps:
     - name: checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v4
@@ -208,7 +208,7 @@ jobs:
         testfile: ${{fromJson(needs.provision.outputs.serial_tests)}}
     steps:
     - name: checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v4

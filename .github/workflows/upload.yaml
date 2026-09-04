@@ -41,7 +41,7 @@ jobs:
       release_version: ${{ steps.build.outputs.version }}
     steps:
     - name: Checkout repo
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Fetch tags for versioning
       if: inputs.release_version == ''
