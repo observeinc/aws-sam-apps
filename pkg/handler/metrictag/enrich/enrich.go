@@ -172,8 +172,9 @@ func (e *Enricher) getResources(ctx context.Context, accountID, region, namespac
 	return v.(*cacheEntry), nil
 }
 
-// EnrichLine parses one JSON object, adds resource_tags, and re-marshals JSON.
-// Always preserves the metric: on association failure resource_tags is {}.
+// EnrichLine parses one JSON object, adds resource_tags and resource_arn, and
+// re-marshals JSON. Always preserves the metric: on association failure
+// resource_tags is {} and resource_arn is "".
 func (e *Enricher) EnrichLine(ctx context.Context, lineJSON []byte) ([]byte, error) {
 	var obj map[string]any
 	if err := json.Unmarshal(lineJSON, &obj); err != nil {
@@ -194,11 +195,16 @@ func (e *Enricher) EnrichLine(ctx context.Context, lineJSON []byte) ([]byte, err
 		}
 	}
 
-	tags := e.tagsForMetric(ctx, accountID, region, ns, metricName, dimensions)
-	if tags == nil {
-		tags = map[string]string{}
+	tags := map[string]string{}
+	var arn string
+	if res := e.resourceForMetric(ctx, accountID, region, ns, metricName, dimensions); res != nil {
+		arn = res.ARN
+		for _, t := range res.Tags {
+			tags[t.Key] = t.Value
+		}
 	}
 	obj["resource_tags"] = tags
+	obj["resource_arn"] = arn
 
 	out, err := json.Marshal(obj)
 	if err != nil {
@@ -207,16 +213,16 @@ func (e *Enricher) EnrichLine(ctx context.Context, lineJSON []byte) ([]byte, err
 	return out, nil
 }
 
-// tagsForMetric resolves the AWS resource tags for a single CloudWatch metric.
-// Returns an empty map (never nil) when no matching resource is found.
-func (e *Enricher) tagsForMetric(ctx context.Context, accountID, region, namespace, metricName string, dimensions map[string]string) map[string]string {
+// resourceForMetric resolves the tagged AWS resource backing a single CloudWatch
+// metric. Returns nil when no matching resource is found.
+func (e *Enricher) resourceForMetric(ctx context.Context, accountID, region, namespace, metricName string, dimensions map[string]string) *model.TaggedResource {
 	entry, err := e.getResources(ctx, accountID, region, namespace)
 	if err != nil {
 		e.Logger.Warn("getResources failed", "err", err, "namespace", namespace, "region", region)
-		return map[string]string{}
+		return nil
 	}
 	if entry == nil {
-		return map[string]string{}
+		return nil
 	}
 
 	// Dimension order does not matter; the associator fingerprints via a map.
@@ -232,13 +238,5 @@ func (e *Enricher) tagsForMetric(ctx context.Context, accountID, region, namespa
 	}
 
 	res, _ := entry.assoc.AssociateMetricToResource(cw)
-	if res == nil {
-		return map[string]string{}
-	}
-
-	out := make(map[string]string)
-	for _, t := range res.Tags {
-		out[t.Key] = t.Value
-	}
-	return out
+	return res
 }

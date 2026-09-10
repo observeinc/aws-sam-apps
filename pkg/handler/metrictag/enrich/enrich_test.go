@@ -106,6 +106,39 @@ func TestEnrichLine_allTagsIncluded(t *testing.T) {
 	}
 }
 
+func TestEnrichLine_resourceArnIncluded(t *testing.T) {
+	mock := &mockTaggingClient{resources: ec2Resources()}
+	e := newEnricher(mock)
+
+	out, err := e.EnrichLine(context.Background(), []byte(ec2Line))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(out, &obj); err != nil {
+		t.Fatal(err)
+	}
+	if got := obj["resource_arn"]; got != "arn:aws:ec2:us-east-1:123:instance/i-abc123" {
+		t.Errorf("unexpected resource_arn: %#v", got)
+	}
+}
+
+func TestEnrichLine_unknownNamespace_emptyResourceArn(t *testing.T) {
+	e := newEnricher(nil)
+	line := `{"namespace":"Custom/Unknown","region":"us-east-1","account_id":"123","metric_name":"M","dimensions":{},"timestamp":1,"value":{"count":1},"unit":"Count"}`
+	out, err := e.EnrichLine(context.Background(), []byte(line))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(out, &obj); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := obj["resource_arn"]; !ok || got != "" {
+		t.Errorf("expected empty resource_arn, got %#v", got)
+	}
+}
+
 func TestGetResources_cachePreventsDuplicateCalls(t *testing.T) {
 	mock := &mockTaggingClient{resources: ec2Resources()}
 	e := newEnricher(mock)
