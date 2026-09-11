@@ -62,7 +62,10 @@ jobs:
           if [ "${{ inputs.global }}" = "true" ]; then
             make sam-push
           else
-            make sam-push-us-west-2
+            # PR builds push to us-west-2 (primary CI region) and us-east-2
+            # (used by the serial/Config test suite to avoid conflicting with
+            # any long-lived Config setup in us-west-2).
+            make sam-push-us-west-2 sam-push-us-east-2
           fi
           echo "version=`make version`" >> $GITHUB_OUTPUT
       env:

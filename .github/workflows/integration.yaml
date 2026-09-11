@@ -202,6 +202,13 @@ jobs:
       contents: read
     needs: [provision, tests]
     if: always() && needs.provision.outputs.serial_tests != '[]'
+    # Serial tests are config-related and each creates the "default" Config
+    # recorder / delivery channel, which is a singleton per region. Run them
+    # in us-east-2 to avoid conflicting with any long-lived Config setup in
+    # the primary CI region.
+    env:
+      AWS_REGION: us-east-2
+      AWS_DEFAULT_REGION: us-east-2
     strategy:
       max-parallel: 1
       matrix:
@@ -222,7 +229,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ inputs.aws_region || 'us-west-2' }}
+        aws-region: us-east-2
 
     - name: AWS Info
       run: aws sts get-caller-identity
