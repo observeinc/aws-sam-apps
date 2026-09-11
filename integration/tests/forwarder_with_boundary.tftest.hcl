@@ -1,3 +1,11 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 # Verifies the PermissionsBoundary parameter added by the SAM templates is
 # actually applied to every IAM::Role created by the deployed stack.
 #
@@ -88,8 +96,7 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/setup"
-    version = "2.9.0"
+    source = "./modules/setup"
   }
 }
 
