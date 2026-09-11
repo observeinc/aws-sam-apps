@@ -91,7 +91,14 @@ variables {
   }
 EOF
 
-  boundary_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  # The install role Terraform creates has IntegrationTestInstallRoleBoundary
+  # attached. That boundary's IamCreateRoleRequiresBoundary condition forces
+  # CFN's CreateRole call to specify the same boundary on any child role, so
+  # this test uses the same ARN. The plumbing check (PermissionsBoundary
+  # parameter -> role attribute) is independent of which specific ARN is
+  # used; other boundary ARNs work end-to-end when deployed without an
+  # install role that carries this exact boundary.
+  boundary_arn = "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
 }
 
 run "setup" {
