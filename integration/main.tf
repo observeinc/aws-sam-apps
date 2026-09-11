@@ -10,9 +10,13 @@ data "aws_region" "current" {}
 
 locals {
   install_boundary_arn = "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
-  stack_parameters = var.install_policy_json == null ? var.parameters : merge(var.parameters, {
+  # Default child roles to the integration test boundary when the test uses
+  # an install role. Tests that explicitly set PermissionsBoundary in their
+  # own parameters override this (e.g., forwarder_with_boundary asserts on a
+  # specific boundary ARN and needs the test's value to reach the stack).
+  stack_parameters = var.install_policy_json == null ? var.parameters : merge({
     PermissionsBoundary = local.install_boundary_arn
-  })
+  }, var.parameters)
 }
 
 resource "aws_cloudformation_stack" "this" {
