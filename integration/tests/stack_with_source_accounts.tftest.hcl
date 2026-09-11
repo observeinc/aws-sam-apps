@@ -1,3 +1,11 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 variables {
   # Test with a fake account ID that would be from another account in the org
   test_source_account_id = "123456789012"
@@ -147,8 +155,7 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/setup"
-    version = "2.9.0"
+    source = "./modules/setup"
   }
   variables {
     id_length = 51
