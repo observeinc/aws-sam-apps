@@ -61,7 +61,7 @@ GO_BUILD_DIRS   := bin/$(OS)_$(ARCH)                   \
                 .go/cache                           \
                 .go/pkg
 # Build image to use for building lambda functions
-GO_BUILD_IMAGE  ?= golang:1.25.11-alpine
+GO_BUILD_IMAGE  ?= golang:1.25.14-alpine
 # Which Go modules mode to use ("mod" or "vendor")
 GO_MOD          ?= vendor
 GOFLAGS         ?=
