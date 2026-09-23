@@ -1,4 +1,4 @@
-// Copyright 2024 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -60,7 +60,7 @@ func (rm dimensionsRegexpMapping) toString() string {
 	}
 	sb.WriteString("], dimensions_mappings={")
 	for sign, res := range rm.dimensionsMapping {
-		sb.WriteString(fmt.Sprintf("%d", sign))
+		fmt.Fprintf(&sb, "%d", sign)
 		sb.WriteString("=")
 		sb.WriteString(res.ARN)
 		sb.WriteString(",")
@@ -255,10 +255,9 @@ func fixDimension(namespace string, dim model.Dimension) (model.Dimension, bool)
 		}
 	}
 
-	// AWS Sagemaker endpoint name and inference component name may have upper case characters
-	// Resource ARN is only in lower case, hence transforming
+	// AWS Sagemaker inference component name may have upper case characters
 	// name value to be able to match the resource ARN
-	if namespace == "AWS/SageMaker" && (dim.Name == "EndpointName" || dim.Name == "InferenceComponentName") {
+	if namespace == "AWS/SageMaker" && dim.Name == "InferenceComponentName" {
 		dim.Value = strings.ToLower(dim.Value)
 		return dim, true
 	}

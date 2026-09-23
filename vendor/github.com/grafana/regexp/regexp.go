@@ -14,10 +14,7 @@
 // guaranteed to run in time linear in the size of the input.
 // (This is a property not guaranteed by most open source
 // implementations of regular expressions.) For more information
-// about this property, see
-//
-//	https://swtch.com/~rsc/regexp/regexp1.html
-//
+// about this property, see https://swtch.com/~rsc/regexp/regexp1.html
 // or any book about automata theory.
 //
 // All characters are UTF-8-encoded code points.
@@ -54,14 +51,13 @@
 // subexpression did not match any string in the input. For 'String' versions
 // an empty string means either no match or an empty match.
 //
-// There is also a subset of the methods that can be applied to text read
-// from a RuneReader:
-//
-//	MatchReader, FindReaderIndex, FindReaderSubmatchIndex
+// There is also a subset of the methods that can be applied to text read from
+// an [io.RuneReader]: [Regexp.MatchReader], [Regexp.FindReaderIndex],
+// [Regexp.FindReaderSubmatchIndex].
 //
 // This set may grow. Note that regular expression matches may need to
 // examine text beyond the text returned by a match, so the methods that
-// match text from a RuneReader may read arbitrarily far into the input
+// match text from an [io.RuneReader] may read arbitrarily far into the input
 // before returning.
 //
 // (There are a few other methods that do not match this pattern.)
@@ -70,13 +66,12 @@ package regexp
 import (
 	"bytes"
 	"io"
+	"regexp/syntax"
 	"strconv"
 	"strings"
 	"sync"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/grafana/regexp/syntax"
 )
 
 // Regexp is the representation of a compiled regular expression.
@@ -93,7 +88,6 @@ type Regexp struct {
 	prefixBytes    []byte         // prefix, as a []byte
 	prefixRune     rune           // first rune in prefix
 	prefixEnd      uint32         // pc for last rune in prefix
-	prefixFoldCase bool           // check prefix case-insensitive
 	mpool          int            // pool for machines
 	matchcap       int            // size of recorded match lengths
 	prefixComplete bool           // prefix is the entire regexp
@@ -199,10 +193,10 @@ func compile(expr string, mode syntax.Flags, longest bool) (*Regexp, error) {
 		minInputLen: minInputLen(re),
 	}
 	if regexp.onepass == nil {
-		regexp.prefix, regexp.prefixComplete, regexp.prefixFoldCase = prog.PrefixAndCase()
+		regexp.prefix, regexp.prefixComplete = prog.Prefix()
 		regexp.maxBitStateLen = maxBitStateLen(prog)
 	} else {
-		regexp.prefix, regexp.prefixComplete, regexp.prefixFoldCase, regexp.prefixEnd = onePassPrefix(prog)
+		regexp.prefix, regexp.prefixComplete, regexp.prefixEnd = onePassPrefix(prog)
 	}
 	if regexp.prefix != "" {
 		// TODO(rsc): Remove this allocation by adding
@@ -404,26 +398,10 @@ func (i *inputString) canCheckPrefix() bool {
 }
 
 func (i *inputString) hasPrefix(re *Regexp) bool {
-	if re.prefixFoldCase {
-		n := len(re.prefix)
-		return len(i.str) >= n && strings.EqualFold(i.str[0:n], re.prefix)
-	}
 	return strings.HasPrefix(i.str, re.prefix)
 }
 
 func (i *inputString) index(re *Regexp, pos int) int {
-	if re.prefixFoldCase {
-		n := len(re.prefix)
-		// Brute-force compare at every position; could replace with sophisticated algo like strings.Index
-		for p := pos; p+n <= len(i.str); {
-			if strings.EqualFold(i.str[p:p+n], re.prefix) {
-				return p - pos
-			}
-			_, w := i.step(p)
-			p += w
-		}
-		return -1
-	}
 	return strings.Index(i.str[pos:], re.prefix)
 }
 
@@ -467,26 +445,10 @@ func (i *inputBytes) canCheckPrefix() bool {
 }
 
 func (i *inputBytes) hasPrefix(re *Regexp) bool {
-	if re.prefixFoldCase {
-		n := len(re.prefixBytes)
-		return len(i.str) >= n && bytes.EqualFold(i.str[0:n], re.prefixBytes)
-	}
 	return bytes.HasPrefix(i.str, re.prefixBytes)
 }
 
 func (i *inputBytes) index(re *Regexp, pos int) int {
-	if re.prefixFoldCase {
-		n := len(re.prefixBytes)
-		// Brute-force compare at every position; could replace with sophisticated algo like bytes.Index
-		for p := pos; p+n <= len(i.str); {
-			if bytes.EqualFold(i.str[p:p+n], re.prefixBytes) {
-				return p - pos
-			}
-			_, w := i.step(p)
-			p += w
-		}
-		return -1
-	}
 	return bytes.Index(i.str[pos:], re.prefixBytes)
 }
 
@@ -571,7 +533,7 @@ func (re *Regexp) Match(b []byte) bool {
 	return re.doMatch(nil, b, "")
 }
 
-// MatchReader reports whether the text returned by the RuneReader
+// MatchReader reports whether the text returned by the [io.RuneReader]
 // contains any match of the regular expression pattern.
 // More complicated queries need to use [Compile] and the full [Regexp] interface.
 func MatchReader(pattern string, r io.RuneReader) (matched bool, err error) {
@@ -1278,10 +1240,9 @@ func (re *Regexp) FindAllStringSubmatchIndex(s string, n int) [][]int {
 //	// s: ["", "b", "b", "c", "cadaaae"]
 //
 // The count determines the number of substrings to return:
-//
-//	n > 0: at most n substrings; the last substring will be the unsplit remainder.
-//	n == 0: the result is nil (zero substrings)
-//	n < 0: all substrings
+//   - n > 0: at most n substrings; the last substring will be the unsplit remainder;
+//   - n == 0: the result is nil (zero substrings);
+//   - n < 0: all substrings.
 func (re *Regexp) Split(s string, n int) []string {
 
 	if n == 0 {
@@ -1316,14 +1277,22 @@ func (re *Regexp) Split(s string, n int) []string {
 	return strings
 }
 
-// MarshalText implements [encoding.TextMarshaler]. The output
+// AppendText implements [encoding.TextAppender]. The output
 // matches that of calling the [Regexp.String] method.
 //
 // Note that the output is lossy in some cases: This method does not indicate
 // POSIX regular expressions (i.e. those compiled by calling [CompilePOSIX]), or
 // those for which the [Regexp.Longest] method has been called.
+func (re *Regexp) AppendText(b []byte) ([]byte, error) {
+	return append(b, re.String()...), nil
+}
+
+// MarshalText implements [encoding.TextMarshaler]. The output
+// matches that of calling the [Regexp.AppendText] method.
+//
+// See [Regexp.AppendText] for more information.
 func (re *Regexp) MarshalText() ([]byte, error) {
-	return []byte(re.String()), nil
+	return re.AppendText(nil)
 }
 
 // UnmarshalText implements [encoding.TextUnmarshaler] by calling

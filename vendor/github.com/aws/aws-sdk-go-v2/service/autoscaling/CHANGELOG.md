@@ -1,3 +1,11 @@
+# v1.68.0 (2026-06-30)
+
+* **Feature**: This release adds support for a new reservations-then-balanced capacity distribution strategy, which first attempts to launch instances into your Capacity Reservations and then balances remaining capacity across healthy Availability Zones.
+
+# v1.67.5 (2026-06-29)
+
+* No change notes available for this release.
+
 # v1.67.4 (2026-06-08)
 
 * **Dependency Update**: Updated to the latest SDK module versions

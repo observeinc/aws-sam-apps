@@ -21,7 +21,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/shield"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/tagging"
-	taggingv2 "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/tagging/v2"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/job/maxdimassociator"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
@@ -85,8 +84,9 @@ func (e *Enricher) taggingClient(ctx context.Context, region string) (tagging.Cl
 	if err != nil {
 		return nil, err
 	}
-	c := taggingv2.NewClient(
+	c := tagging.NewClient(
 		e.Logger,
+		nil,
 		resourcegroupstaggingapi.NewFromConfig(cfg),
 		autoscaling.NewFromConfig(cfg),
 		apigateway.NewFromConfig(cfg),

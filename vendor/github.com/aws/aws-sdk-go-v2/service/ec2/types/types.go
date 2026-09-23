@@ -7807,6 +7807,14 @@ type ImageCriterion struct {
 	// Maximum: 200 values
 	ImageProviders []string
 
+	// The watermark criteria that an AMI must match to be allowed. An AMI is allowed
+	// if it carries at least one watermark that satisfies an ImageWatermarkFilter. A
+	// watermark satisfies a filter when all specified fields in the
+	// ImageWatermarkFilter match the corresponding values on the watermark of the AMI.
+	//
+	// Maximum: 50 values
+	ImageWatermarks []ImageWatermarkFilterResponse
+
 	// The Amazon Web Services Marketplace product codes for allowed images.
 	//
 	// Length: 1-25 characters
@@ -7833,6 +7841,8 @@ type ImageCriterion struct {
 //   - 50 values for ImageNames
 //
 //   - 50 values for MarketplaceProductCodes
+//
+//   - 50 values for ImageWatermarks
 //
 // For more information, see [How Allowed AMIs works] in the Amazon EC2 User Guide.
 //
@@ -7881,6 +7891,14 @@ type ImageCriterionRequest struct {
 	//
 	// Maximum: 200 values
 	ImageProviders []string
+
+	// The watermark criteria that an AMI must match to be allowed. An AMI is allowed
+	// if it carries at least one watermark that satisfies an ImageWatermarkFilter. A
+	// watermark satisfies a filter when all specified fields in the
+	// ImageWatermarkFilter match the corresponding values on the watermark of the AMI.
+	//
+	// Maximum: 50 values
+	ImageWatermarks []ImageWatermarkFilterRequest
 
 	// The Amazon Web Services Marketplace product codes for allowed images.
 	//
@@ -8155,6 +8173,56 @@ type ImageWatermark struct {
 	// 123456789012:approvedAmi ). The accountId portion is the Amazon Web Services
 	// account ID of the watermark creator. The watermarkName portion is
 	// customer-provided.
+	WatermarkKey *string
+
+	noSmithyDocumentSerde
+}
+
+// The watermark filter criteria for an allowed image. Each entry can specify one
+// or more fields. All specified fields must match the same watermark on the image.
+type ImageWatermarkFilterRequest struct {
+
+	// The maximum number of days that have elapsed since the source image was created.
+	//
+	// Constraints: Minimum value of 0. Maximum value of 2147483647.
+	MaximumDaysSinceSourceImageCreated *int32
+
+	// The maximum number of days that have elapsed since the watermark was attached
+	// to the image.
+	//
+	// Constraints: Minimum value of 0. Maximum value of 2147483647.
+	MaximumDaysSinceWatermarkCreated *int32
+
+	// The Region where the watermark was originally created. Supports wildcards ( * ,
+	// ? ).
+	SourceImageRegion *string
+
+	// The accountId:name of the watermark. Supports wildcards ( * , ? ).
+	WatermarkKey *string
+
+	noSmithyDocumentSerde
+}
+
+// The watermark filter criteria for an allowed image. Each entry can specify one
+// or more fields. All specified fields must match the same watermark on the image.
+type ImageWatermarkFilterResponse struct {
+
+	// The maximum number of days that have elapsed since the source image was created.
+	//
+	// Constraints: Minimum value of 0. Maximum value of 2147483647.
+	MaximumDaysSinceSourceImageCreated *int32
+
+	// The maximum number of days that have elapsed since the watermark was attached
+	// to the image.
+	//
+	// Constraints: Minimum value of 0. Maximum value of 2147483647.
+	MaximumDaysSinceWatermarkCreated *int32
+
+	// The Region where the watermark was originally created. Supports wildcards ( * ,
+	// ? ).
+	SourceImageRegion *string
+
+	// The accountId:name of the watermark. Supports wildcards ( * , ? ).
 	WatermarkKey *string
 
 	noSmithyDocumentSerde
@@ -15086,6 +15154,10 @@ type ModifyTransitGatewayOptions struct {
 	//
 	//   - Connect
 	//
+	//   - VPN Concentrator
+	//
+	//   - Client VPN
+	//
 	// You must first delete all transit gateway attachments configured prior to
 	// modifying the ASN on the transit gateway.
 	AmazonSideAsn *int64
@@ -16891,6 +16963,18 @@ type PathStatementRequest struct {
 	noSmithyDocumentSerde
 }
 
+// Describes a payer responsibility setting for a VPC endpoint.
+type PayerResponsibilityEntry struct {
+
+	// The Amazon Web Services account to which the usage is charged.
+	PayerResponsibilityType PayerResponsibilityType
+
+	// The scope of usage/charges.
+	Scope PayerResponsibilityScope
+
+	noSmithyDocumentSerde
+}
+
 // Describes the data that identifies an Amazon FPGA image (AFI) on the PCI bus.
 type PciId struct {
 
@@ -17293,6 +17377,9 @@ type PlacementGroup struct {
 
 	// The service provider that manages the Placement Group.
 	Operator *OperatorResponse
+
+	// The ID of the parent placement group.
+	ParentGroupId *string
 
 	// The number of partitions. Valid only if strategy is set to partition .
 	PartitionCount *int32
@@ -25796,6 +25883,9 @@ type VpcEndpoint struct {
 	// The ID of the Amazon Web Services account that owns the endpoint.
 	OwnerId *string
 
+	// The payer responsibility settings for the endpoint.
+	PayerResponsibilities []PayerResponsibilityEntry
+
 	// The policy document associated with the endpoint, if applicable.
 	PolicyDocument *string
 
@@ -25904,6 +25994,9 @@ type VpcEndpointConnection struct {
 
 	// The Amazon Resource Names (ARNs) of the network load balancers for the service.
 	NetworkLoadBalancerArns []string
+
+	// The payer responsibility settings for the endpoint.
+	PayerResponsibilities []PayerResponsibilityEntry
 
 	// The ID of the service to which the endpoint is connected.
 	ServiceId *string
