@@ -1,3 +1,11 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 variables {
   install_policy_json   = <<-EOF
   {
@@ -73,8 +81,7 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/setup"
-    version = "2.9.0"
+    source = "./modules/setup"
   }
 }
 
@@ -95,7 +102,7 @@ run "sources" {
   }
 
   variables {
-    setup = run.setup
+    setup               = run.setup
     kms_key_policy_json = <<-EOF
     {
       "Version": "2012-10-17",

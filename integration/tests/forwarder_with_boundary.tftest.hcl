@@ -1,3 +1,11 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 # Verifies the PermissionsBoundary parameter added by the SAM templates is
 # actually applied to every IAM::Role created by the deployed stack.
 #
@@ -83,13 +91,19 @@ variables {
   }
 EOF
 
-  boundary_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  # The install role Terraform creates has IntegrationTestInstallRoleBoundary
+  # attached. That boundary's IamCreateRoleRequiresBoundary condition forces
+  # CFN's CreateRole call to specify the same boundary on any child role, so
+  # this test uses the same ARN. The plumbing check (PermissionsBoundary
+  # parameter -> role attribute) is independent of which specific ARN is
+  # used; other boundary ARNs work end-to-end when deployed without an
+  # install role that carries this exact boundary.
+  boundary_arn = "arn:aws:iam::723346149663:policy/IntegrationTestInstallRoleBoundary"
 }
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/setup"
-    version = "2.9.0"
+    source = "./modules/setup"
   }
 }
 
