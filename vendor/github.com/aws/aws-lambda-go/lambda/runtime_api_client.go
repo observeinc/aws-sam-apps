@@ -10,7 +10,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil" //nolint: staticcheck
 	"log"
 	"net/http"
 	"runtime"
@@ -41,9 +40,18 @@ type runtimeAPIClient struct {
 	pool       *sync.Pool
 }
 
+// newAPITransport returns an HTTP transport that never proxies, so calls to the
+// link-local Runtime/Extensions API bypass any customer-configured proxy.
+func newAPITransport() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	return transport
+}
+
 func newRuntimeAPIClient(address string) *runtimeAPIClient {
 	client := &http.Client{
-		Timeout: 0, // connections to the runtime API are never expected to time out
+		Timeout:   0, // connections to the runtime API are never expected to time out
+		Transport: newAPITransport(),
 	}
 	endpoint := "http://" + address + "/" + apiVersion + "/runtime/invocation/"
 	userAgent := "aws-lambda-go/" + runtime.Version()
@@ -153,7 +161,7 @@ func (c *runtimeAPIClient) post(url string, body io.Reader, contentType string, 
 		return fmt.Errorf("failed to POST to %s: got unexpected status code: %d", url, resp.StatusCode)
 	}
 
-	_, err = io.Copy(ioutil.Discard, resp.Body)
+	_, err = io.Copy(io.Discard, resp.Body)
 	if err != nil {
 		return fmt.Errorf("something went wrong reading the POST response from %s: %v", url, err)
 	}
