@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Start a test that verifies that the specified gateway is configured for High
@@ -41,6 +42,18 @@ type StartAvailabilityMonitorTestInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartAvailabilityMonitorTestInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartAvailabilityMonitorTestInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartAvailabilityMonitorTestInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.StartAvailabilityMonitorTestInput_GatewayARN, *v.GatewayARN)
+	}
+}
+
 type StartAvailabilityMonitorTestOutput struct {
 
 	// The Amazon Resource Name (ARN) of the gateway. Use the ListGateways operation to return a
@@ -53,44 +66,48 @@ type StartAvailabilityMonitorTestOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartAvailabilityMonitorTestOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartAvailabilityMonitorTestOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartAvailabilityMonitorTestOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.StartAvailabilityMonitorTestOutput_GatewayARN, *v.GatewayARN)
+	}
+}
+func (v *StartAvailabilityMonitorTestOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.StartAvailabilityMonitorTestOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.StartAvailabilityMonitorTestOutput_GatewayARN:
+			v.GatewayARN = new(string)
+			return d.ReadString(schemas.StartAvailabilityMonitorTestOutput_GatewayARN, v.GatewayARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationStartAvailabilityMonitorTestMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpStartAvailabilityMonitorTest{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartAvailabilityMonitorTest, schemas.StartAvailabilityMonitorTestInput, schemas.StartAvailabilityMonitorTestOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpStartAvailabilityMonitorTest{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartAvailabilityMonitorTest, schemas.StartAvailabilityMonitorTestInput, schemas.StartAvailabilityMonitorTestOutput), output: &StartAvailabilityMonitorTestOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpStartAvailabilityMonitorTestValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "StartAvailabilityMonitorTest"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

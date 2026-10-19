@@ -5,9 +5,10 @@ package cloudwatch
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Lists alarm mute rules in your Amazon Web Services account and region.
@@ -56,6 +57,25 @@ type ListAlarmMuteRulesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListAlarmMuteRulesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListAlarmMuteRulesInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListAlarmMuteRulesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AlarmName != nil {
+		s.WriteString(schemas.ListAlarmMuteRulesInput_AlarmName, *v.AlarmName)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.ListAlarmMuteRulesInput_MaxRecords, *v.MaxRecords)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListAlarmMuteRulesInput_NextToken, *v.NextToken)
+	}
+	serializeAlarmMuteRuleStatuses(s, schemas.ListAlarmMuteRulesInput_Statuses, v.Statuses)
+}
+
 type ListAlarmMuteRulesOutput struct {
 
 	// A list of alarm mute rule summaries.
@@ -71,44 +91,51 @@ type ListAlarmMuteRulesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListAlarmMuteRulesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListAlarmMuteRulesOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListAlarmMuteRulesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeAlarmMuteRuleSummaries(s, schemas.ListAlarmMuteRulesOutput_AlarmMuteRuleSummaries, v.AlarmMuteRuleSummaries)
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListAlarmMuteRulesOutput_NextToken, *v.NextToken)
+	}
+}
+func (v *ListAlarmMuteRulesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListAlarmMuteRulesOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListAlarmMuteRulesOutput_AlarmMuteRuleSummaries:
+			return deserializeAlarmMuteRuleSummaries(d, schemas.ListAlarmMuteRulesOutput_AlarmMuteRuleSummaries, &v.AlarmMuteRuleSummaries)
+		case schemas.ListAlarmMuteRulesOutput_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.ListAlarmMuteRulesOutput_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListAlarmMuteRulesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpListAlarmMuteRules{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListAlarmMuteRules, schemas.ListAlarmMuteRulesInput, schemas.ListAlarmMuteRulesOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpListAlarmMuteRules{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListAlarmMuteRules, schemas.ListAlarmMuteRulesInput, schemas.ListAlarmMuteRulesOutput), output: &ListAlarmMuteRulesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListAlarmMuteRules"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

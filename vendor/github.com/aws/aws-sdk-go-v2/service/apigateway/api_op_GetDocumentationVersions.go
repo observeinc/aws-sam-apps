@@ -4,9 +4,10 @@ package apigateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets documentation versions.
@@ -43,6 +44,24 @@ type GetDocumentationVersionsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetDocumentationVersionsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetDocumentationVersionsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetDocumentationVersionsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Limit != nil {
+		s.WriteInt32(schemas.GetDocumentationVersionsRequest_limit, *v.Limit)
+	}
+	if v.Position != nil {
+		s.WriteString(schemas.GetDocumentationVersionsRequest_position, *v.Position)
+	}
+	if v.RestApiId != nil {
+		s.WriteString(schemas.GetDocumentationVersionsRequest_restApiId, *v.RestApiId)
+	}
+}
+
 // The collection of documentation snapshots of an API.
 type GetDocumentationVersionsOutput struct {
 
@@ -58,44 +77,51 @@ type GetDocumentationVersionsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetDocumentationVersionsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DocumentationVersions)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetDocumentationVersionsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeListOfDocumentationVersion(s, schemas.DocumentationVersions_items, v.Items)
+	if v.Position != nil {
+		s.WriteString(schemas.DocumentationVersions_position, *v.Position)
+	}
+}
+func (v *GetDocumentationVersionsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DocumentationVersions, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DocumentationVersions_items:
+			return deserializeListOfDocumentationVersion(d, schemas.DocumentationVersions_items, &v.Items)
+		case schemas.DocumentationVersions_position:
+			v.Position = new(string)
+			return d.ReadString(schemas.DocumentationVersions_position, v.Position)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetDocumentationVersionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetDocumentationVersions{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetDocumentationVersions, schemas.GetDocumentationVersionsRequest, schemas.DocumentationVersions)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetDocumentationVersions{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetDocumentationVersions, schemas.GetDocumentationVersionsRequest, schemas.DocumentationVersions), output: &GetDocumentationVersionsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetDocumentationVersionsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetDocumentationVersions"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

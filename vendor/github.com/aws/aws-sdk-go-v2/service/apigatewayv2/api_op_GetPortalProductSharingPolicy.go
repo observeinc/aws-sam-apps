@@ -4,8 +4,9 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets the sharing policy for a portal product.
@@ -34,6 +35,18 @@ type GetPortalProductSharingPolicyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetPortalProductSharingPolicyInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetPortalProductSharingPolicyRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetPortalProductSharingPolicyInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.PortalProductId != nil {
+		s.WriteString(schemas.GetPortalProductSharingPolicyRequest_PortalProductId, *v.PortalProductId)
+	}
+}
+
 type GetPortalProductSharingPolicyOutput struct {
 
 	// The product sharing policy.
@@ -48,44 +61,54 @@ type GetPortalProductSharingPolicyOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetPortalProductSharingPolicyOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetPortalProductSharingPolicyResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetPortalProductSharingPolicyOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.PolicyDocument != nil {
+		s.WriteString(schemas.GetPortalProductSharingPolicyResponse_PolicyDocument, *v.PolicyDocument)
+	}
+	if v.PortalProductId != nil {
+		s.WriteString(schemas.GetPortalProductSharingPolicyResponse_PortalProductId, *v.PortalProductId)
+	}
+}
+func (v *GetPortalProductSharingPolicyOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetPortalProductSharingPolicyResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetPortalProductSharingPolicyResponse_PolicyDocument:
+			v.PolicyDocument = new(string)
+			return d.ReadString(schemas.GetPortalProductSharingPolicyResponse_PolicyDocument, v.PolicyDocument)
+		case schemas.GetPortalProductSharingPolicyResponse_PortalProductId:
+			v.PortalProductId = new(string)
+			return d.ReadString(schemas.GetPortalProductSharingPolicyResponse_PortalProductId, v.PortalProductId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetPortalProductSharingPolicyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetPortalProductSharingPolicy{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetPortalProductSharingPolicy, schemas.GetPortalProductSharingPolicyRequest, schemas.GetPortalProductSharingPolicyResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetPortalProductSharingPolicy{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetPortalProductSharingPolicy, schemas.GetPortalProductSharingPolicyRequest, schemas.GetPortalProductSharingPolicyResponse), output: &GetPortalProductSharingPolicyOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetPortalProductSharingPolicyValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetPortalProductSharingPolicy"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

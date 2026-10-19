@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Deletes the record of a single premigration assessment run.
@@ -39,6 +40,18 @@ type DeleteReplicationTaskAssessmentRunInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteReplicationTaskAssessmentRunInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteReplicationTaskAssessmentRunMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteReplicationTaskAssessmentRunInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationTaskAssessmentRunArn != nil {
+		s.WriteString(schemas.DeleteReplicationTaskAssessmentRunMessage_ReplicationTaskAssessmentRunArn, *v.ReplicationTaskAssessmentRunArn)
+	}
+}
+
 type DeleteReplicationTaskAssessmentRunOutput struct {
 
 	// The ReplicationTaskAssessmentRun object for the deleted assessment run.
@@ -50,44 +63,50 @@ type DeleteReplicationTaskAssessmentRunOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteReplicationTaskAssessmentRunOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteReplicationTaskAssessmentRunResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteReplicationTaskAssessmentRunOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationTaskAssessmentRun != nil {
+		s.WriteStruct(schemas.DeleteReplicationTaskAssessmentRunResponse_ReplicationTaskAssessmentRun)
+		v.ReplicationTaskAssessmentRun.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *DeleteReplicationTaskAssessmentRunOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DeleteReplicationTaskAssessmentRunResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DeleteReplicationTaskAssessmentRunResponse_ReplicationTaskAssessmentRun:
+			v.ReplicationTaskAssessmentRun = &types.ReplicationTaskAssessmentRun{}
+			return v.ReplicationTaskAssessmentRun.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeleteReplicationTaskAssessmentRunMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteReplicationTaskAssessmentRun{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteReplicationTaskAssessmentRun, schemas.DeleteReplicationTaskAssessmentRunMessage, schemas.DeleteReplicationTaskAssessmentRunResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeleteReplicationTaskAssessmentRun{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteReplicationTaskAssessmentRun, schemas.DeleteReplicationTaskAssessmentRunMessage, schemas.DeleteReplicationTaskAssessmentRunResponse), output: &DeleteReplicationTaskAssessmentRunOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteReplicationTaskAssessmentRunValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DeleteReplicationTaskAssessmentRun"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

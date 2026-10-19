@@ -4,15 +4,20 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Modifies the specified data provider using the provided settings.
 //
+// Required permissions: dms:UpdateDataProvider . For more information, see [Actions, resources, and condition keys for Database Migration Service].
+//
 // You must remove the data provider from all migration projects before you can
 // modify it.
+//
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
 func (c *Client) ModifyDataProvider(ctx context.Context, params *ModifyDataProviderInput, optFns ...func(*Options)) (*ModifyDataProviderOutput, error) {
 	if params == nil {
 		params = &ModifyDataProviderInput{}
@@ -43,10 +48,11 @@ type ModifyDataProviderInput struct {
 	// A user-friendly description of the data provider.
 	Description *string
 
-	// The type of database engine for the data provider. Valid values include "aurora"
-	// , "aurora-postgresql" , "mysql" , "oracle" , "postgres" , "sqlserver" , redshift
-	// , mariadb , mongodb , db2 , db2-zos , docdb , and sybase . A value of "aurora"
-	// represents Amazon Aurora MySQL-Compatible Edition.
+	// The type of database engine for the data provider.
+	//
+	// Valid values: aurora , aurora-postgresql , db2 , db2-zos , docdb , mariadb ,
+	// mongodb , mysql , oracle , postgres , redshift , sqlserver , and sybase . A
+	// value of aurora represents Amazon Aurora MySQL-Compatible Edition.
 	Engine *string
 
 	// If this attribute is Y, the current call to ModifyDataProvider replaces all
@@ -70,6 +76,34 @@ type ModifyDataProviderInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ModifyDataProviderInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyDataProviderMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyDataProviderInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataProviderIdentifier != nil {
+		s.WriteString(schemas.ModifyDataProviderMessage_DataProviderIdentifier, *v.DataProviderIdentifier)
+	}
+	if v.DataProviderName != nil {
+		s.WriteString(schemas.ModifyDataProviderMessage_DataProviderName, *v.DataProviderName)
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.ModifyDataProviderMessage_Description, *v.Description)
+	}
+	if v.Engine != nil {
+		s.WriteString(schemas.ModifyDataProviderMessage_Engine, *v.Engine)
+	}
+	if v.ExactSettings != nil {
+		s.WriteBool(schemas.ModifyDataProviderMessage_ExactSettings, *v.ExactSettings)
+	}
+	serializeDataProviderSettings(s, schemas.ModifyDataProviderMessage_Settings, v.Settings)
+	if v.Virtual != nil {
+		s.WriteBool(schemas.ModifyDataProviderMessage_Virtual, *v.Virtual)
+	}
+}
+
 type ModifyDataProviderOutput struct {
 
 	// The data provider that was modified.
@@ -81,44 +115,50 @@ type ModifyDataProviderOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ModifyDataProviderOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyDataProviderResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyDataProviderOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataProvider != nil {
+		s.WriteStruct(schemas.ModifyDataProviderResponse_DataProvider)
+		v.DataProvider.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *ModifyDataProviderOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ModifyDataProviderResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ModifyDataProviderResponse_DataProvider:
+			v.DataProvider = &types.DataProvider{}
+			return v.DataProvider.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationModifyDataProviderMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpModifyDataProvider{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyDataProvider, schemas.ModifyDataProviderMessage, schemas.ModifyDataProviderResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpModifyDataProvider{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyDataProvider, schemas.ModifyDataProviderMessage, schemas.ModifyDataProviderResponse), output: &ModifyDataProviderOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyDataProviderValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ModifyDataProvider"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

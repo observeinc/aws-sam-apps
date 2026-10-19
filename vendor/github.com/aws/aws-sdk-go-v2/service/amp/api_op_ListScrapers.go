@@ -5,9 +5,10 @@ package amp
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/amp/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // The ListScrapers operation lists all of the scrapers in your account. This
@@ -62,6 +63,22 @@ type ListScrapersInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListScrapersInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListScrapersRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListScrapersInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeScraperFilters(s, schemas.ListScrapersRequest_filters, v.Filters)
+	if v.MaxResults != nil {
+		s.WriteInt32(schemas.ListScrapersRequest_maxResults, *v.MaxResults)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListScrapersRequest_nextToken, *v.NextToken)
+	}
+}
+
 // Represents the output of a ListScrapers operation.
 type ListScrapersOutput struct {
 
@@ -81,41 +98,48 @@ type ListScrapersOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListScrapersOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListScrapersResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListScrapersOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListScrapersResponse_nextToken, *v.NextToken)
+	}
+	serializeScraperSummaryList(s, schemas.ListScrapersResponse_scrapers, v.Scrapers)
+}
+func (v *ListScrapersOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListScrapersResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListScrapersResponse_nextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.ListScrapersResponse_nextToken, v.NextToken)
+		case schemas.ListScrapersResponse_scrapers:
+			return deserializeScraperSummaryList(d, schemas.ListScrapersResponse_scrapers, &v.Scrapers)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListScrapersMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpListScrapers{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListScrapers, schemas.ListScrapersRequest, schemas.ListScrapersResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpListScrapers{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListScrapers, schemas.ListScrapersRequest, schemas.ListScrapersResponse), output: &ListScrapersOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListScrapers"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

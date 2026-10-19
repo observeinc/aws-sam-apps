@@ -4,9 +4,10 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a dashboard if it does not already exist, or updates an existing
@@ -81,6 +82,22 @@ type PutDashboardInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *PutDashboardInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.PutDashboardInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutDashboardInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DashboardBody != nil {
+		s.WriteString(schemas.PutDashboardInput_DashboardBody, *v.DashboardBody)
+	}
+	if v.DashboardName != nil {
+		s.WriteString(schemas.PutDashboardInput_DashboardName, *v.DashboardName)
+	}
+	serializeTagList(s, schemas.PutDashboardInput_Tags, v.Tags)
+}
+
 type PutDashboardOutput struct {
 
 	// If the input for PutDashboard was correct and the dashboard was successfully
@@ -100,35 +117,39 @@ type PutDashboardOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *PutDashboardOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.PutDashboardOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutDashboardOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeDashboardValidationMessages(s, schemas.PutDashboardOutput_DashboardValidationMessages, v.DashboardValidationMessages)
+}
+func (v *PutDashboardOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.PutDashboardOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.PutDashboardOutput_DashboardValidationMessages:
+			return deserializeDashboardValidationMessages(d, schemas.PutDashboardOutput_DashboardValidationMessages, &v.DashboardValidationMessages)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationPutDashboardMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpPutDashboard{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutDashboard, schemas.PutDashboardInput, schemas.PutDashboardOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpPutDashboard{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutDashboard, schemas.PutDashboardInput, schemas.PutDashboardOutput), output: &PutDashboardOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -138,9 +159,6 @@ func (c *Client) addOperationPutDashboardMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addOpPutDashboardValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "PutDashboard"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

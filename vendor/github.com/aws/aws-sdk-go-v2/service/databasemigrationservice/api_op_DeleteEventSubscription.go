@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Deletes an DMS event subscription.
@@ -35,6 +36,18 @@ type DeleteEventSubscriptionInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteEventSubscriptionInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteEventSubscriptionMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteEventSubscriptionInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.SubscriptionName != nil {
+		s.WriteString(schemas.DeleteEventSubscriptionMessage_SubscriptionName, *v.SubscriptionName)
+	}
+}
+
 type DeleteEventSubscriptionOutput struct {
 
 	// The event subscription that was deleted.
@@ -46,44 +59,50 @@ type DeleteEventSubscriptionOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteEventSubscriptionOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteEventSubscriptionResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteEventSubscriptionOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.EventSubscription != nil {
+		s.WriteStruct(schemas.DeleteEventSubscriptionResponse_EventSubscription)
+		v.EventSubscription.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *DeleteEventSubscriptionOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DeleteEventSubscriptionResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DeleteEventSubscriptionResponse_EventSubscription:
+			v.EventSubscription = &types.EventSubscription{}
+			return v.EventSubscription.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeleteEventSubscriptionMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteEventSubscription{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteEventSubscription, schemas.DeleteEventSubscriptionMessage, schemas.DeleteEventSubscriptionResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeleteEventSubscription{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteEventSubscription, schemas.DeleteEventSubscriptionMessage, schemas.DeleteEventSubscriptionResponse), output: &DeleteEventSubscriptionOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteEventSubscriptionValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DeleteEventSubscription"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

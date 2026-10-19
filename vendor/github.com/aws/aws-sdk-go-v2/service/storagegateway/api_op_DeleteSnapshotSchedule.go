@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Deletes a snapshot of a volume.
@@ -46,6 +47,18 @@ type DeleteSnapshotScheduleInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteSnapshotScheduleInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteSnapshotScheduleInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteSnapshotScheduleInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.VolumeARN != nil {
+		s.WriteString(schemas.DeleteSnapshotScheduleInput_VolumeARN, *v.VolumeARN)
+	}
+}
+
 type DeleteSnapshotScheduleOutput struct {
 
 	// The volume which snapshot schedule was deleted.
@@ -57,44 +70,48 @@ type DeleteSnapshotScheduleOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteSnapshotScheduleOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteSnapshotScheduleOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteSnapshotScheduleOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.VolumeARN != nil {
+		s.WriteString(schemas.DeleteSnapshotScheduleOutput_VolumeARN, *v.VolumeARN)
+	}
+}
+func (v *DeleteSnapshotScheduleOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DeleteSnapshotScheduleOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DeleteSnapshotScheduleOutput_VolumeARN:
+			v.VolumeARN = new(string)
+			return d.ReadString(schemas.DeleteSnapshotScheduleOutput_VolumeARN, v.VolumeARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeleteSnapshotScheduleMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteSnapshotSchedule{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteSnapshotSchedule, schemas.DeleteSnapshotScheduleInput, schemas.DeleteSnapshotScheduleOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeleteSnapshotSchedule{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteSnapshotSchedule, schemas.DeleteSnapshotScheduleInput, schemas.DeleteSnapshotScheduleOutput), output: &DeleteSnapshotScheduleOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteSnapshotScheduleValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DeleteSnapshotSchedule"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

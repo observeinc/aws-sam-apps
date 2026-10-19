@@ -4,8 +4,9 @@ package shield
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/shield/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Authorizes the Shield Response Team (SRT) using the specified role, to access
@@ -72,6 +73,18 @@ type AssociateDRTRoleInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssociateDRTRoleInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssociateDRTRoleRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssociateDRTRoleInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.RoleArn != nil {
+		s.WriteString(schemas.AssociateDRTRoleRequest_RoleArn, *v.RoleArn)
+	}
+}
+
 type AssociateDRTRoleOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -79,44 +92,42 @@ type AssociateDRTRoleOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssociateDRTRoleOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssociateDRTRoleResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssociateDRTRoleOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *AssociateDRTRoleOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AssociateDRTRoleResponse, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationAssociateDRTRoleMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpAssociateDRTRole{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssociateDRTRole, schemas.AssociateDRTRoleRequest, schemas.AssociateDRTRoleResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpAssociateDRTRole{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssociateDRTRole, schemas.AssociateDRTRoleRequest, schemas.AssociateDRTRoleResponse), output: &AssociateDRTRoleOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAssociateDRTRoleValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "AssociateDRTRole"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

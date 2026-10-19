@@ -4,8 +4,9 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Deletes a portal product.
@@ -34,6 +35,18 @@ type DeletePortalProductInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeletePortalProductInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeletePortalProductRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeletePortalProductInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.PortalProductId != nil {
+		s.WriteString(schemas.DeletePortalProductRequest_PortalProductId, *v.PortalProductId)
+	}
+}
+
 type DeletePortalProductOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -41,44 +54,42 @@ type DeletePortalProductOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeletePortalProductOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(nil)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeletePortalProductOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *DeletePortalProductOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, nil, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeletePortalProductMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpDeletePortalProduct{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeletePortalProduct, schemas.DeletePortalProductRequest, nil)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpDeletePortalProduct{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeletePortalProduct, schemas.DeletePortalProductRequest, nil), output: &DeletePortalProductOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeletePortalProductValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DeletePortalProduct"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

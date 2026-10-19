@@ -4,9 +4,10 @@ package apigateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a VPC link, under the caller's account in a selected region, in an
@@ -57,6 +58,23 @@ type CreateVpcLinkInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateVpcLinkInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateVpcLinkRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateVpcLinkInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Description != nil {
+		s.WriteString(schemas.CreateVpcLinkRequest_description, *v.Description)
+	}
+	if v.Name != nil {
+		s.WriteString(schemas.CreateVpcLinkRequest_name, *v.Name)
+	}
+	serializeMapOfStringToString(s, schemas.CreateVpcLinkRequest_tags, v.Tags)
+	serializeListOfString(s, schemas.CreateVpcLinkRequest_targetArns, v.TargetArns)
+}
+
 // An API Gateway VPC link for a RestApi to access resources in an Amazon Virtual
 // Private Cloud (VPC).
 type CreateVpcLinkOutput struct {
@@ -93,44 +111,82 @@ type CreateVpcLinkOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateVpcLinkOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.VpcLink)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateVpcLinkOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Description != nil {
+		s.WriteString(schemas.VpcLink_description, *v.Description)
+	}
+	if v.Id != nil {
+		s.WriteString(schemas.VpcLink_id, *v.Id)
+	}
+	if v.Name != nil {
+		s.WriteString(schemas.VpcLink_name, *v.Name)
+	}
+	if v.Status != "" {
+		s.WriteString(schemas.VpcLink_status, string(v.Status))
+	}
+	if v.StatusMessage != nil {
+		s.WriteString(schemas.VpcLink_statusMessage, *v.StatusMessage)
+	}
+	serializeMapOfStringToString(s, schemas.VpcLink_tags, v.Tags)
+	serializeListOfString(s, schemas.VpcLink_targetArns, v.TargetArns)
+}
+func (v *CreateVpcLinkOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.VpcLink, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.VpcLink_description:
+			v.Description = new(string)
+			return d.ReadString(schemas.VpcLink_description, v.Description)
+		case schemas.VpcLink_id:
+			v.Id = new(string)
+			return d.ReadString(schemas.VpcLink_id, v.Id)
+		case schemas.VpcLink_name:
+			v.Name = new(string)
+			return d.ReadString(schemas.VpcLink_name, v.Name)
+		case schemas.VpcLink_status:
+			var ev string
+			if err := d.ReadString(schemas.VpcLink_status, &ev); err != nil {
+				return err
+			}
+			v.Status = types.VpcLinkStatus(ev)
+			return nil
+		case schemas.VpcLink_statusMessage:
+			v.StatusMessage = new(string)
+			return d.ReadString(schemas.VpcLink_statusMessage, v.StatusMessage)
+		case schemas.VpcLink_tags:
+			return deserializeMapOfStringToString(d, schemas.VpcLink_tags, &v.Tags)
+		case schemas.VpcLink_targetArns:
+			return deserializeListOfString(d, schemas.VpcLink_targetArns, &v.TargetArns)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateVpcLinkMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpCreateVpcLink{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateVpcLink, schemas.CreateVpcLinkRequest, schemas.VpcLink)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpCreateVpcLink{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateVpcLink, schemas.CreateVpcLinkRequest, schemas.VpcLink), output: &CreateVpcLinkOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateVpcLinkValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateVpcLink"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
