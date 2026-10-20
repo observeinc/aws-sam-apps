@@ -1,3 +1,11 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 variables {
   install_policy_json = <<-EOF
   {
@@ -144,8 +152,7 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/setup"
-    version = "2.9.0"
+    source = "./modules/setup"
   }
   variables {
     id_length = 48
@@ -191,8 +198,8 @@ run "install" {
       ConfigDeliveryBucketName = "example-bucket"
       SourceBucketNames        = "*"
       LogGroupNamePatterns     = run.setup.id
-      ObserveAwsAccountId = "158067661102"
-      DatastreamIds       = "411000001"
+      ObserveAwsAccountId      = "158067661102"
+      DatastreamIds            = "411000001"
       NameOverride             = run.setup.id
     }
     capabilities = [

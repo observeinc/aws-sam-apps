@@ -1,3 +1,11 @@
+provider "aws" {
+  default_tags {
+    tags = {
+      "managed-by" = "integration-test"
+    }
+  }
+}
+
 variables {
   install_policy_json = <<-EOF
   {
@@ -22,8 +30,7 @@ EOF
 
 run "setup" {
   module {
-    source  = "observeinc/collection/aws//modules/testing/setup"
-    version = "2.14.0"
+    source = "./modules/setup"
   }
 }
 
