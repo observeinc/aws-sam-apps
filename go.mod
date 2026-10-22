@@ -21,7 +21,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/shield v1.35.4
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.44.0
 	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.44.4
-	github.com/aws/smithy-go v1.27.3
+	github.com/aws/smithy-go v1.28.5
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
