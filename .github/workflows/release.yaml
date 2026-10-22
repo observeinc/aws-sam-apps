@@ -14,8 +14,8 @@ on:
       skip_regions:
         type: string
         description: 'Space-separated list of regions to skip'
-        # me-south-1 S3 endpoints unreachable since 2026-10-22; remove once the region recovers.
-        default: 'me-south-1'
+        # AWS region disruptions ongoing since 2026-03; remove once AWS restores these regions.
+        default: 'me-central-1 me-south-1'
  
 jobs:
   version:
