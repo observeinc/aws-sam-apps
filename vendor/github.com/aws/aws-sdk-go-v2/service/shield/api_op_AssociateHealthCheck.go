@@ -4,8 +4,9 @@ package shield
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/shield/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Adds health-based detection to the Shield Advanced protection for a resource.
@@ -49,6 +50,21 @@ type AssociateHealthCheckInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssociateHealthCheckInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssociateHealthCheckRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssociateHealthCheckInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.HealthCheckArn != nil {
+		s.WriteString(schemas.AssociateHealthCheckRequest_HealthCheckArn, *v.HealthCheckArn)
+	}
+	if v.ProtectionId != nil {
+		s.WriteString(schemas.AssociateHealthCheckRequest_ProtectionId, *v.ProtectionId)
+	}
+}
+
 type AssociateHealthCheckOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -56,44 +72,42 @@ type AssociateHealthCheckOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssociateHealthCheckOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssociateHealthCheckResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssociateHealthCheckOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *AssociateHealthCheckOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AssociateHealthCheckResponse, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationAssociateHealthCheckMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpAssociateHealthCheck{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssociateHealthCheck, schemas.AssociateHealthCheckRequest, schemas.AssociateHealthCheckResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpAssociateHealthCheck{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssociateHealthCheck, schemas.AssociateHealthCheckRequest, schemas.AssociateHealthCheckResponse), output: &AssociateHealthCheckOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAssociateHealthCheckValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "AssociateHealthCheck"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

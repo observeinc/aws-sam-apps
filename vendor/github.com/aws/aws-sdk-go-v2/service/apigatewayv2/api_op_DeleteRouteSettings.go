@@ -4,8 +4,9 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Deletes the RouteSettings for a stage.
@@ -45,6 +46,24 @@ type DeleteRouteSettingsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteRouteSettingsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteRouteSettingsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteRouteSettingsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ApiId != nil {
+		s.WriteString(schemas.DeleteRouteSettingsRequest_ApiId, *v.ApiId)
+	}
+	if v.RouteKey != nil {
+		s.WriteString(schemas.DeleteRouteSettingsRequest_RouteKey, *v.RouteKey)
+	}
+	if v.StageName != nil {
+		s.WriteString(schemas.DeleteRouteSettingsRequest_StageName, *v.StageName)
+	}
+}
+
 type DeleteRouteSettingsOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -52,44 +71,42 @@ type DeleteRouteSettingsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteRouteSettingsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(nil)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteRouteSettingsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *DeleteRouteSettingsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, nil, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeleteRouteSettingsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpDeleteRouteSettings{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteRouteSettings, schemas.DeleteRouteSettingsRequest, nil)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpDeleteRouteSettings{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteRouteSettings, schemas.DeleteRouteSettingsRequest, nil), output: &DeleteRouteSettingsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteRouteSettingsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DeleteRouteSettings"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

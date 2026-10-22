@@ -4,9 +4,10 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates or updates a log alarm. A log alarm evaluates the results of a
@@ -188,7 +189,70 @@ type PutLogAlarmInput struct {
 	// default behavior of missing is used.
 	TreatMissingData *string
 
+	// The warm-up configuration for the alarm. A warm-up period delays alarm
+	// evaluation after you create or update the alarm. The warm-up period reduces
+	// alarm noise from missing data while a new resource or service starts publishing
+	// data.
+	//
+	// For more information, see [Alarm warm-up periods] in the Amazon CloudWatch User Guide.
+	//
+	// [Alarm warm-up periods]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarm-warm-up.html
+	WarmUpConfiguration *types.WarmUpConfiguration
+
 	noSmithyDocumentSerde
+}
+
+func (v *PutLogAlarmInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.PutLogAlarmInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutLogAlarmInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ActionLogLineCount != nil {
+		s.WriteInt32(schemas.PutLogAlarmInput_ActionLogLineCount, *v.ActionLogLineCount)
+	}
+	if v.ActionLogLineRoleArn != nil {
+		s.WriteString(schemas.PutLogAlarmInput_ActionLogLineRoleArn, *v.ActionLogLineRoleArn)
+	}
+	if v.ActionsEnabled != nil {
+		s.WriteBool(schemas.PutLogAlarmInput_ActionsEnabled, *v.ActionsEnabled)
+	}
+	serializeResourceList(s, schemas.PutLogAlarmInput_AlarmActions, v.AlarmActions)
+	if v.AlarmDescription != nil {
+		s.WriteString(schemas.PutLogAlarmInput_AlarmDescription, *v.AlarmDescription)
+	}
+	if v.AlarmName != nil {
+		s.WriteString(schemas.PutLogAlarmInput_AlarmName, *v.AlarmName)
+	}
+	if v.ComparisonOperator != "" {
+		s.WriteString(schemas.PutLogAlarmInput_ComparisonOperator, string(v.ComparisonOperator))
+	}
+	serializeResourceList(s, schemas.PutLogAlarmInput_InsufficientDataActions, v.InsufficientDataActions)
+	serializeResourceList(s, schemas.PutLogAlarmInput_OKActions, v.OKActions)
+	if v.QueryResultsToAlarm != nil {
+		s.WriteInt32(schemas.PutLogAlarmInput_QueryResultsToAlarm, *v.QueryResultsToAlarm)
+	}
+	if v.QueryResultsToEvaluate != nil {
+		s.WriteInt32(schemas.PutLogAlarmInput_QueryResultsToEvaluate, *v.QueryResultsToEvaluate)
+	}
+	if v.ScheduledQueryConfiguration != nil {
+		s.WriteStruct(schemas.PutLogAlarmInput_ScheduledQueryConfiguration)
+		v.ScheduledQueryConfiguration.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	serializeTagList(s, schemas.PutLogAlarmInput_Tags, v.Tags)
+	if v.Threshold != nil {
+		s.WriteFloat64(schemas.PutLogAlarmInput_Threshold, *v.Threshold)
+	}
+	if v.TreatMissingData != nil {
+		s.WriteString(schemas.PutLogAlarmInput_TreatMissingData, *v.TreatMissingData)
+	}
+	if v.WarmUpConfiguration != nil {
+		s.WriteStruct(schemas.PutLogAlarmInput_WarmUpConfiguration)
+		v.WarmUpConfiguration.SerializeMembers(s)
+		s.CloseStruct()
+	}
 }
 
 type PutLogAlarmOutput struct {
@@ -198,35 +262,36 @@ type PutLogAlarmOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *PutLogAlarmOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(nil)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutLogAlarmOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *PutLogAlarmOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, nil, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationPutLogAlarmMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpPutLogAlarm{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutLogAlarm, schemas.PutLogAlarmInput, nil)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpPutLogAlarm{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutLogAlarm, schemas.PutLogAlarmInput, nil), output: &PutLogAlarmOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -236,9 +301,6 @@ func (c *Client) addOperationPutLogAlarmMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addOpPutLogAlarmValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "PutLogAlarm"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

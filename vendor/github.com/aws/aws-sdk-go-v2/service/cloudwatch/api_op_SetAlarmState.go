@@ -4,9 +4,10 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Temporarily sets the state of an alarm for testing purposes. When the updated
@@ -71,6 +72,27 @@ type SetAlarmStateInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *SetAlarmStateInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.SetAlarmStateInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *SetAlarmStateInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AlarmName != nil {
+		s.WriteString(schemas.SetAlarmStateInput_AlarmName, *v.AlarmName)
+	}
+	if v.StateReason != nil {
+		s.WriteString(schemas.SetAlarmStateInput_StateReason, *v.StateReason)
+	}
+	if v.StateReasonData != nil {
+		s.WriteString(schemas.SetAlarmStateInput_StateReasonData, *v.StateReasonData)
+	}
+	if v.StateValue != "" {
+		s.WriteString(schemas.SetAlarmStateInput_StateValue, string(v.StateValue))
+	}
+}
+
 type SetAlarmStateOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -78,35 +100,36 @@ type SetAlarmStateOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *SetAlarmStateOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(nil)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *SetAlarmStateOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *SetAlarmStateOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, nil, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationSetAlarmStateMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpSetAlarmState{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.SetAlarmState, schemas.SetAlarmStateInput, nil)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpSetAlarmState{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.SetAlarmState, schemas.SetAlarmStateInput, nil), output: &SetAlarmStateOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -116,9 +139,6 @@ func (c *Client) addOperationSetAlarmStateMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addOpSetAlarmStateValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "SetAlarmState"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

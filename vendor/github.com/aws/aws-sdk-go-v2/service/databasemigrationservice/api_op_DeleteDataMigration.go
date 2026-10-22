@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Deletes the specified data migration.
@@ -35,6 +36,18 @@ type DeleteDataMigrationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteDataMigrationInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteDataMigrationMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteDataMigrationInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataMigrationIdentifier != nil {
+		s.WriteString(schemas.DeleteDataMigrationMessage_DataMigrationIdentifier, *v.DataMigrationIdentifier)
+	}
+}
+
 type DeleteDataMigrationOutput struct {
 
 	// The deleted data migration.
@@ -46,44 +59,50 @@ type DeleteDataMigrationOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteDataMigrationOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteDataMigrationResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteDataMigrationOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataMigration != nil {
+		s.WriteStruct(schemas.DeleteDataMigrationResponse_DataMigration)
+		v.DataMigration.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *DeleteDataMigrationOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DeleteDataMigrationResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DeleteDataMigrationResponse_DataMigration:
+			v.DataMigration = &types.DataMigration{}
+			return v.DataMigration.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeleteDataMigrationMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteDataMigration{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteDataMigration, schemas.DeleteDataMigrationMessage, schemas.DeleteDataMigrationResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeleteDataMigration{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteDataMigration, schemas.DeleteDataMigrationMessage, schemas.DeleteDataMigrationResponse), output: &DeleteDataMigrationOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteDataMigrationValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DeleteDataMigration"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,9 +4,10 @@ package apigateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets information about the current Account resource.
@@ -28,6 +29,15 @@ func (c *Client) GetAccount(ctx context.Context, params *GetAccountInput, optFns
 // Requests API Gateway to get information about the current Account resource.
 type GetAccountInput struct {
 	noSmithyDocumentSerde
+}
+
+func (v *GetAccountInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetAccountRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetAccountInput) SerializeMembers(s smithy.ShapeSerializer) {
 }
 
 // Represents an AWS account that is associated with API Gateway.
@@ -52,41 +62,62 @@ type GetAccountOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetAccountOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.Account)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetAccountOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ApiKeyVersion != nil {
+		s.WriteString(schemas.Account_apiKeyVersion, *v.ApiKeyVersion)
+	}
+	if v.CloudwatchRoleArn != nil {
+		s.WriteString(schemas.Account_cloudwatchRoleArn, *v.CloudwatchRoleArn)
+	}
+	serializeListOfString(s, schemas.Account_features, v.Features)
+	if v.ThrottleSettings != nil {
+		s.WriteStruct(schemas.Account_throttleSettings)
+		v.ThrottleSettings.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *GetAccountOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.Account, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.Account_apiKeyVersion:
+			v.ApiKeyVersion = new(string)
+			return d.ReadString(schemas.Account_apiKeyVersion, v.ApiKeyVersion)
+		case schemas.Account_cloudwatchRoleArn:
+			v.CloudwatchRoleArn = new(string)
+			return d.ReadString(schemas.Account_cloudwatchRoleArn, v.CloudwatchRoleArn)
+		case schemas.Account_features:
+			return deserializeListOfString(d, schemas.Account_features, &v.Features)
+		case schemas.Account_throttleSettings:
+			v.ThrottleSettings = &types.ThrottleSettings{}
+			return v.ThrottleSettings.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetAccountMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetAccount{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetAccount, schemas.GetAccountRequest, schemas.Account)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetAccount{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetAccount, schemas.GetAccountRequest, schemas.Account), output: &GetAccountOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetAccount"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

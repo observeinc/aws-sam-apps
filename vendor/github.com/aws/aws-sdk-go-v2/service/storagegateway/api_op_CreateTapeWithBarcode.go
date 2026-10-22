@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a virtual tape by using your own barcode. You write data to the virtual
@@ -90,6 +91,37 @@ type CreateTapeWithBarcodeInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateTapeWithBarcodeInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateTapeWithBarcodeInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateTapeWithBarcodeInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.CreateTapeWithBarcodeInput_GatewayARN, *v.GatewayARN)
+	}
+	if v.KMSEncrypted != nil {
+		s.WriteBool(schemas.CreateTapeWithBarcodeInput_KMSEncrypted, *v.KMSEncrypted)
+	}
+	if v.KMSKey != nil {
+		s.WriteString(schemas.CreateTapeWithBarcodeInput_KMSKey, *v.KMSKey)
+	}
+	if v.PoolId != nil {
+		s.WriteString(schemas.CreateTapeWithBarcodeInput_PoolId, *v.PoolId)
+	}
+	serializeTags(s, schemas.CreateTapeWithBarcodeInput_Tags, v.Tags)
+	if v.TapeBarcode != nil {
+		s.WriteString(schemas.CreateTapeWithBarcodeInput_TapeBarcode, *v.TapeBarcode)
+	}
+	if v.TapeSizeInBytes != nil {
+		s.WriteInt64(schemas.CreateTapeWithBarcodeInput_TapeSizeInBytes, *v.TapeSizeInBytes)
+	}
+	if v.Worm != false {
+		s.WriteBool(schemas.CreateTapeWithBarcodeInput_Worm, v.Worm)
+	}
+}
+
 // CreateTapeOutput
 type CreateTapeWithBarcodeOutput struct {
 
@@ -103,44 +135,48 @@ type CreateTapeWithBarcodeOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateTapeWithBarcodeOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateTapeWithBarcodeOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateTapeWithBarcodeOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.TapeARN != nil {
+		s.WriteString(schemas.CreateTapeWithBarcodeOutput_TapeARN, *v.TapeARN)
+	}
+}
+func (v *CreateTapeWithBarcodeOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateTapeWithBarcodeOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateTapeWithBarcodeOutput_TapeARN:
+			v.TapeARN = new(string)
+			return d.ReadString(schemas.CreateTapeWithBarcodeOutput_TapeARN, v.TapeARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateTapeWithBarcodeMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateTapeWithBarcode{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateTapeWithBarcode, schemas.CreateTapeWithBarcodeInput, schemas.CreateTapeWithBarcodeOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateTapeWithBarcode{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateTapeWithBarcode, schemas.CreateTapeWithBarcodeInput, schemas.CreateTapeWithBarcodeOutput), output: &CreateTapeWithBarcodeOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTapeWithBarcodeValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateTapeWithBarcode"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

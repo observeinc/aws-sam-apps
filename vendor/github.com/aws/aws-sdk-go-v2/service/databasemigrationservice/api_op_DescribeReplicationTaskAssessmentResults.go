@@ -5,9 +5,10 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns the task assessment results from the Amazon S3 bucket that DMS creates
@@ -57,6 +58,24 @@ type DescribeReplicationTaskAssessmentResultsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeReplicationTaskAssessmentResultsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeReplicationTaskAssessmentResultsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeReplicationTaskAssessmentResultsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeReplicationTaskAssessmentResultsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeReplicationTaskAssessmentResultsMessage_MaxRecords, *v.MaxRecords)
+	}
+	if v.ReplicationTaskArn != nil {
+		s.WriteString(schemas.DescribeReplicationTaskAssessmentResultsMessage_ReplicationTaskArn, *v.ReplicationTaskArn)
+	}
+}
+
 type DescribeReplicationTaskAssessmentResultsOutput struct {
 
 	// - The Amazon S3 bucket where the task assessment report is located.
@@ -76,41 +95,54 @@ type DescribeReplicationTaskAssessmentResultsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeReplicationTaskAssessmentResultsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeReplicationTaskAssessmentResultsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeReplicationTaskAssessmentResultsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.BucketName != nil {
+		s.WriteString(schemas.DescribeReplicationTaskAssessmentResultsResponse_BucketName, *v.BucketName)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeReplicationTaskAssessmentResultsResponse_Marker, *v.Marker)
+	}
+	serializeReplicationTaskAssessmentResultList(s, schemas.DescribeReplicationTaskAssessmentResultsResponse_ReplicationTaskAssessmentResults, v.ReplicationTaskAssessmentResults)
+}
+func (v *DescribeReplicationTaskAssessmentResultsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeReplicationTaskAssessmentResultsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeReplicationTaskAssessmentResultsResponse_BucketName:
+			v.BucketName = new(string)
+			return d.ReadString(schemas.DescribeReplicationTaskAssessmentResultsResponse_BucketName, v.BucketName)
+		case schemas.DescribeReplicationTaskAssessmentResultsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeReplicationTaskAssessmentResultsResponse_Marker, v.Marker)
+		case schemas.DescribeReplicationTaskAssessmentResultsResponse_ReplicationTaskAssessmentResults:
+			return deserializeReplicationTaskAssessmentResultList(d, schemas.DescribeReplicationTaskAssessmentResultsResponse_ReplicationTaskAssessmentResults, &v.ReplicationTaskAssessmentResults)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeReplicationTaskAssessmentResultsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeReplicationTaskAssessmentResults{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeReplicationTaskAssessmentResults, schemas.DescribeReplicationTaskAssessmentResultsMessage, schemas.DescribeReplicationTaskAssessmentResultsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeReplicationTaskAssessmentResults{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeReplicationTaskAssessmentResults, schemas.DescribeReplicationTaskAssessmentResultsMessage, schemas.DescribeReplicationTaskAssessmentResultsResponse), output: &DescribeReplicationTaskAssessmentResultsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeReplicationTaskAssessmentResults"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

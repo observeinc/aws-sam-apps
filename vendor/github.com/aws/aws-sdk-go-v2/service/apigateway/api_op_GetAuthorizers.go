@@ -4,9 +4,10 @@ package apigateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Describe an existing Authorizers resource.
@@ -43,6 +44,24 @@ type GetAuthorizersInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetAuthorizersInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetAuthorizersRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetAuthorizersInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Limit != nil {
+		s.WriteInt32(schemas.GetAuthorizersRequest_limit, *v.Limit)
+	}
+	if v.Position != nil {
+		s.WriteString(schemas.GetAuthorizersRequest_position, *v.Position)
+	}
+	if v.RestApiId != nil {
+		s.WriteString(schemas.GetAuthorizersRequest_restApiId, *v.RestApiId)
+	}
+}
+
 // Represents a collection of Authorizer resources.
 type GetAuthorizersOutput struct {
 
@@ -58,44 +77,51 @@ type GetAuthorizersOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetAuthorizersOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.Authorizers)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetAuthorizersOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeListOfAuthorizer(s, schemas.Authorizers_items, v.Items)
+	if v.Position != nil {
+		s.WriteString(schemas.Authorizers_position, *v.Position)
+	}
+}
+func (v *GetAuthorizersOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.Authorizers, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.Authorizers_items:
+			return deserializeListOfAuthorizer(d, schemas.Authorizers_items, &v.Items)
+		case schemas.Authorizers_position:
+			v.Position = new(string)
+			return d.ReadString(schemas.Authorizers_position, v.Position)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetAuthorizersMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetAuthorizers{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetAuthorizers, schemas.GetAuthorizersRequest, schemas.Authorizers)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetAuthorizers{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetAuthorizers, schemas.GetAuthorizersRequest, schemas.Authorizers), output: &GetAuthorizersOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetAuthorizersValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetAuthorizers"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

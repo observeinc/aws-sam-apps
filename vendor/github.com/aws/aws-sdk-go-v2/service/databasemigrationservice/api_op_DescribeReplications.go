@@ -5,9 +5,10 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Provides details on replication progress by returning status information for
@@ -47,6 +48,22 @@ type DescribeReplicationsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeReplicationsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeReplicationsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeReplicationsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeReplicationsMessage_Filters, v.Filters)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeReplicationsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeReplicationsMessage_MaxRecords, *v.MaxRecords)
+	}
+}
+
 type DescribeReplicationsOutput struct {
 
 	// An optional pagination token provided by a previous request. If this parameter
@@ -63,44 +80,51 @@ type DescribeReplicationsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeReplicationsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeReplicationsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeReplicationsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeReplicationsResponse_Marker, *v.Marker)
+	}
+	serializeReplicationList(s, schemas.DescribeReplicationsResponse_Replications, v.Replications)
+}
+func (v *DescribeReplicationsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeReplicationsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeReplicationsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeReplicationsResponse_Marker, v.Marker)
+		case schemas.DescribeReplicationsResponse_Replications:
+			return deserializeReplicationList(d, schemas.DescribeReplicationsResponse_Replications, &v.Replications)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeReplicationsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeReplications{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeReplications, schemas.DescribeReplicationsMessage, schemas.DescribeReplicationsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeReplications{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeReplications, schemas.DescribeReplicationsMessage, schemas.DescribeReplicationsResponse), output: &DescribeReplicationsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeReplicationsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeReplications"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

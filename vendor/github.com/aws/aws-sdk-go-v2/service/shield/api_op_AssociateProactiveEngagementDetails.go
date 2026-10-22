@@ -4,9 +4,10 @@ package shield
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/shield/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/shield/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Initializes proactive engagement and sets the list of contacts for the Shield
@@ -59,6 +60,16 @@ type AssociateProactiveEngagementDetailsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssociateProactiveEngagementDetailsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssociateProactiveEngagementDetailsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssociateProactiveEngagementDetailsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeEmergencyContactList(s, schemas.AssociateProactiveEngagementDetailsRequest_EmergencyContactList, v.EmergencyContactList)
+}
+
 type AssociateProactiveEngagementDetailsOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -66,44 +77,42 @@ type AssociateProactiveEngagementDetailsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssociateProactiveEngagementDetailsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssociateProactiveEngagementDetailsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssociateProactiveEngagementDetailsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *AssociateProactiveEngagementDetailsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AssociateProactiveEngagementDetailsResponse, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationAssociateProactiveEngagementDetailsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpAssociateProactiveEngagementDetails{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssociateProactiveEngagementDetails, schemas.AssociateProactiveEngagementDetailsRequest, schemas.AssociateProactiveEngagementDetailsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpAssociateProactiveEngagementDetails{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssociateProactiveEngagementDetails, schemas.AssociateProactiveEngagementDetailsRequest, schemas.AssociateProactiveEngagementDetailsResponse), output: &AssociateProactiveEngagementDetailsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAssociateProactiveEngagementDetailsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "AssociateProactiveEngagementDetails"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

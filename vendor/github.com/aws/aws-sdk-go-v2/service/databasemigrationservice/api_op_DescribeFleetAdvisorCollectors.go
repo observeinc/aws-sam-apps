@@ -5,9 +5,10 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 //	End of support notice: On May 20, 2026, Amazon Web Services will end support
@@ -60,6 +61,22 @@ type DescribeFleetAdvisorCollectorsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeFleetAdvisorCollectorsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeFleetAdvisorCollectorsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeFleetAdvisorCollectorsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeFleetAdvisorCollectorsRequest_Filters, v.Filters)
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeFleetAdvisorCollectorsRequest_MaxRecords, *v.MaxRecords)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeFleetAdvisorCollectorsRequest_NextToken, *v.NextToken)
+	}
+}
+
 type DescribeFleetAdvisorCollectorsOutput struct {
 
 	// Provides descriptions of the Fleet Advisor collectors, including the
@@ -78,44 +95,51 @@ type DescribeFleetAdvisorCollectorsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeFleetAdvisorCollectorsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeFleetAdvisorCollectorsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeFleetAdvisorCollectorsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeCollectorResponses(s, schemas.DescribeFleetAdvisorCollectorsResponse_Collectors, v.Collectors)
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeFleetAdvisorCollectorsResponse_NextToken, *v.NextToken)
+	}
+}
+func (v *DescribeFleetAdvisorCollectorsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeFleetAdvisorCollectorsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeFleetAdvisorCollectorsResponse_Collectors:
+			return deserializeCollectorResponses(d, schemas.DescribeFleetAdvisorCollectorsResponse_Collectors, &v.Collectors)
+		case schemas.DescribeFleetAdvisorCollectorsResponse_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.DescribeFleetAdvisorCollectorsResponse_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeFleetAdvisorCollectorsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeFleetAdvisorCollectors{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeFleetAdvisorCollectors, schemas.DescribeFleetAdvisorCollectorsRequest, schemas.DescribeFleetAdvisorCollectorsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeFleetAdvisorCollectors{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeFleetAdvisorCollectors, schemas.DescribeFleetAdvisorCollectorsRequest, schemas.DescribeFleetAdvisorCollectorsResponse), output: &DescribeFleetAdvisorCollectorsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeFleetAdvisorCollectorsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeFleetAdvisorCollectors"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

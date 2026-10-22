@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 //	Returns information about the bandwidth rate limit schedule of a gateway. By
@@ -55,6 +56,18 @@ type DescribeBandwidthRateLimitScheduleInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeBandwidthRateLimitScheduleInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeBandwidthRateLimitScheduleInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeBandwidthRateLimitScheduleInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.DescribeBandwidthRateLimitScheduleInput_GatewayARN, *v.GatewayARN)
+	}
+}
+
 type DescribeBandwidthRateLimitScheduleOutput struct {
 
 	//  An array that contains the bandwidth rate limit intervals for a tape or volume
@@ -71,44 +84,51 @@ type DescribeBandwidthRateLimitScheduleOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeBandwidthRateLimitScheduleOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeBandwidthRateLimitScheduleOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeBandwidthRateLimitScheduleOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeBandwidthRateLimitIntervals(s, schemas.DescribeBandwidthRateLimitScheduleOutput_BandwidthRateLimitIntervals, v.BandwidthRateLimitIntervals)
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.DescribeBandwidthRateLimitScheduleOutput_GatewayARN, *v.GatewayARN)
+	}
+}
+func (v *DescribeBandwidthRateLimitScheduleOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeBandwidthRateLimitScheduleOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeBandwidthRateLimitScheduleOutput_BandwidthRateLimitIntervals:
+			return deserializeBandwidthRateLimitIntervals(d, schemas.DescribeBandwidthRateLimitScheduleOutput_BandwidthRateLimitIntervals, &v.BandwidthRateLimitIntervals)
+		case schemas.DescribeBandwidthRateLimitScheduleOutput_GatewayARN:
+			v.GatewayARN = new(string)
+			return d.ReadString(schemas.DescribeBandwidthRateLimitScheduleOutput_GatewayARN, v.GatewayARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeBandwidthRateLimitScheduleMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeBandwidthRateLimitSchedule{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeBandwidthRateLimitSchedule, schemas.DescribeBandwidthRateLimitScheduleInput, schemas.DescribeBandwidthRateLimitScheduleOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeBandwidthRateLimitSchedule{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeBandwidthRateLimitSchedule, schemas.DescribeBandwidthRateLimitScheduleInput, schemas.DescribeBandwidthRateLimitScheduleOutput), output: &DescribeBandwidthRateLimitScheduleOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeBandwidthRateLimitScheduleValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeBandwidthRateLimitSchedule"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
