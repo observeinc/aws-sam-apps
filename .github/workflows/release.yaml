@@ -14,7 +14,8 @@ on:
       skip_regions:
         type: string
         description: 'Space-separated list of regions to skip'
-        default: ''
+        # me-south-1 S3 endpoints unreachable since 2026-10-22; remove once the region recovers.
+        default: 'me-south-1'
  
 jobs:
   version:
