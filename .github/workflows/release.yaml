@@ -31,7 +31,7 @@ jobs:
 
     - name: dryrun
       id: dryrun
-      uses: cycjimmy/semantic-release-action@v6
+      uses: cycjimmy/semantic-release-action@v8
       with:
         dry_run: true
       env:
@@ -103,7 +103,7 @@ jobs:
 
     - name: Cut release
       id: release
-      uses: cycjimmy/semantic-release-action@v6
+      uses: cycjimmy/semantic-release-action@v8
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
