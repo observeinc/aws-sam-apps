@@ -19,6 +19,7 @@ The Observe stack provisions the following components:
     - b) a [LogWriter stack](logwriter.md) is responsible for writing CloudWatch Logs data to S3,
     - c) a [Config stack](config.md) is responsible for setting up AWS Config to write snapshots to S3 and stream changes to SNS.
     - d) an [ExternalRole stack](externalrole.md) is responsible for allowing Observe to poll metrics from CloudWatch.
+    - e) an [X-Ray poller](xraypoller.md) is responsible for reading managed-service traces from the X-Ray API and posting them to Observe as OTLP spans. It is off unless `EnableXRayPoller` is `true`.
 
 ## Template Configuration
 
@@ -57,9 +58,14 @@ The Observe stack provisions the following components:
 | `MetricTagLambdaS3Key`           | String             | S3 key for the MetricTag Lambda ZIP. Embedded in released templates.                                                                                                                                                                                                                                 |
 | `EnableMetricTag`                | String             | Enable the metrictag Lambda as a Firehose data transformation that enriches CloudWatch metric stream records with AWS resource tags. Allowed values: `true`, `false`, or blank. Default: `false`. A blank value is treated as `false`.                                                              |
 | `MetricTagResourceCacheTTLSeconds` | String           | How long (in seconds) the metrictag Lambda caches tagged resource lists per namespace/region. Set to 0 to disable caching. Default: 600. Accepts a non-negative integer or a blank value; blank uses the default (600).                                                                             |
+| `XRayPollerLambdaS3Key`          | String             | S3 key for the X-Ray poller Lambda ZIP. Embedded in released templates.                                                                                                                                                                                                                              |
+| `EnableXRayPoller`               | String             | Deploy the X-Ray poller. Allowed values: `true`, `false`, or blank. Default: `false`. A blank value is treated as `false`. This does not turn X-Ray on for API Gateway or any other service. See [X-Ray poller](xraypoller.md).                                                                       |
+| `XRayPollIntervalMinutes`        | Number             | How often the X-Ray poller runs. Allowed values: `1`, `2`, `5`. Default: `1`. Used only when `EnableXRayPoller` is `true`.                                                                                                                                                                            |
+| `XRayFilterExpression`           | String             | X-Ray `GetTraceSummaries` filter. Default: `service(id(type: "AWS::ApiGateway::Stage"))`. An empty string reads every trace in the region. Used only when `EnableXRayPoller` is `true`.                                                                                                                |
+| `ObserveIngestToken`             | String             | Long-lived ingest token secret for the X-Ray poller. Required when `EnableXRayPoller` is `true`. The nested stack stores it in Secrets Manager. Revoke it from the Observe ingest-token page.                                                                                                         |
 
 
-Released artifacts set defaults for the Lambda ZIP parameters so nested **logwriter**, **metricstream**, and **externalrole** stacks receive valid `Code` locations without extra console input.
+Released artifacts set defaults for the Lambda ZIP parameters so nested **logwriter**, **metricstream**, **externalrole**, and **xraypoller** stacks receive valid `Code` locations without extra console input.
 
 ### Outputs
 
@@ -80,3 +86,5 @@ Released artifacts set defaults for the Lambda ZIP parameters so nested **logwri
 | SubscriberLogGroupName        | LogWriter Subscriber Log Group Name. This log group contains useful information for debugging the Subscriber function.                                                           |
 | MetricTagFunctionArn          | MetricTag Lambda ARN used as the Firehose data transformation processor. Only present when EnableMetricTag is set to `true`.                                                     |
 | PollerRoleArn                 | IAM role ARN in the customer account that Observe assumes to poll CloudWatch metrics (metrics poller / pull mode). Only present when the metrics poller nested stack is enabled. |
+| XRayPollerFunctionArn         | X-Ray poller Lambda ARN. Only present when `EnableXRayPoller` is `true`.                                                                                                         |
+| XRayPollerLogGroupName        | Log group for the X-Ray poller. Only present when `EnableXRayPoller` is `true`.                                                                                                  |

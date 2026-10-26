@@ -116,6 +116,7 @@ Each SAM application has its own documentation, providing specific details and u
 - [MetricStream](docs/metricstream.md)
 - [LogWriter](docs/logwriter.md)
 - [ExternalRole](docs/externalrole.md)
+- [X-Ray poller](docs/xraypoller.md)
 - [Config](docs/config.md)
 - [ConfigSubscription](docs/configsubscription.md)
 

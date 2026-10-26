@@ -6,7 +6,7 @@ SAM_APPS         := config configsubscription forwarder stack
 
 # Apps that go through sam build/package but don't use the SAM transform.
 # These are plain CloudFormation templates validated with cfn-lint.
-CFN_APPS         := logwriter metricstream externalrole
+CFN_APPS         := logwriter metricstream externalrole xraypoller
 
 # Stackset wrapper templates -- static YAML, no build/package step needed.
 STACKSET_APPS    := $(filter %-stackset,$(APPS))
@@ -54,7 +54,7 @@ OS              := $(if $(GOOS),$(GOOS),linux)
 ARCH            := $(if $(GOARCH),$(GOARCH),arm64)
 
 # Names of binaries to compile as lambda functions
-GO_BINS         := forwarder subscriber metricsconfigurator pollerconfigurator metrictag
+GO_BINS         := forwarder subscriber metricsconfigurator pollerconfigurator metrictag xraypoller
 # Directories that we need created to build/test.
 GO_BUILD_DIRS   := bin/$(OS)_$(ARCH)                   \
                 .go/bin/$(OS)_$(ARCH)               \
@@ -74,13 +74,14 @@ SAM_BUILD_DIR    ?= .aws-sam/build
 # Lambda binaries that need to be zipped and uploaded separately (not handled
 # by SAM's native packaging because these templates use AWS::Lambda::Function).
 LAMBDA_ZIP_DIR   := $(SAM_BUILD_DIR)/lambda-zips
-LAMBDA_ZIP_BINS  := subscriber metricsconfigurator pollerconfigurator metrictag
+LAMBDA_ZIP_BINS  := subscriber metricsconfigurator pollerconfigurator metrictag xraypoller
 
 # Per-app mapping: which Lambda ZIPs does each app need?
 LAMBDA_ZIPS_logwriter     := subscriber
 LAMBDA_ZIPS_metricstream  := metricsconfigurator metrictag
 LAMBDA_ZIPS_externalrole  := pollerconfigurator
-LAMBDA_ZIPS_stack         := subscriber metricsconfigurator pollerconfigurator metrictag
+LAMBDA_ZIPS_xraypoller    := xraypoller
+LAMBDA_ZIPS_stack         := subscriber metricsconfigurator pollerconfigurator metrictag xraypoller
 SAM_CONFIG_FILE  ?= $(shell pwd)/samconfig.yaml
 SAM_CONFIG_ENV   ?= default
 

@@ -68,6 +68,8 @@ github.com/aws/aws-sdk-go-v2/service/sns v1.39.17 h1:synXIPC/L4Cc489P0XDcrVJzHSL
 github.com/aws/aws-sdk-go-v2/service/sns v1.39.17/go.mod h1:4ABZnI23uNK37waIjGwkubnCwGhepIt9x1GvASfljJA=
 github.com/aws/aws-sdk-go-v2/service/sqs v1.44.0 h1:6DQ95Zq5xPUSYm6KWcrar7zvreqAMFmyynYCcmzv6yc=
 github.com/aws/aws-sdk-go-v2/service/sqs v1.44.0/go.mod h1:d7eKytKiwDFJeNAP4VWo47VCiNM9z539tkoCGJ6PjXw=
+github.com/aws/aws-sdk-go-v2/service/ssm v1.66.0 h1:45VTQmiADmmooUvYSCiMvoDCln0FBxAEfmj7HDFTa3w=
+github.com/aws/aws-sdk-go-v2/service/ssm v1.66.0/go.mod h1:L5XWT5tckol5yKkYc8O2+jZBZgF/tFzVQ5QE00PJUjU=
 github.com/aws/aws-sdk-go-v2/service/sso v1.31.4 h1:i465b/3c7xJd++pobNIDOggouekCuiWOnB0goQJy+94=
 github.com/aws/aws-sdk-go-v2/service/sso v1.31.4/go.mod h1:Lk7PlmoTYryQmyBG0EXqj5BcUbj3whXdU2s3yGI3EAc=
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.7 h1:xbmJAnBbyYPkTzoCNCF/bpJ6ymQHRdXX1vquYfDIGYk=
@@ -76,6 +78,8 @@ github.com/aws/aws-sdk-go-v2/service/storagegateway v1.44.4 h1:3kX7PMC8wp/t15MVR
 github.com/aws/aws-sdk-go-v2/service/storagegateway v1.44.4/go.mod h1:N+vEdNSV9fa48/Zt3949j9bWqfaPwhzBk+QV1Xt+3zw=
 github.com/aws/aws-sdk-go-v2/service/sts v1.43.4 h1:Np0vmL7op0Zs5xGacYMMX3v5O5pvZ46xhb5LwDgPj8M=
 github.com/aws/aws-sdk-go-v2/service/sts v1.43.4/go.mod h1:r8wkDOuLaaMFqFiYAb8dGY2A3gJCOujMc6CFOVC4Zhc=
+github.com/aws/aws-sdk-go-v2/service/xray v1.37.0 h1:qrwRLoRYEEfaY9H2FBH+8ofbfiQB2KSivhVwPPuLEdM=
+github.com/aws/aws-sdk-go-v2/service/xray v1.37.0/go.mod h1:O/8WNZ4oyLsMcGwIE4g85RPI9OyFdpaobx65zYebErQ=
 github.com/aws/smithy-go v1.27.3 h1:F3Zb497UhhskkfpJmfkXswyo+t0sh9OTBnIHjogWbVY=
 github.com/aws/smithy-go v1.27.3/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=

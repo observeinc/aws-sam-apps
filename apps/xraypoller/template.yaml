@@ -1,0 +1,220 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Poll AWS X-Ray for traces from managed services and forward them to Observe
+  as OTLP spans.
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - W1030
+        - W1031
+  AWS::ServerlessRepo::Application:
+    Name: observe-xray-poller
+    Description: Poll AWS X-Ray and forward traces to Observe.
+    Author: Observe Inc
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    HomePageUrl: https://github.com/observeinc/aws-sam-apps
+    SemanticVersion: '0.0.1'
+    SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
+
+Parameters:
+  ObserveCustomerId:
+    Type: String
+    Description: Observe customer id used in the collect hostname.
+    AllowedPattern: '^\d+$'
+  ObserveDomainName:
+    Type: String
+    Description: >-
+      Observe domain name, for example observeinc.com. The poller posts to
+      https://<customer>.collect.<domain>/v2/otel/v1/traces.
+    AllowedPattern: '^[A-Za-z0-9.-]+$'
+  ObserveIngestToken:
+    Type: String
+    NoEcho: true
+    AllowedPattern: '^.+$'
+    Description: >-
+      Long-lived ingest token secret associated with the collection datastream.
+      Stored in Secrets Manager. The Lambda reads it at runtime; it is not left
+      in the function environment. Revoke it from the Observe ingest-token page.
+  PollIntervalMinutes:
+    Type: Number
+    Default: 1
+    AllowedValues: [1, 2, 5]
+    Description: How often, in minutes, to poll X-Ray.
+  FilterExpression:
+    Type: String
+    Default: 'service(id(type: "AWS::ApiGateway::Stage"))'
+    Description: >-
+      X-Ray GetTraceSummaries filter. The default keeps API Gateway traces.
+      Set this to an empty string to read every trace in the region. HTTP APIs
+      (API Gateway v2) do not emit X-Ray.
+  LambdaS3BucketPrefix:
+    Type: String
+    Description: >-
+      S3 bucket name prefix for the poller Lambda ZIP. The bucket is
+      {prefix}-{region}.
+    Default: ''
+  LambdaS3Key:
+    Type: String
+    Description: S3 key for the poller Lambda ZIP.
+    Default: ''
+  PermissionsBoundary:
+    Type: String
+    Description: >-
+      Optional IAM permissions boundary ARN applied to the poller role. Leave
+      empty to not apply a boundary.
+    Default: ""
+    AllowedPattern: "^(arn:aws:iam::(aws|[0-9]{12}):policy/.+)?$"
+
+Conditions:
+  HasPermissionsBoundary: !Not
+    - !Equals
+      - !Ref PermissionsBoundary
+      - ""
+  OneMinuteInterval: !Equals
+    - !Ref PollIntervalMinutes
+    - 1
+
+Resources:
+  PollerDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+  CursorParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/observe/${AWS::StackName}/xray-poller/cursor"
+      Type: String
+      Value: "0"
+      Description: End time of the last X-Ray window successfully forwarded.
+  IngestTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "observe-xray-ingest-token-${AWS::StackName}"
+      Description: Observe ingest token used by the X-Ray poller.
+      SecretString: !Ref ObserveIngestToken
+  PollerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 365
+  PollerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt PollerLogGroup.Arn
+                  - !Sub "${PollerLogGroup.Arn}:*"
+        - PolicyName: xray-read
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:GetTraceSummaries
+                  - xray:BatchGetTraces
+                Resource: "*"
+        - PolicyName: cursor
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/observe/${AWS::StackName}/xray-poller/cursor"
+        - PolicyName: ingest-token
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref IngestTokenSecret
+        - PolicyName: dlq
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt PollerDLQ.Arn
+  PollerFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: PollerLogGroup
+    Properties:
+      Role: !GetAtt PollerRole.Arn
+      Code:
+        S3Bucket: !Sub "${LambdaS3BucketPrefix}-${AWS::Region}"
+        S3Key: !Ref LambdaS3Key
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Timeout: 180
+      MemorySize: 256
+      ReservedConcurrentExecutions: 1
+      DeadLetterConfig:
+        TargetArn: !GetAtt PollerDLQ.Arn
+      LoggingConfig:
+        LogGroup: !Ref PollerLogGroup
+      Environment:
+        Variables:
+          OBSERVE_CUSTOMER_ID: !Ref ObserveCustomerId
+          OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
+          OBSERVE_INGEST_TOKEN_SECRET_ID: !Ref IngestTokenSecret
+          FILTER_EXPRESSION: !Ref FilterExpression
+          CURSOR_PARAMETER_NAME: !Sub "/observe/${AWS::StackName}/xray-poller/cursor"
+          SAFETY_LAG_SECONDS: "90"
+          INITIAL_LOOKBACK_SECONDS: "60"
+          MAX_WINDOW_SECONDS: "900"
+          VERBOSITY: "1"
+  PollerSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: !If
+        - OneMinuteInterval
+        - !Sub "rate(${PollIntervalMinutes} minute)"
+        - !Sub "rate(${PollIntervalMinutes} minutes)"
+      State: ENABLED
+      Targets:
+        - Id: Poller
+          Arn: !GetAtt PollerFunction.Arn
+  PollerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PollerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PollerSchedule.Arn
+
+Outputs:
+  FunctionArn:
+    Description: X-Ray poller Lambda ARN.
+    Value: !GetAtt PollerFunction.Arn
+  LogGroupName:
+    Description: Log group for the X-Ray poller Lambda.
+    Value: !Ref PollerLogGroup
+  QueueArn:
+    Description: Dead-letter queue for failed poller invocations.
+    Value: !GetAtt PollerDLQ.Arn

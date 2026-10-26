@@ -169,7 +169,7 @@ lambda-zips: # @HELP build Lambda ZIP archives for non-SAM-managed functions.
 lambda-zips: $(LAMBDA_ZIP_TARGETS)
 
 # Add lambda-zips dependency for apps that need Lambda ZIPs
-$(foreach app,logwriter metricstream externalrole stack, \
+$(foreach app,logwriter metricstream externalrole xraypoller stack, \
   $(foreach region,$(AWS_REGIONS), \
     $(eval $(SAM_BUILD_DIR)/regions/$(region)/$(app).yaml: $(LAMBDA_ZIP_TARGETS)) \
   ) \
@@ -257,6 +257,7 @@ $(SAM_PACKAGE_TEMPLATES): | $(SAM_PACKAGE_DIRS)
 	        metricsconfigurator)  DEFAULTS="$${DEFAULTS} MetricsConfiguratorLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
 	        pollerconfigurator)   DEFAULTS="$${DEFAULTS} PollerConfiguratorLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
 	        metrictag)            DEFAULTS="$${DEFAULTS} MetricTagLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
+	        xraypoller)           DEFAULTS="$${DEFAULTS} XRayPollerLambdaS3Key=aws-sam-apps/$(VERSION)/$${bin}.zip" ;; \
 	      esac; \
 	    done; \
 	  elif [ "$${APP}" = "metricstream" ]; then \
