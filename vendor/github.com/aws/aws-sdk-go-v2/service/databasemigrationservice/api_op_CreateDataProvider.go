@@ -4,13 +4,18 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a data provider using the provided settings. A data provider stores a
 // data store type and location information about your database.
+//
+// Required permissions: dms:CreateDataProvider . For more information, see [Actions, resources, and condition keys for Database Migration Service].
+//
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
 func (c *Client) CreateDataProvider(ctx context.Context, params *CreateDataProviderInput, optFns ...func(*Options)) (*CreateDataProviderOutput, error) {
 	if params == nil {
 		params = &CreateDataProviderInput{}
@@ -28,10 +33,11 @@ func (c *Client) CreateDataProvider(ctx context.Context, params *CreateDataProvi
 
 type CreateDataProviderInput struct {
 
-	// The type of database engine for the data provider. Valid values include "aurora"
-	// , "aurora-postgresql" , "mysql" , "oracle" , "postgres" , "sqlserver" , redshift
-	// , mariadb , mongodb , db2 , db2-zos , docdb , and sybase . A value of "aurora"
-	// represents Amazon Aurora MySQL-Compatible Edition.
+	// The type of database engine for the data provider.
+	//
+	// Valid values: aurora , aurora-postgresql , db2 , db2-zos , docdb , mariadb ,
+	// mongodb , mysql , oracle , postgres , redshift , sqlserver , and sybase . A
+	// value of aurora represents Amazon Aurora MySQL-Compatible Edition.
 	//
 	// This member is required.
 	Engine *string
@@ -56,6 +62,29 @@ type CreateDataProviderInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateDataProviderInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateDataProviderMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateDataProviderInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataProviderName != nil {
+		s.WriteString(schemas.CreateDataProviderMessage_DataProviderName, *v.DataProviderName)
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.CreateDataProviderMessage_Description, *v.Description)
+	}
+	if v.Engine != nil {
+		s.WriteString(schemas.CreateDataProviderMessage_Engine, *v.Engine)
+	}
+	serializeDataProviderSettings(s, schemas.CreateDataProviderMessage_Settings, v.Settings)
+	serializeTagList(s, schemas.CreateDataProviderMessage_Tags, v.Tags)
+	if v.Virtual != nil {
+		s.WriteBool(schemas.CreateDataProviderMessage_Virtual, *v.Virtual)
+	}
+}
+
 type CreateDataProviderOutput struct {
 
 	// The data provider that was created.
@@ -67,44 +96,50 @@ type CreateDataProviderOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateDataProviderOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateDataProviderResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateDataProviderOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataProvider != nil {
+		s.WriteStruct(schemas.CreateDataProviderResponse_DataProvider)
+		v.DataProvider.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *CreateDataProviderOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateDataProviderResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateDataProviderResponse_DataProvider:
+			v.DataProvider = &types.DataProvider{}
+			return v.DataProvider.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateDataProviderMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateDataProvider{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateDataProvider, schemas.CreateDataProviderMessage, schemas.CreateDataProviderResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateDataProvider{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateDataProvider, schemas.CreateDataProviderMessage, schemas.CreateDataProviderResponse), output: &CreateDataProviderOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateDataProviderValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateDataProvider"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

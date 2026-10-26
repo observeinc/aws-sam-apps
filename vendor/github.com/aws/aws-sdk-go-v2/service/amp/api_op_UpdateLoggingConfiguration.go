@@ -5,9 +5,10 @@ package amp
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/amp/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Updates the log group ARN or the workspace ID of the current rules and alerting
@@ -50,6 +51,40 @@ type UpdateLoggingConfigurationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateLoggingConfigurationInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateLoggingConfigurationRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateLoggingConfigurationInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ClientToken != nil {
+		s.WriteString(schemas.UpdateLoggingConfigurationRequest_clientToken, *v.ClientToken)
+	}
+	if v.LogGroupArn != nil {
+		s.WriteString(schemas.UpdateLoggingConfigurationRequest_logGroupArn, *v.LogGroupArn)
+	}
+	if v.WorkspaceId != nil {
+		s.WriteString(schemas.UpdateLoggingConfigurationRequest_workspaceId, *v.WorkspaceId)
+	}
+}
+func (v *UpdateLoggingConfigurationInput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.UpdateLoggingConfigurationRequest, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.UpdateLoggingConfigurationRequest_clientToken:
+			v.ClientToken = new(string)
+			return d.ReadString(schemas.UpdateLoggingConfigurationRequest_clientToken, v.ClientToken)
+		case schemas.UpdateLoggingConfigurationRequest_logGroupArn:
+			v.LogGroupArn = new(string)
+			return d.ReadString(schemas.UpdateLoggingConfigurationRequest_logGroupArn, v.LogGroupArn)
+		case schemas.UpdateLoggingConfigurationRequest_workspaceId:
+			v.WorkspaceId = new(string)
+			return d.ReadString(schemas.UpdateLoggingConfigurationRequest_workspaceId, v.WorkspaceId)
+		}
+		return nil
+	})
+}
+
 // Represents the output of an UpdateLoggingConfiguration operation.
 type UpdateLoggingConfigurationOutput struct {
 
@@ -64,35 +99,44 @@ type UpdateLoggingConfigurationOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateLoggingConfigurationOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateLoggingConfigurationResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateLoggingConfigurationOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Status != nil {
+		s.WriteStruct(schemas.UpdateLoggingConfigurationResponse_status)
+		v.Status.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *UpdateLoggingConfigurationOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.UpdateLoggingConfigurationResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.UpdateLoggingConfigurationResponse_status:
+			v.Status = &types.LoggingConfigurationStatus{}
+			return v.Status.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationUpdateLoggingConfigurationMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpUpdateLoggingConfiguration{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateLoggingConfiguration, schemas.UpdateLoggingConfigurationRequest, schemas.UpdateLoggingConfigurationResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpUpdateLoggingConfiguration{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateLoggingConfiguration, schemas.UpdateLoggingConfigurationRequest, schemas.UpdateLoggingConfigurationResponse), output: &UpdateLoggingConfigurationOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
@@ -102,9 +146,6 @@ func (c *Client) addOperationUpdateLoggingConfigurationMiddlewares(stack *middle
 		return err
 	}
 	if err = addOpUpdateLoggingConfigurationValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "UpdateLoggingConfiguration"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

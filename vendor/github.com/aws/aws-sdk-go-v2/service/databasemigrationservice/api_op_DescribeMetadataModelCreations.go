@@ -5,16 +5,26 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithytime "github.com/aws/smithy-go/time"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
 	"time"
 )
 
 // Returns a paginated list of metadata model creation requests for a migration
-// project.
+// project, initiated by [StartMetadataModelCreation].
+//
+// To cancel a queued or in-progress request, call [CancelMetadataModelCreation].
+//
+// Required permissions: dms:DescribeMetadataModelCreations . For more information,
+// see [Actions, resources, and condition keys for Database Migration Service].
+//
+// [StartMetadataModelCreation]: https://docs.aws.amazon.com/dms/latest/APIReference/API_StartMetadataModelCreation.html
+// [CancelMetadataModelCreation]: https://docs.aws.amazon.com/dms/latest/APIReference/API_CancelMetadataModelCreation.html
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
 func (c *Client) DescribeMetadataModelCreations(ctx context.Context, params *DescribeMetadataModelCreationsInput, optFns ...func(*Options)) (*DescribeMetadataModelCreationsOutput, error) {
 	if params == nil {
 		params = &DescribeMetadataModelCreationsInput{}
@@ -37,33 +47,68 @@ type DescribeMetadataModelCreationsInput struct {
 	// This member is required.
 	MigrationProjectIdentifier *string
 
-	// Filters applied to the metadata model creation requests described in the form
-	// of key-value pairs. The supported filters are request-id and status.
+	// The filters to apply to the metadata model creation requests.
+	//
+	// The following filter names are supported:
+	//
+	//   - request-id – The request identifier.
+	//
+	//   - status – The request status. Valid values: RECEIVED , IN_PROGRESS , SUCCESS
+	//   , FAILED , CANCELING , CANCELED .
 	Filters []types.Filter
 
 	// Specifies the unique pagination token that makes it possible to display the
-	// next page of metadata model creation requests. If Marker is returned by a
-	// previous response, there are more metadata model creation requests available.
+	// next page of results. If this parameter is specified, the response includes only
+	// records beyond the marker, up to the value specified by MaxRecords .
+	//
+	// If Marker is returned by a previous response, there are more results available.
+	// The value of Marker is a unique pagination token for each page. To retrieve the
+	// next page, make the call again using the returned token and keeping all other
+	// arguments unchanged.
 	Marker *string
 
-	// The maximum number of metadata model creation requests to include in the
-	// response. If more requests exist than the specified MaxRecords value, a
-	// pagination token is provided in the response so that you can retrieve the
-	// remaining results.
+	// The maximum number of records to include in the response. If more records exist
+	// than the specified MaxRecords value, DMS includes a pagination token in the
+	// response so that you can retrieve the remaining results.
 	MaxRecords *int32
 
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeMetadataModelCreationsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeMetadataModelCreationsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeMetadataModelCreationsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeMetadataModelCreationsMessage_Filters, v.Filters)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeMetadataModelCreationsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeMetadataModelCreationsMessage_MaxRecords, *v.MaxRecords)
+	}
+	if v.MigrationProjectIdentifier != nil {
+		s.WriteString(schemas.DescribeMetadataModelCreationsMessage_MigrationProjectIdentifier, *v.MigrationProjectIdentifier)
+	}
+}
+
 type DescribeMetadataModelCreationsOutput struct {
 
 	// Specifies the unique pagination token that makes it possible to display the
-	// next page of metadata model creation requests. If Marker is returned, there are
-	// more metadata model creation requests available.
+	// next page of results. If this parameter is specified, the response includes only
+	// records beyond the marker, up to the value specified by MaxRecords .
+	//
+	// If Marker is returned by a previous response, there are more results available.
+	// The value of Marker is a unique pagination token for each page. To retrieve the
+	// next page, make the call again using the returned token and keeping all other
+	// arguments unchanged.
 	Marker *string
 
-	// A list of metadata model creation requests. The ExportSqlDetails field will
-	// never be populated for the DescribeMetadataModelCreations operation.
+	// A paginated list of metadata model creation requests.
+	//
+	// DMS never populates the ExportSqlDetails field for this operation.
 	Requests []types.SchemaConversionRequest
 
 	// Metadata pertaining to the operation's result.
@@ -72,44 +117,51 @@ type DescribeMetadataModelCreationsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeMetadataModelCreationsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeMetadataModelCreationsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeMetadataModelCreationsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeMetadataModelCreationsResponse_Marker, *v.Marker)
+	}
+	serializeSchemaConversionRequestList(s, schemas.DescribeMetadataModelCreationsResponse_Requests, v.Requests)
+}
+func (v *DescribeMetadataModelCreationsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeMetadataModelCreationsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeMetadataModelCreationsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeMetadataModelCreationsResponse_Marker, v.Marker)
+		case schemas.DescribeMetadataModelCreationsResponse_Requests:
+			return deserializeSchemaConversionRequestList(d, schemas.DescribeMetadataModelCreationsResponse_Requests, &v.Requests)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeMetadataModelCreationsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeMetadataModelCreations{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeMetadataModelCreations, schemas.DescribeMetadataModelCreationsMessage, schemas.DescribeMetadataModelCreationsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeMetadataModelCreations{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeMetadataModelCreations, schemas.DescribeMetadataModelCreationsMessage, schemas.DescribeMetadataModelCreationsResponse), output: &DescribeMetadataModelCreationsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeMetadataModelCreationsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeMetadataModelCreations"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -562,10 +614,9 @@ func metadataModelCreationCancelledStateRetryable(ctx context.Context, input *De
 // DescribeMetadataModelCreationsPaginatorOptions is the paginator options for
 // DescribeMetadataModelCreations
 type DescribeMetadataModelCreationsPaginatorOptions struct {
-	// The maximum number of metadata model creation requests to include in the
-	// response. If more requests exist than the specified MaxRecords value, a
-	// pagination token is provided in the response so that you can retrieve the
-	// remaining results.
+	// The maximum number of records to include in the response. If more records exist
+	// than the specified MaxRecords value, DMS includes a pagination token in the
+	// response so that you can retrieve the remaining results.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token

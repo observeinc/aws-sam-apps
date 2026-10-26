@@ -5,16 +5,23 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithytime "github.com/aws/smithy-go/time"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
 	"time"
 )
 
-// Returns a paginated list of metadata model assessments for your account in the
-// current region.
+// Returns a paginated list of metadata model assessment requests for a migration
+// project, initiated by [StartMetadataModelAssessment].
+//
+// Required permissions: dms:ListMetadataModelAssessments . For more information,
+// see [Actions, resources, and condition keys for Database Migration Service].
+//
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
+// [StartMetadataModelAssessment]: https://docs.aws.amazon.com/dms/latest/APIReference/API_StartMetadataModelAssessment.html
 func (c *Client) DescribeMetadataModelAssessments(ctx context.Context, params *DescribeMetadataModelAssessmentsInput, optFns ...func(*Options)) (*DescribeMetadataModelAssessmentsOutput, error) {
 	if params == nil {
 		params = &DescribeMetadataModelAssessmentsInput{}
@@ -32,13 +39,19 @@ func (c *Client) DescribeMetadataModelAssessments(ctx context.Context, params *D
 
 type DescribeMetadataModelAssessmentsInput struct {
 
-	// The name or Amazon Resource Name (ARN) of the migration project.
+	// The migration project name or Amazon Resource Name (ARN).
 	//
 	// This member is required.
 	MigrationProjectIdentifier *string
 
-	// Filters applied to the metadata model assessments described in the form of
-	// key-value pairs.
+	// The filters to apply to the metadata model assessment requests.
+	//
+	// The following filter names are supported:
+	//
+	//   - request-id – The request identifier.
+	//
+	//   - status – The request status. Valid values: RECEIVED , IN_PROGRESS , SUCCESS
+	//   , FAILED .
 	Filters []types.Filter
 
 	// Specifies the unique pagination token that makes it possible to display the
@@ -59,6 +72,25 @@ type DescribeMetadataModelAssessmentsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeMetadataModelAssessmentsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeMetadataModelAssessmentsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeMetadataModelAssessmentsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeMetadataModelAssessmentsMessage_Filters, v.Filters)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeMetadataModelAssessmentsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeMetadataModelAssessmentsMessage_MaxRecords, *v.MaxRecords)
+	}
+	if v.MigrationProjectIdentifier != nil {
+		s.WriteString(schemas.DescribeMetadataModelAssessmentsMessage_MigrationProjectIdentifier, *v.MigrationProjectIdentifier)
+	}
+}
+
 type DescribeMetadataModelAssessmentsOutput struct {
 
 	// Specifies the unique pagination token that makes it possible to display the
@@ -71,8 +103,9 @@ type DescribeMetadataModelAssessmentsOutput struct {
 	// arguments unchanged.
 	Marker *string
 
-	// A paginated list of metadata model assessments for the specified migration
-	// project.
+	// A paginated list of metadata model assessment requests.
+	//
+	// DMS never populates the ExportSqlDetails field for this operation.
 	Requests []types.SchemaConversionRequest
 
 	// Metadata pertaining to the operation's result.
@@ -81,44 +114,51 @@ type DescribeMetadataModelAssessmentsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeMetadataModelAssessmentsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeMetadataModelAssessmentsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeMetadataModelAssessmentsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeMetadataModelAssessmentsResponse_Marker, *v.Marker)
+	}
+	serializeSchemaConversionRequestList(s, schemas.DescribeMetadataModelAssessmentsResponse_Requests, v.Requests)
+}
+func (v *DescribeMetadataModelAssessmentsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeMetadataModelAssessmentsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeMetadataModelAssessmentsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeMetadataModelAssessmentsResponse_Marker, v.Marker)
+		case schemas.DescribeMetadataModelAssessmentsResponse_Requests:
+			return deserializeSchemaConversionRequestList(d, schemas.DescribeMetadataModelAssessmentsResponse_Requests, &v.Requests)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeMetadataModelAssessmentsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeMetadataModelAssessments{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeMetadataModelAssessments, schemas.DescribeMetadataModelAssessmentsMessage, schemas.DescribeMetadataModelAssessmentsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeMetadataModelAssessments{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeMetadataModelAssessments, schemas.DescribeMetadataModelAssessmentsMessage, schemas.DescribeMetadataModelAssessmentsResponse), output: &DescribeMetadataModelAssessmentsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeMetadataModelAssessmentsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeMetadataModelAssessments"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

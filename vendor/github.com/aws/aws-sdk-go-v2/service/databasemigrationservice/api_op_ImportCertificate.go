@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Uploads the specified certificate.
@@ -60,6 +61,28 @@ type ImportCertificateInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ImportCertificateInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ImportCertificateMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ImportCertificateInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CertificateIdentifier != nil {
+		s.WriteString(schemas.ImportCertificateMessage_CertificateIdentifier, *v.CertificateIdentifier)
+	}
+	if v.CertificatePem != nil {
+		s.WriteString(schemas.ImportCertificateMessage_CertificatePem, *v.CertificatePem)
+	}
+	if v.CertificateWallet != nil {
+		s.WriteBlob(schemas.ImportCertificateMessage_CertificateWallet, v.CertificateWallet)
+	}
+	if v.KmsKeyId != nil {
+		s.WriteString(schemas.ImportCertificateMessage_KmsKeyId, *v.KmsKeyId)
+	}
+	serializeTagList(s, schemas.ImportCertificateMessage_Tags, v.Tags)
+}
+
 type ImportCertificateOutput struct {
 
 	// The certificate to be uploaded.
@@ -71,44 +94,50 @@ type ImportCertificateOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ImportCertificateOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ImportCertificateResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ImportCertificateOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Certificate != nil {
+		s.WriteStruct(schemas.ImportCertificateResponse_Certificate)
+		v.Certificate.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *ImportCertificateOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ImportCertificateResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ImportCertificateResponse_Certificate:
+			v.Certificate = &types.Certificate{}
+			return v.Certificate.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationImportCertificateMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpImportCertificate{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ImportCertificate, schemas.ImportCertificateMessage, schemas.ImportCertificateResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpImportCertificate{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ImportCertificate, schemas.ImportCertificateMessage, schemas.ImportCertificateResponse), output: &ImportCertificateOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpImportCertificateValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ImportCertificate"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

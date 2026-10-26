@@ -5,8 +5,9 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns information about the schema for the specified endpoint.
@@ -49,6 +50,24 @@ type DescribeSchemasInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeSchemasInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeSchemasMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeSchemasInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.EndpointArn != nil {
+		s.WriteString(schemas.DescribeSchemasMessage_EndpointArn, *v.EndpointArn)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeSchemasMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeSchemasMessage_MaxRecords, *v.MaxRecords)
+	}
+}
+
 type DescribeSchemasOutput struct {
 
 	//  An optional pagination token provided by a previous request. If this parameter
@@ -65,44 +84,51 @@ type DescribeSchemasOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeSchemasOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeSchemasResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeSchemasOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeSchemasResponse_Marker, *v.Marker)
+	}
+	serializeSchemaList(s, schemas.DescribeSchemasResponse_Schemas, v.Schemas)
+}
+func (v *DescribeSchemasOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeSchemasResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeSchemasResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeSchemasResponse_Marker, v.Marker)
+		case schemas.DescribeSchemasResponse_Schemas:
+			return deserializeSchemaList(d, schemas.DescribeSchemasResponse_Schemas, &v.Schemas)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeSchemasMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeSchemas{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeSchemas, schemas.DescribeSchemasMessage, schemas.DescribeSchemasResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeSchemas{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeSchemas, schemas.DescribeSchemasMessage, schemas.DescribeSchemasResponse), output: &DescribeSchemasOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeSchemasValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeSchemas"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 //	Starts the replication task assessment for unsupported data types in the
@@ -51,6 +52,18 @@ type StartReplicationTaskAssessmentInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartReplicationTaskAssessmentInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartReplicationTaskAssessmentMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartReplicationTaskAssessmentInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationTaskArn != nil {
+		s.WriteString(schemas.StartReplicationTaskAssessmentMessage_ReplicationTaskArn, *v.ReplicationTaskArn)
+	}
+}
+
 type StartReplicationTaskAssessmentOutput struct {
 
 	//  The assessed replication task.
@@ -62,44 +75,50 @@ type StartReplicationTaskAssessmentOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartReplicationTaskAssessmentOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartReplicationTaskAssessmentResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartReplicationTaskAssessmentOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationTask != nil {
+		s.WriteStruct(schemas.StartReplicationTaskAssessmentResponse_ReplicationTask)
+		v.ReplicationTask.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *StartReplicationTaskAssessmentOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.StartReplicationTaskAssessmentResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.StartReplicationTaskAssessmentResponse_ReplicationTask:
+			v.ReplicationTask = &types.ReplicationTask{}
+			return v.ReplicationTask.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationStartReplicationTaskAssessmentMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpStartReplicationTaskAssessment{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartReplicationTaskAssessment, schemas.StartReplicationTaskAssessmentMessage, schemas.StartReplicationTaskAssessmentResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpStartReplicationTaskAssessment{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartReplicationTaskAssessment, schemas.StartReplicationTaskAssessmentMessage, schemas.StartReplicationTaskAssessmentResponse), output: &StartReplicationTaskAssessmentOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpStartReplicationTaskAssessmentValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "StartReplicationTaskAssessment"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

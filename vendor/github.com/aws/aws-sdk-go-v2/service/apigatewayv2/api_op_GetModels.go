@@ -4,9 +4,10 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets the Models for an API.
@@ -42,6 +43,24 @@ type GetModelsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetModelsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetModelsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetModelsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ApiId != nil {
+		s.WriteString(schemas.GetModelsRequest_ApiId, *v.ApiId)
+	}
+	if v.MaxResults != nil {
+		s.WriteString(schemas.GetModelsRequest_MaxResults, *v.MaxResults)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetModelsRequest_NextToken, *v.NextToken)
+	}
+}
+
 type GetModelsOutput struct {
 
 	// The elements from this collection.
@@ -57,44 +76,51 @@ type GetModelsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetModelsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetModelsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetModelsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serialize__listOfModel(s, schemas.GetModelsResponse_Items, v.Items)
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetModelsResponse_NextToken, *v.NextToken)
+	}
+}
+func (v *GetModelsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetModelsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetModelsResponse_Items:
+			return deserialize__listOfModel(d, schemas.GetModelsResponse_Items, &v.Items)
+		case schemas.GetModelsResponse_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.GetModelsResponse_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetModelsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetModels{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetModels, schemas.GetModelsRequest, schemas.GetModelsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetModels{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetModels, schemas.GetModelsRequest, schemas.GetModelsResponse), output: &GetModelsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetModelsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetModels"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

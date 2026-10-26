@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"time"
 )
 
@@ -106,6 +107,30 @@ type StartReplicationTaskInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartReplicationTaskInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartReplicationTaskMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartReplicationTaskInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CdcStartPosition != nil {
+		s.WriteString(schemas.StartReplicationTaskMessage_CdcStartPosition, *v.CdcStartPosition)
+	}
+	if v.CdcStartTime != nil {
+		s.WriteTime(schemas.StartReplicationTaskMessage_CdcStartTime, *v.CdcStartTime)
+	}
+	if v.CdcStopPosition != nil {
+		s.WriteString(schemas.StartReplicationTaskMessage_CdcStopPosition, *v.CdcStopPosition)
+	}
+	if v.ReplicationTaskArn != nil {
+		s.WriteString(schemas.StartReplicationTaskMessage_ReplicationTaskArn, *v.ReplicationTaskArn)
+	}
+	if v.StartReplicationTaskType != "" {
+		s.WriteString(schemas.StartReplicationTaskMessage_StartReplicationTaskType, string(v.StartReplicationTaskType))
+	}
+}
+
 type StartReplicationTaskOutput struct {
 
 	// The replication task started.
@@ -117,44 +142,50 @@ type StartReplicationTaskOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartReplicationTaskOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartReplicationTaskResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartReplicationTaskOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationTask != nil {
+		s.WriteStruct(schemas.StartReplicationTaskResponse_ReplicationTask)
+		v.ReplicationTask.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *StartReplicationTaskOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.StartReplicationTaskResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.StartReplicationTaskResponse_ReplicationTask:
+			v.ReplicationTask = &types.ReplicationTask{}
+			return v.ReplicationTask.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationStartReplicationTaskMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpStartReplicationTask{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartReplicationTask, schemas.StartReplicationTaskMessage, schemas.StartReplicationTaskResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpStartReplicationTask{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartReplicationTask, schemas.StartReplicationTaskMessage, schemas.StartReplicationTaskResponse), output: &StartReplicationTaskOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpStartReplicationTaskValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "StartReplicationTask"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,9 +4,10 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets a collection of Api resources.
@@ -37,6 +38,21 @@ type GetApisInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetApisInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetApisRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetApisInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.MaxResults != nil {
+		s.WriteString(schemas.GetApisRequest_MaxResults, *v.MaxResults)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetApisRequest_NextToken, *v.NextToken)
+	}
+}
+
 type GetApisOutput struct {
 
 	// The elements from this collection.
@@ -52,41 +68,48 @@ type GetApisOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetApisOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetApisResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetApisOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serialize__listOfApi(s, schemas.GetApisResponse_Items, v.Items)
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetApisResponse_NextToken, *v.NextToken)
+	}
+}
+func (v *GetApisOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetApisResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetApisResponse_Items:
+			return deserialize__listOfApi(d, schemas.GetApisResponse_Items, &v.Items)
+		case schemas.GetApisResponse_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.GetApisResponse_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetApisMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetApis{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetApis, schemas.GetApisRequest, schemas.GetApisResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetApis{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetApis, schemas.GetApisRequest, schemas.GetApisResponse), output: &GetApisOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetApis"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

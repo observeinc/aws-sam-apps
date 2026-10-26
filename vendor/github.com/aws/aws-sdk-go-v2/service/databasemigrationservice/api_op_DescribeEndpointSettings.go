@@ -5,9 +5,10 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns information about the possible endpoint settings available when you
@@ -47,6 +48,24 @@ type DescribeEndpointSettingsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEndpointSettingsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEndpointSettingsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEndpointSettingsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.EngineName != nil {
+		s.WriteString(schemas.DescribeEndpointSettingsMessage_EngineName, *v.EngineName)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeEndpointSettingsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeEndpointSettingsMessage_MaxRecords, *v.MaxRecords)
+	}
+}
+
 type DescribeEndpointSettingsOutput struct {
 
 	// Descriptions of the endpoint settings available for your source or target
@@ -64,44 +83,51 @@ type DescribeEndpointSettingsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEndpointSettingsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEndpointSettingsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEndpointSettingsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeEndpointSettingsList(s, schemas.DescribeEndpointSettingsResponse_EndpointSettings, v.EndpointSettings)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeEndpointSettingsResponse_Marker, *v.Marker)
+	}
+}
+func (v *DescribeEndpointSettingsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeEndpointSettingsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeEndpointSettingsResponse_EndpointSettings:
+			return deserializeEndpointSettingsList(d, schemas.DescribeEndpointSettingsResponse_EndpointSettings, &v.EndpointSettings)
+		case schemas.DescribeEndpointSettingsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeEndpointSettingsResponse_Marker, v.Marker)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeEndpointSettingsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeEndpointSettings{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEndpointSettings, schemas.DescribeEndpointSettingsMessage, schemas.DescribeEndpointSettingsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeEndpointSettings{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEndpointSettings, schemas.DescribeEndpointSettingsMessage, schemas.DescribeEndpointSettingsResponse), output: &DescribeEndpointSettingsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeEndpointSettingsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeEndpointSettings"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

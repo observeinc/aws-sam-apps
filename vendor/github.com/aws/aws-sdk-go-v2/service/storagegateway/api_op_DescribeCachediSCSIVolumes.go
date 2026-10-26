@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns a description of the gateway volumes specified in the request. This
@@ -42,6 +43,16 @@ type DescribeCachediSCSIVolumesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeCachediSCSIVolumesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeCachediSCSIVolumesInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeCachediSCSIVolumesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeVolumeARNs(s, schemas.DescribeCachediSCSIVolumesInput_VolumeARNs, v.VolumeARNs)
+}
+
 // A JSON object containing the following fields:
 type DescribeCachediSCSIVolumesOutput struct {
 
@@ -54,44 +65,45 @@ type DescribeCachediSCSIVolumesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeCachediSCSIVolumesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeCachediSCSIVolumesOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeCachediSCSIVolumesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeCachediSCSIVolumes(s, schemas.DescribeCachediSCSIVolumesOutput_CachediSCSIVolumes, v.CachediSCSIVolumes)
+}
+func (v *DescribeCachediSCSIVolumesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeCachediSCSIVolumesOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeCachediSCSIVolumesOutput_CachediSCSIVolumes:
+			return deserializeCachediSCSIVolumes(d, schemas.DescribeCachediSCSIVolumesOutput_CachediSCSIVolumes, &v.CachediSCSIVolumes)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeCachediSCSIVolumesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeCachediSCSIVolumes{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeCachediSCSIVolumes, schemas.DescribeCachediSCSIVolumesInput, schemas.DescribeCachediSCSIVolumesOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeCachediSCSIVolumes{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeCachediSCSIVolumes, schemas.DescribeCachediSCSIVolumesInput, schemas.DescribeCachediSCSIVolumesOutput), output: &DescribeCachediSCSIVolumesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeCachediSCSIVolumesValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeCachediSCSIVolumes"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

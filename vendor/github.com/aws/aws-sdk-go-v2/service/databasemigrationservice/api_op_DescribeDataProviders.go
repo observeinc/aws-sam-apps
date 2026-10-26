@@ -5,13 +5,18 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns a paginated list of data providers for your account in the current
 // region.
+//
+// Required permissions: dms:ListDataProviders . For more information, see [Actions, resources, and condition keys for Database Migration Service].
+//
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
 func (c *Client) DescribeDataProviders(ctx context.Context, params *DescribeDataProvidersInput, optFns ...func(*Options)) (*DescribeDataProvidersOutput, error) {
 	if params == nil {
 		params = &DescribeDataProvidersInput{}
@@ -29,10 +34,11 @@ func (c *Client) DescribeDataProviders(ctx context.Context, params *DescribeData
 
 type DescribeDataProvidersInput struct {
 
-	// Filters applied to the data providers described in the form of key-value pairs.
+	// The filters to apply to the data providers.
 	//
-	// Valid filter names and values: data-provider-identifier, data provider arn or
-	// name
+	// The following filter names are supported:
+	//
+	//   - data-provider-identifier – The data provider name or ARN.
 	Filters []types.Filter
 
 	// Specifies the unique pagination token that makes it possible to display the
@@ -51,6 +57,22 @@ type DescribeDataProvidersInput struct {
 	MaxRecords *int32
 
 	noSmithyDocumentSerde
+}
+
+func (v *DescribeDataProvidersInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeDataProvidersMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeDataProvidersInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeDataProvidersMessage_Filters, v.Filters)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeDataProvidersMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeDataProvidersMessage_MaxRecords, *v.MaxRecords)
+	}
 }
 
 type DescribeDataProvidersOutput struct {
@@ -74,44 +96,51 @@ type DescribeDataProvidersOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeDataProvidersOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeDataProvidersResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeDataProvidersOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeDataProviderList(s, schemas.DescribeDataProvidersResponse_DataProviders, v.DataProviders)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeDataProvidersResponse_Marker, *v.Marker)
+	}
+}
+func (v *DescribeDataProvidersOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeDataProvidersResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeDataProvidersResponse_DataProviders:
+			return deserializeDataProviderList(d, schemas.DescribeDataProvidersResponse_DataProviders, &v.DataProviders)
+		case schemas.DescribeDataProvidersResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeDataProvidersResponse_Marker, v.Marker)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeDataProvidersMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeDataProviders{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeDataProviders, schemas.DescribeDataProvidersMessage, schemas.DescribeDataProvidersResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeDataProviders{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeDataProviders, schemas.DescribeDataProvidersMessage, schemas.DescribeDataProvidersResponse), output: &DescribeDataProvidersOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeDataProvidersValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeDataProviders"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

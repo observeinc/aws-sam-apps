@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a replication subnet group given a list of the subnet IDs in a VPC.
@@ -69,6 +70,23 @@ type CreateReplicationSubnetGroupInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateReplicationSubnetGroupInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateReplicationSubnetGroupMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateReplicationSubnetGroupInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationSubnetGroupDescription != nil {
+		s.WriteString(schemas.CreateReplicationSubnetGroupMessage_ReplicationSubnetGroupDescription, *v.ReplicationSubnetGroupDescription)
+	}
+	if v.ReplicationSubnetGroupIdentifier != nil {
+		s.WriteString(schemas.CreateReplicationSubnetGroupMessage_ReplicationSubnetGroupIdentifier, *v.ReplicationSubnetGroupIdentifier)
+	}
+	serializeSubnetIdentifierList(s, schemas.CreateReplicationSubnetGroupMessage_SubnetIds, v.SubnetIds)
+	serializeTagList(s, schemas.CreateReplicationSubnetGroupMessage_Tags, v.Tags)
+}
+
 type CreateReplicationSubnetGroupOutput struct {
 
 	// The replication subnet group that was created.
@@ -80,44 +98,50 @@ type CreateReplicationSubnetGroupOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateReplicationSubnetGroupOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateReplicationSubnetGroupResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateReplicationSubnetGroupOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationSubnetGroup != nil {
+		s.WriteStruct(schemas.CreateReplicationSubnetGroupResponse_ReplicationSubnetGroup)
+		v.ReplicationSubnetGroup.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *CreateReplicationSubnetGroupOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateReplicationSubnetGroupResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateReplicationSubnetGroupResponse_ReplicationSubnetGroup:
+			v.ReplicationSubnetGroup = &types.ReplicationSubnetGroup{}
+			return v.ReplicationSubnetGroup.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateReplicationSubnetGroupMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateReplicationSubnetGroup{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateReplicationSubnetGroup, schemas.CreateReplicationSubnetGroupMessage, schemas.CreateReplicationSubnetGroupResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateReplicationSubnetGroup{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateReplicationSubnetGroup, schemas.CreateReplicationSubnetGroupMessage, schemas.CreateReplicationSubnetGroupResponse), output: &CreateReplicationSubnetGroupOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateReplicationSubnetGroupValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateReplicationSubnetGroup"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

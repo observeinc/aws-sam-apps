@@ -4,9 +4,10 @@ package apigateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Changes information about a model. The maximum size of the model is 400 KB.
@@ -46,6 +47,22 @@ type UpdateModelInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateModelInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateModelRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateModelInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ModelName != nil {
+		s.WriteString(schemas.UpdateModelRequest_modelName, *v.ModelName)
+	}
+	serializeListOfPatchOperation(s, schemas.UpdateModelRequest_patchOperations, v.PatchOperations)
+	if v.RestApiId != nil {
+		s.WriteString(schemas.UpdateModelRequest_restApiId, *v.RestApiId)
+	}
+}
+
 // Represents the data structure of a method's request or response payload.
 type UpdateModelOutput struct {
 
@@ -74,44 +91,72 @@ type UpdateModelOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateModelOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.Model)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateModelOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ContentType != nil {
+		s.WriteString(schemas.Model_contentType, *v.ContentType)
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.Model_description, *v.Description)
+	}
+	if v.Id != nil {
+		s.WriteString(schemas.Model_id, *v.Id)
+	}
+	if v.Name != nil {
+		s.WriteString(schemas.Model_name, *v.Name)
+	}
+	if v.Schema != nil {
+		s.WriteString(schemas.Model_schema, *v.Schema)
+	}
+}
+func (v *UpdateModelOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.Model, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.Model_contentType:
+			v.ContentType = new(string)
+			return d.ReadString(schemas.Model_contentType, v.ContentType)
+		case schemas.Model_description:
+			v.Description = new(string)
+			return d.ReadString(schemas.Model_description, v.Description)
+		case schemas.Model_id:
+			v.Id = new(string)
+			return d.ReadString(schemas.Model_id, v.Id)
+		case schemas.Model_name:
+			v.Name = new(string)
+			return d.ReadString(schemas.Model_name, v.Name)
+		case schemas.Model_schema:
+			v.Schema = new(string)
+			return d.ReadString(schemas.Model_schema, v.Schema)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationUpdateModelMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpUpdateModel{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateModel, schemas.UpdateModelRequest, schemas.Model)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpUpdateModel{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateModel, schemas.UpdateModelRequest, schemas.Model), output: &UpdateModelOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateModelValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "UpdateModel"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

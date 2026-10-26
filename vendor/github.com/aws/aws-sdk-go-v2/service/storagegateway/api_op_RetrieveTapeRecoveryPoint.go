@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Retrieves the recovery point for the specified virtual tape. This operation is
@@ -51,6 +52,21 @@ type RetrieveTapeRecoveryPointInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *RetrieveTapeRecoveryPointInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.RetrieveTapeRecoveryPointInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *RetrieveTapeRecoveryPointInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.RetrieveTapeRecoveryPointInput_GatewayARN, *v.GatewayARN)
+	}
+	if v.TapeARN != nil {
+		s.WriteString(schemas.RetrieveTapeRecoveryPointInput_TapeARN, *v.TapeARN)
+	}
+}
+
 // RetrieveTapeRecoveryPointOutput
 type RetrieveTapeRecoveryPointOutput struct {
 
@@ -64,44 +80,48 @@ type RetrieveTapeRecoveryPointOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *RetrieveTapeRecoveryPointOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.RetrieveTapeRecoveryPointOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *RetrieveTapeRecoveryPointOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.TapeARN != nil {
+		s.WriteString(schemas.RetrieveTapeRecoveryPointOutput_TapeARN, *v.TapeARN)
+	}
+}
+func (v *RetrieveTapeRecoveryPointOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.RetrieveTapeRecoveryPointOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.RetrieveTapeRecoveryPointOutput_TapeARN:
+			v.TapeARN = new(string)
+			return d.ReadString(schemas.RetrieveTapeRecoveryPointOutput_TapeARN, v.TapeARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationRetrieveTapeRecoveryPointMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpRetrieveTapeRecoveryPoint{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.RetrieveTapeRecoveryPoint, schemas.RetrieveTapeRecoveryPointInput, schemas.RetrieveTapeRecoveryPointOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpRetrieveTapeRecoveryPoint{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.RetrieveTapeRecoveryPoint, schemas.RetrieveTapeRecoveryPointInput, schemas.RetrieveTapeRecoveryPointOutput), output: &RetrieveTapeRecoveryPointOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRetrieveTapeRecoveryPointValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "RetrieveTapeRecoveryPoint"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
