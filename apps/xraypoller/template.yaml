@@ -82,6 +82,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
   CursorParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -89,11 +90,27 @@ Resources:
       Type: String
       Value: "0"
       Description: End time of the last X-Ray window successfully forwarded.
+  IngestTokenKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub "Encrypts the X-Ray poller ingest token for ${AWS::StackName}."
+      EnableKeyRotation: true
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
   IngestTokenSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
       Name: !Sub "observe-xray-ingest-token-${AWS::StackName}"
       Description: Observe ingest token used by the X-Ray poller.
+      KmsKeyId: !Ref IngestTokenKey
       SecretString: !Ref ObserveIngestToken
   PollerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -134,6 +151,15 @@ Resources:
                   - xray:GetTraceSummaries
                   - xray:BatchGetTraces
                 Resource: "*"
+        - PolicyName: xray-write
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
         - PolicyName: cursor
           PolicyDocument:
             Version: '2012-10-17'
@@ -151,6 +177,13 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref IngestTokenSecret
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: !GetAtt IngestTokenKey.Arn
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "secretsmanager.${AWS::Region}.${AWS::URLSuffix}"
         - PolicyName: dlq
           PolicyDocument:
             Version: '2012-10-17'
@@ -161,7 +194,6 @@ Resources:
                 Resource: !GetAtt PollerDLQ.Arn
   PollerFunction:
     Type: AWS::Lambda::Function
-    DependsOn: PollerLogGroup
     Properties:
       Role: !GetAtt PollerRole.Arn
       Code:
@@ -178,6 +210,11 @@ Resources:
         TargetArn: !GetAtt PollerDLQ.Arn
       LoggingConfig:
         LogGroup: !Ref PollerLogGroup
+      TracingConfig:
+        Mode: Active
+      Tags:
+        - Key: observeinc.com/app
+          Value: xray-poller
       Environment:
         Variables:
           OBSERVE_CUSTOMER_ID: !Ref ObserveCustomerId

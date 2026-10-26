@@ -53,6 +53,20 @@ type Poller struct {
 	Logger          logr.Logger
 }
 
+// ExcludeService narrows filter so traces that touch service are skipped.
+// The poller traces itself, and an empty filter would otherwise forward one
+// poller trace per invocation.
+func ExcludeService(filter, service string) string {
+	if service == "" {
+		return filter
+	}
+	exclude := fmt.Sprintf("!service(%q)", service)
+	if filter == "" {
+		return exclude
+	}
+	return fmt.Sprintf("(%s) AND %s", filter, exclude)
+}
+
 // Result counts what one invocation forwarded.
 type Result struct {
 	Traces int

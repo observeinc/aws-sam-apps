@@ -35,7 +35,11 @@ Each invocation reads `(cursor, now - 90s]`. The 90 second lag is time for X-Ray
 
 `BatchGetTraces` follows `NextToken` and retries `UnprocessedTraceIds`. Reserved concurrency is 1. The function times out after 3 minutes and sends failed invocations to a dead-letter queue.
 
-The role allows `xray:GetTraceSummaries` and `xray:BatchGetTraces` only, plus the queue, the cursor parameter, and the ingest-token secret.
+The role allows `xray:GetTraceSummaries` and `xray:BatchGetTraces` to read, `xray:PutTraceSegments` and `xray:PutTelemetryRecords` for the function's own active tracing, plus the queue, the cursor parameter, and the ingest-token secret. X-Ray does not support resource-level permissions, so the X-Ray statements use `*`. The other statements name a single resource.
+
+The ingest-token secret is encrypted with a customer-managed KMS key that the nested stack creates, with yearly rotation turned on. The role can decrypt with that key only through Secrets Manager. The dead-letter queue uses SQS-managed server-side encryption.
+
+The function traces itself in X-Ray. The poller adds `!service("<function name>")` to the filter so it does not forward its own traces.
 
 ## Limits
 

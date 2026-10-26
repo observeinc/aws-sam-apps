@@ -12,6 +12,22 @@ import (
 	"github.com/go-logr/logr"
 )
 
+func TestExcludeService(t *testing.T) {
+	cases := []struct {
+		filter, service, want string
+	}{
+		{"", "", ""},
+		{DefaultAPIGatewayFilter, "", DefaultAPIGatewayFilter},
+		{"", "poller", `!service("poller")`},
+		{DefaultAPIGatewayFilter, "poller", `(` + DefaultAPIGatewayFilter + `) AND !service("poller")`},
+	}
+	for _, c := range cases {
+		if got := ExcludeService(c.filter, c.service); got != c.want {
+			t.Errorf("ExcludeService(%q, %q) = %q, want %q", c.filter, c.service, got, c.want)
+		}
+	}
+}
+
 func TestWindow(t *testing.T) {
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 	lag := 90 * time.Second

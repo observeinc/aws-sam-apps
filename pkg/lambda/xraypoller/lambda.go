@@ -25,6 +25,7 @@ type Config struct {
 	Domain                 string `env:"OBSERVE_DOMAIN_NAME,required"`
 	SecretID               string `env:"OBSERVE_INGEST_TOKEN_SECRET_ID,required"`
 	Filter                 string `env:"FILTER_EXPRESSION"`
+	FunctionName           string `env:"AWS_LAMBDA_FUNCTION_NAME"`
 	CursorName             string `env:"CURSOR_PARAMETER_NAME,required"`
 	SafetyLagSeconds       int    `env:"SAFETY_LAG_SECONDS,default=90"`
 	InitialLookbackSeconds int    `env:"INITIAL_LOOKBACK_SECONDS,default=60"`
@@ -64,7 +65,7 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 		Exporter:        &secretExporter{secrets: secrets, secretID: cfg.SecretID, inner: exporter},
 		Region:          awsCfg.Region,
 		ScopeVersion:    version.Version,
-		Filter:          cfg.Filter,
+		Filter:          xraypoller.ExcludeService(cfg.Filter, cfg.FunctionName),
 		SafetyLag:       time.Duration(cfg.SafetyLagSeconds) * time.Second,
 		InitialLookback: time.Duration(cfg.InitialLookbackSeconds) * time.Second,
 		MaxWindow:       time.Duration(cfg.MaxWindowSeconds) * time.Second,
