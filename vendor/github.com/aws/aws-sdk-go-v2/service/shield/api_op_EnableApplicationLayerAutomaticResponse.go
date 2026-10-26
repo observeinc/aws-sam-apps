@@ -4,9 +4,10 @@ package shield
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/shield/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/shield/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Enable the Shield Advanced automatic application layer DDoS mitigation for the
@@ -70,6 +71,23 @@ type EnableApplicationLayerAutomaticResponseInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *EnableApplicationLayerAutomaticResponseInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.EnableApplicationLayerAutomaticResponseRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *EnableApplicationLayerAutomaticResponseInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Action != nil {
+		s.WriteStruct(schemas.EnableApplicationLayerAutomaticResponseRequest_Action)
+		v.Action.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.ResourceArn != nil {
+		s.WriteString(schemas.EnableApplicationLayerAutomaticResponseRequest_ResourceArn, *v.ResourceArn)
+	}
+}
+
 type EnableApplicationLayerAutomaticResponseOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -77,44 +95,42 @@ type EnableApplicationLayerAutomaticResponseOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *EnableApplicationLayerAutomaticResponseOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.EnableApplicationLayerAutomaticResponseResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *EnableApplicationLayerAutomaticResponseOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *EnableApplicationLayerAutomaticResponseOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.EnableApplicationLayerAutomaticResponseResponse, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationEnableApplicationLayerAutomaticResponseMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpEnableApplicationLayerAutomaticResponse{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.EnableApplicationLayerAutomaticResponse, schemas.EnableApplicationLayerAutomaticResponseRequest, schemas.EnableApplicationLayerAutomaticResponseResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpEnableApplicationLayerAutomaticResponse{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.EnableApplicationLayerAutomaticResponse, schemas.EnableApplicationLayerAutomaticResponseRequest, schemas.EnableApplicationLayerAutomaticResponseResponse), output: &EnableApplicationLayerAutomaticResponseOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpEnableApplicationLayerAutomaticResponseValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "EnableApplicationLayerAutomaticResponse"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

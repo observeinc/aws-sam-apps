@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Connects a volume to an iSCSI connection and then attaches the volume to the
@@ -69,6 +70,30 @@ type AttachVolumeInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AttachVolumeInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AttachVolumeInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AttachVolumeInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DiskId != nil {
+		s.WriteString(schemas.AttachVolumeInput_DiskId, *v.DiskId)
+	}
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.AttachVolumeInput_GatewayARN, *v.GatewayARN)
+	}
+	if v.NetworkInterfaceId != nil {
+		s.WriteString(schemas.AttachVolumeInput_NetworkInterfaceId, *v.NetworkInterfaceId)
+	}
+	if v.TargetName != nil {
+		s.WriteString(schemas.AttachVolumeInput_TargetName, *v.TargetName)
+	}
+	if v.VolumeARN != nil {
+		s.WriteString(schemas.AttachVolumeInput_VolumeARN, *v.VolumeARN)
+	}
+}
+
 // AttachVolumeOutput
 type AttachVolumeOutput struct {
 
@@ -85,44 +110,54 @@ type AttachVolumeOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AttachVolumeOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AttachVolumeOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AttachVolumeOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.TargetARN != nil {
+		s.WriteString(schemas.AttachVolumeOutput_TargetARN, *v.TargetARN)
+	}
+	if v.VolumeARN != nil {
+		s.WriteString(schemas.AttachVolumeOutput_VolumeARN, *v.VolumeARN)
+	}
+}
+func (v *AttachVolumeOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AttachVolumeOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.AttachVolumeOutput_TargetARN:
+			v.TargetARN = new(string)
+			return d.ReadString(schemas.AttachVolumeOutput_TargetARN, v.TargetARN)
+		case schemas.AttachVolumeOutput_VolumeARN:
+			v.VolumeARN = new(string)
+			return d.ReadString(schemas.AttachVolumeOutput_VolumeARN, v.VolumeARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationAttachVolumeMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpAttachVolume{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AttachVolume, schemas.AttachVolumeInput, schemas.AttachVolumeOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpAttachVolume{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AttachVolume, schemas.AttachVolumeInput, schemas.AttachVolumeOutput), output: &AttachVolumeOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAttachVolumeValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "AttachVolume"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,8 +4,9 @@ package shield
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/shield/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Removes the Shield Response Team's (SRT) access to the specified Amazon S3
@@ -35,6 +36,18 @@ type DisassociateDRTLogBucketInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisassociateDRTLogBucketInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisassociateDRTLogBucketRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisassociateDRTLogBucketInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.LogBucket != nil {
+		s.WriteString(schemas.DisassociateDRTLogBucketRequest_LogBucket, *v.LogBucket)
+	}
+}
+
 type DisassociateDRTLogBucketOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -42,44 +55,42 @@ type DisassociateDRTLogBucketOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisassociateDRTLogBucketOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisassociateDRTLogBucketResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisassociateDRTLogBucketOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *DisassociateDRTLogBucketOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DisassociateDRTLogBucketResponse, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDisassociateDRTLogBucketMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDisassociateDRTLogBucket{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisassociateDRTLogBucket, schemas.DisassociateDRTLogBucketRequest, schemas.DisassociateDRTLogBucketResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDisassociateDRTLogBucket{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisassociateDRTLogBucket, schemas.DisassociateDRTLogBucketRequest, schemas.DisassociateDRTLogBucketResponse), output: &DisassociateDRTLogBucketOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisassociateDRTLogBucketValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DisassociateDRTLogBucket"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

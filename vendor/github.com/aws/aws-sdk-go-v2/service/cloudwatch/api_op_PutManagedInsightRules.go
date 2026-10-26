@@ -4,9 +4,10 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 //	Creates a managed Contributor Insights rule for a specified Amazon Web
@@ -43,6 +44,16 @@ type PutManagedInsightRulesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *PutManagedInsightRulesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.PutManagedInsightRulesInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutManagedInsightRulesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeManagedRules(s, schemas.PutManagedInsightRulesInput_ManagedRules, v.ManagedRules)
+}
+
 type PutManagedInsightRulesOutput struct {
 
 	//  An array that lists the rules that could not be enabled.
@@ -54,35 +65,39 @@ type PutManagedInsightRulesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *PutManagedInsightRulesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.PutManagedInsightRulesOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutManagedInsightRulesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeBatchFailures(s, schemas.PutManagedInsightRulesOutput_Failures, v.Failures)
+}
+func (v *PutManagedInsightRulesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.PutManagedInsightRulesOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.PutManagedInsightRulesOutput_Failures:
+			return deserializeBatchFailures(d, schemas.PutManagedInsightRulesOutput_Failures, &v.Failures)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationPutManagedInsightRulesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpPutManagedInsightRules{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutManagedInsightRules, schemas.PutManagedInsightRulesInput, schemas.PutManagedInsightRulesOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpPutManagedInsightRules{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutManagedInsightRules, schemas.PutManagedInsightRulesInput, schemas.PutManagedInsightRulesOutput), output: &PutManagedInsightRulesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -92,9 +107,6 @@ func (c *Client) addOperationPutManagedInsightRulesMiddlewares(stack *middleware
 		return err
 	}
 	if err = addOpPutManagedInsightRulesValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "PutManagedInsightRules"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

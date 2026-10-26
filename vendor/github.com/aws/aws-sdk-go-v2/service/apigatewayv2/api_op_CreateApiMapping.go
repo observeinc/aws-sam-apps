@@ -4,8 +4,9 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates an API mapping.
@@ -48,6 +49,27 @@ type CreateApiMappingInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateApiMappingInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateApiMappingRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateApiMappingInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ApiId != nil {
+		s.WriteString(schemas.CreateApiMappingRequest_ApiId, *v.ApiId)
+	}
+	if v.ApiMappingKey != nil {
+		s.WriteString(schemas.CreateApiMappingRequest_ApiMappingKey, *v.ApiMappingKey)
+	}
+	if v.DomainName != nil {
+		s.WriteString(schemas.CreateApiMappingRequest_DomainName, *v.DomainName)
+	}
+	if v.Stage != nil {
+		s.WriteString(schemas.CreateApiMappingRequest_Stage, *v.Stage)
+	}
+}
+
 type CreateApiMappingOutput struct {
 
 	// The API identifier.
@@ -68,44 +90,66 @@ type CreateApiMappingOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateApiMappingOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateApiMappingResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateApiMappingOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ApiId != nil {
+		s.WriteString(schemas.CreateApiMappingResponse_ApiId, *v.ApiId)
+	}
+	if v.ApiMappingId != nil {
+		s.WriteString(schemas.CreateApiMappingResponse_ApiMappingId, *v.ApiMappingId)
+	}
+	if v.ApiMappingKey != nil {
+		s.WriteString(schemas.CreateApiMappingResponse_ApiMappingKey, *v.ApiMappingKey)
+	}
+	if v.Stage != nil {
+		s.WriteString(schemas.CreateApiMappingResponse_Stage, *v.Stage)
+	}
+}
+func (v *CreateApiMappingOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateApiMappingResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateApiMappingResponse_ApiId:
+			v.ApiId = new(string)
+			return d.ReadString(schemas.CreateApiMappingResponse_ApiId, v.ApiId)
+		case schemas.CreateApiMappingResponse_ApiMappingId:
+			v.ApiMappingId = new(string)
+			return d.ReadString(schemas.CreateApiMappingResponse_ApiMappingId, v.ApiMappingId)
+		case schemas.CreateApiMappingResponse_ApiMappingKey:
+			v.ApiMappingKey = new(string)
+			return d.ReadString(schemas.CreateApiMappingResponse_ApiMappingKey, v.ApiMappingKey)
+		case schemas.CreateApiMappingResponse_Stage:
+			v.Stage = new(string)
+			return d.ReadString(schemas.CreateApiMappingResponse_Stage, v.Stage)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateApiMappingMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpCreateApiMapping{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateApiMapping, schemas.CreateApiMappingRequest, schemas.CreateApiMappingResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpCreateApiMapping{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateApiMapping, schemas.CreateApiMappingRequest, schemas.CreateApiMappingResponse), output: &CreateApiMappingOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateApiMappingValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateApiMapping"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

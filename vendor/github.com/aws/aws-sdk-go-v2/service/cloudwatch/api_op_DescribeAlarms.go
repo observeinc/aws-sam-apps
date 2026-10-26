@@ -5,10 +5,11 @@ package cloudwatch
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithytime "github.com/aws/smithy-go/time"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
 	"strconv"
 	"time"
@@ -116,6 +117,38 @@ type DescribeAlarmsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeAlarmsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeAlarmsInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeAlarmsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ActionPrefix != nil {
+		s.WriteString(schemas.DescribeAlarmsInput_ActionPrefix, *v.ActionPrefix)
+	}
+	if v.AlarmNamePrefix != nil {
+		s.WriteString(schemas.DescribeAlarmsInput_AlarmNamePrefix, *v.AlarmNamePrefix)
+	}
+	serializeAlarmNames(s, schemas.DescribeAlarmsInput_AlarmNames, v.AlarmNames)
+	serializeAlarmTypes(s, schemas.DescribeAlarmsInput_AlarmTypes, v.AlarmTypes)
+	if v.ChildrenOfAlarmName != nil {
+		s.WriteString(schemas.DescribeAlarmsInput_ChildrenOfAlarmName, *v.ChildrenOfAlarmName)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeAlarmsInput_MaxRecords, *v.MaxRecords)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeAlarmsInput_NextToken, *v.NextToken)
+	}
+	if v.ParentsOfAlarmName != nil {
+		s.WriteString(schemas.DescribeAlarmsInput_ParentsOfAlarmName, *v.ParentsOfAlarmName)
+	}
+	if v.StateValue != "" {
+		s.WriteString(schemas.DescribeAlarmsInput_StateValue, string(v.StateValue))
+	}
+}
+
 type DescribeAlarmsOutput struct {
 
 	// The information about any composite alarms returned by the operation.
@@ -136,44 +169,57 @@ type DescribeAlarmsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeAlarmsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeAlarmsOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeAlarmsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeCompositeAlarms(s, schemas.DescribeAlarmsOutput_CompositeAlarms, v.CompositeAlarms)
+	serializeLogAlarms(s, schemas.DescribeAlarmsOutput_LogAlarms, v.LogAlarms)
+	serializeMetricAlarms(s, schemas.DescribeAlarmsOutput_MetricAlarms, v.MetricAlarms)
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeAlarmsOutput_NextToken, *v.NextToken)
+	}
+}
+func (v *DescribeAlarmsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeAlarmsOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeAlarmsOutput_CompositeAlarms:
+			return deserializeCompositeAlarms(d, schemas.DescribeAlarmsOutput_CompositeAlarms, &v.CompositeAlarms)
+		case schemas.DescribeAlarmsOutput_LogAlarms:
+			return deserializeLogAlarms(d, schemas.DescribeAlarmsOutput_LogAlarms, &v.LogAlarms)
+		case schemas.DescribeAlarmsOutput_MetricAlarms:
+			return deserializeMetricAlarms(d, schemas.DescribeAlarmsOutput_MetricAlarms, &v.MetricAlarms)
+		case schemas.DescribeAlarmsOutput_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.DescribeAlarmsOutput_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeAlarmsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpDescribeAlarms{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeAlarms, schemas.DescribeAlarmsInput, schemas.DescribeAlarmsOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpDescribeAlarms{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeAlarms, schemas.DescribeAlarmsInput, schemas.DescribeAlarmsOutput), output: &DescribeAlarmsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeAlarms"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

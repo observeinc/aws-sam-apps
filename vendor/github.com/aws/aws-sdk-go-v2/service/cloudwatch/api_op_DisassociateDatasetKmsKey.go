@@ -4,8 +4,9 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Removes the customer managed Amazon Web Services Key Management Service (Amazon
@@ -17,19 +18,25 @@ import (
 // currently have a customer managed KMS key associated with it. If the dataset has
 // no associated KMS key, the operation fails with ResourceNotFoundException .
 //
-// Amazon CloudWatch performs a dry-run kms:Decrypt call on the key as part of
-// this operation. This verifies that the caller is authorized to use the currently
-// associated key. The caller must have kms:Decrypt permission on the currently
-// associated key, and the key must be enabled and accessible. If the key has been
-// disabled or scheduled for deletion, you must first re-enable or restore it
-// before you can disassociate it from the dataset.
+// Amazon CloudWatch performs a dry-run kms:Decrypt call on the currently
+// associated key as part of this operation. The caller must have kms:Decrypt
+// permission on the currently associated key. If the key is accessible but the
+// caller lacks kms:Decrypt permission, the operation fails with
+// AccessDeniedException .
+//
+// If the currently associated key has been deleted, is scheduled for deletion, is
+// pending import, is unavailable, or has been disabled, Amazon CloudWatch does not
+// require kms:Decrypt permission on that key and the disassociation proceeds. If
+// the key was only disabled, consider re-enabling it instead of disassociating,
+// because re-enabling allows Amazon CloudWatch to resume decrypting your existing
+// metric data.
 //
 // Disassociating a KMS key from a dataset does not immediately remove the
 // kms:Decrypt requirement on data plane operations. For up to three hours after
 // disassociation, callers must continue to have kms:Decrypt permission on the
-// previously associated key. Some data may still be encrypted with that key during
-// this window. After this enforcement window elapses, the kms:Decrypt requirement
-// is lifted.
+// previously associated key. Some data might still be encrypted with that key
+// during this window. After this enforcement window elapses, the kms:Decrypt
+// requirement is lifted.
 //
 // For more information about using customer managed keys with Amazon CloudWatch,
 // see [Encryption at rest with customer managed keys]in the Amazon CloudWatch User Guide.
@@ -63,6 +70,18 @@ type DisassociateDatasetKmsKeyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisassociateDatasetKmsKeyInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisassociateDatasetKmsKeyInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisassociateDatasetKmsKeyInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DatasetIdentifier != nil {
+		s.WriteString(schemas.DisassociateDatasetKmsKeyInput_DatasetIdentifier, *v.DatasetIdentifier)
+	}
+}
+
 type DisassociateDatasetKmsKeyOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -70,35 +89,36 @@ type DisassociateDatasetKmsKeyOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisassociateDatasetKmsKeyOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisassociateDatasetKmsKeyOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisassociateDatasetKmsKeyOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *DisassociateDatasetKmsKeyOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DisassociateDatasetKmsKeyOutput, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDisassociateDatasetKmsKeyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpDisassociateDatasetKmsKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisassociateDatasetKmsKey, schemas.DisassociateDatasetKmsKeyInput, schemas.DisassociateDatasetKmsKeyOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpDisassociateDatasetKmsKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisassociateDatasetKmsKey, schemas.DisassociateDatasetKmsKeyInput, schemas.DisassociateDatasetKmsKeyOutput), output: &DisassociateDatasetKmsKeyOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -108,9 +128,6 @@ func (c *Client) addOperationDisassociateDatasetKmsKeyMiddlewares(stack *middlew
 		return err
 	}
 	if err = addOpDisassociateDatasetKmsKeyValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DisassociateDatasetKmsKey"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

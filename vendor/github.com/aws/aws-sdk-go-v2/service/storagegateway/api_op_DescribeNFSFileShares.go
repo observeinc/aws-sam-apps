@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets a description for one or more Network File System (NFS) file shares from
@@ -38,6 +39,16 @@ type DescribeNFSFileSharesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeNFSFileSharesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeNFSFileSharesInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeNFSFileSharesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFileShareARNList(s, schemas.DescribeNFSFileSharesInput_FileShareARNList, v.FileShareARNList)
+}
+
 // DescribeNFSFileSharesOutput
 type DescribeNFSFileSharesOutput struct {
 
@@ -50,44 +61,45 @@ type DescribeNFSFileSharesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeNFSFileSharesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeNFSFileSharesOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeNFSFileSharesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeNFSFileShareInfoList(s, schemas.DescribeNFSFileSharesOutput_NFSFileShareInfoList, v.NFSFileShareInfoList)
+}
+func (v *DescribeNFSFileSharesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeNFSFileSharesOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeNFSFileSharesOutput_NFSFileShareInfoList:
+			return deserializeNFSFileShareInfoList(d, schemas.DescribeNFSFileSharesOutput_NFSFileShareInfoList, &v.NFSFileShareInfoList)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeNFSFileSharesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeNFSFileShares{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeNFSFileShares, schemas.DescribeNFSFileSharesInput, schemas.DescribeNFSFileSharesOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeNFSFileShares{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeNFSFileShares, schemas.DescribeNFSFileSharesInput, schemas.DescribeNFSFileSharesOutput), output: &DescribeNFSFileSharesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeNFSFileSharesValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeNFSFileShares"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

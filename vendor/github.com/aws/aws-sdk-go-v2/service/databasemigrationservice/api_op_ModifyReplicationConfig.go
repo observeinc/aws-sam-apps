@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Modifies an existing DMS Serverless replication configuration that you can use
@@ -70,6 +71,44 @@ type ModifyReplicationConfigInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ModifyReplicationConfigInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyReplicationConfigMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyReplicationConfigInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ComputeConfig != nil {
+		s.WriteStruct(schemas.ModifyReplicationConfigMessage_ComputeConfig)
+		v.ComputeConfig.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.ReplicationConfigArn != nil {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_ReplicationConfigArn, *v.ReplicationConfigArn)
+	}
+	if v.ReplicationConfigIdentifier != nil {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_ReplicationConfigIdentifier, *v.ReplicationConfigIdentifier)
+	}
+	if v.ReplicationSettings != nil {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_ReplicationSettings, *v.ReplicationSettings)
+	}
+	if v.ReplicationType != "" {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_ReplicationType, string(v.ReplicationType))
+	}
+	if v.SourceEndpointArn != nil {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_SourceEndpointArn, *v.SourceEndpointArn)
+	}
+	if v.SupplementalSettings != nil {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_SupplementalSettings, *v.SupplementalSettings)
+	}
+	if v.TableMappings != nil {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_TableMappings, *v.TableMappings)
+	}
+	if v.TargetEndpointArn != nil {
+		s.WriteString(schemas.ModifyReplicationConfigMessage_TargetEndpointArn, *v.TargetEndpointArn)
+	}
+}
+
 type ModifyReplicationConfigOutput struct {
 
 	// Information about the serverless replication config that was modified.
@@ -81,44 +120,50 @@ type ModifyReplicationConfigOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ModifyReplicationConfigOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyReplicationConfigResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyReplicationConfigOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ReplicationConfig != nil {
+		s.WriteStruct(schemas.ModifyReplicationConfigResponse_ReplicationConfig)
+		v.ReplicationConfig.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *ModifyReplicationConfigOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ModifyReplicationConfigResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ModifyReplicationConfigResponse_ReplicationConfig:
+			v.ReplicationConfig = &types.ReplicationConfig{}
+			return v.ReplicationConfig.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationModifyReplicationConfigMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpModifyReplicationConfig{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyReplicationConfig, schemas.ModifyReplicationConfigMessage, schemas.ModifyReplicationConfigResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpModifyReplicationConfig{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyReplicationConfig, schemas.ModifyReplicationConfigMessage, schemas.ModifyReplicationConfigResponse), output: &ModifyReplicationConfigOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyReplicationConfigValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ModifyReplicationConfig"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

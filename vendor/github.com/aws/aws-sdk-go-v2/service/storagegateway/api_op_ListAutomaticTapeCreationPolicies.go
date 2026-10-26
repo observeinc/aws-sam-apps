@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Lists the automatic tape creation policies for a gateway. If there are no
@@ -37,6 +38,18 @@ type ListAutomaticTapeCreationPoliciesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListAutomaticTapeCreationPoliciesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListAutomaticTapeCreationPoliciesInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListAutomaticTapeCreationPoliciesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.ListAutomaticTapeCreationPoliciesInput_GatewayARN, *v.GatewayARN)
+	}
+}
+
 type ListAutomaticTapeCreationPoliciesOutput struct {
 
 	// Gets a listing of information about the gateway's automatic tape creation
@@ -50,41 +63,42 @@ type ListAutomaticTapeCreationPoliciesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListAutomaticTapeCreationPoliciesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListAutomaticTapeCreationPoliciesOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListAutomaticTapeCreationPoliciesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeAutomaticTapeCreationPolicyInfos(s, schemas.ListAutomaticTapeCreationPoliciesOutput_AutomaticTapeCreationPolicyInfos, v.AutomaticTapeCreationPolicyInfos)
+}
+func (v *ListAutomaticTapeCreationPoliciesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListAutomaticTapeCreationPoliciesOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListAutomaticTapeCreationPoliciesOutput_AutomaticTapeCreationPolicyInfos:
+			return deserializeAutomaticTapeCreationPolicyInfos(d, schemas.ListAutomaticTapeCreationPoliciesOutput_AutomaticTapeCreationPolicyInfos, &v.AutomaticTapeCreationPolicyInfos)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListAutomaticTapeCreationPoliciesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListAutomaticTapeCreationPolicies{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListAutomaticTapeCreationPolicies, schemas.ListAutomaticTapeCreationPoliciesInput, schemas.ListAutomaticTapeCreationPoliciesOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListAutomaticTapeCreationPolicies{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListAutomaticTapeCreationPolicies, schemas.ListAutomaticTapeCreationPoliciesInput, schemas.ListAutomaticTapeCreationPoliciesOutput), output: &ListAutomaticTapeCreationPoliciesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListAutomaticTapeCreationPolicies"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
