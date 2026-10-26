@@ -68,7 +68,10 @@ func (e *HTTPExporter) Export(ctx context.Context, body []byte) error {
 			continue
 		}
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		resp.Body.Close()
+		if err := resp.Body.Close(); err != nil {
+			last = err
+			continue
+		}
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return nil
 		}

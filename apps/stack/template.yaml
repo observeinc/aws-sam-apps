@@ -967,7 +967,8 @@ Outputs:
       - Outputs.FunctionArn
   XRayPollerLogGroupName:
     Description: >-
-      Log group for the X-Ray poller. Only present when EnableXRayPoller is true.
+      Log group for the X-Ray poller. Only present when EnableXRayPoller
+      is true.
     Condition: EnableXRayPollerApp
     Value: !GetAtt
       - XRayPoller

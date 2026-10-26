@@ -93,7 +93,7 @@ Resources:
   IngestTokenKey:
     Type: AWS::KMS::Key
     Properties:
-      Description: !Sub "Encrypts the X-Ray poller ingest token for ${AWS::StackName}."
+      Description: Customer-managed key for the X-Ray poller ingest token.
       EnableKeyRotation: true
       PendingWindowInDays: 7
       KeyPolicy:
@@ -168,7 +168,9 @@ Resources:
                 Action:
                   - ssm:GetParameter
                   - ssm:PutParameter
-                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/observe/${AWS::StackName}/xray-poller/cursor"
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:\
+                  ${AWS::AccountId}:parameter/observe/${AWS::StackName}/\
+                  xray-poller/cursor"
         - PolicyName: ingest-token
           PolicyDocument:
             Version: '2012-10-17'
@@ -183,7 +185,8 @@ Resources:
                 Resource: !GetAtt IngestTokenKey.Arn
                 Condition:
                   StringEquals:
-                    kms:ViaService: !Sub "secretsmanager.${AWS::Region}.${AWS::URLSuffix}"
+                    kms:ViaService:
+                      !Sub "secretsmanager.${AWS::Region}.${AWS::URLSuffix}"
         - PolicyName: dlq
           PolicyDocument:
             Version: '2012-10-17'
@@ -221,7 +224,8 @@ Resources:
           OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
           OBSERVE_INGEST_TOKEN_SECRET_ID: !Ref IngestTokenSecret
           FILTER_EXPRESSION: !Ref FilterExpression
-          CURSOR_PARAMETER_NAME: !Sub "/observe/${AWS::StackName}/xray-poller/cursor"
+          CURSOR_PARAMETER_NAME:
+            !Sub "/observe/${AWS::StackName}/xray-poller/cursor"
           SAFETY_LAG_SECONDS: "90"
           INITIAL_LOOKBACK_SECONDS: "60"
           MAX_WINDOW_SECONDS: "900"
