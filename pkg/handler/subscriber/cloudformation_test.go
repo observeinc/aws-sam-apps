@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/lambdacontext"
@@ -369,3 +370,51 @@ func TestHandleCloudFormationDeleteSkipsCleanupOnReplacement(t *testing.T) {
 	}
 }
 
+func TestHandleCloudFormationDeleteRespondsWhenDeadlineIsNear(t *testing.T) {
+	// Not parallel: other tests share lambdacontext.LogStreamName.
+	srv, getCfnResp := cfnResponseServer(t)
+
+	client := &awstest.CloudWatchLogsClient{
+		LogGroups: []types.LogGroup{
+			{LogGroupName: aws.String("/aws/lambda/app-1")},
+		},
+	}
+	queue := &queueRecorder{}
+	h := newTestHandler(t, client, queue)
+
+	const logStream = "2026/04/04/[$LATEST]delete-deadline"
+	lambdacontext.LogStreamName = logStream
+
+	// Parent is already expired, which is what the Lambda runtime does when
+	// the function is about to time out. The handler must still answer
+	// CloudFormation and hand the scan to the queue.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+	time.Sleep(5 * time.Millisecond)
+
+	ev := &subscriber.CloudFormationEvent{
+		Event: &cfn.Event{
+			RequestType:        cfn.RequestDelete,
+			RequestID:          "test-request-deadline",
+			ResponseURL:        srv.URL,
+			LogicalResourceID:  "Trigger",
+			StackID:            "arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid",
+			PhysicalResourceID: logStream,
+			ResourceProperties: map[string]interface{}{},
+		},
+	}
+
+	if _, err := h.HandleCloudFormation(ctx, ev); err != nil {
+		t.Fatalf("HandleCloudFormation returned error: %v", err)
+	}
+	cfnResp := getCfnResp()
+	if cfnResp == nil {
+		t.Fatal("CloudFormation callback was not received")
+	}
+	if cfnResp.Status != cfn.StatusSuccess {
+		t.Fatalf("CloudFormation status=%s want=SUCCESS reason=%s", cfnResp.Status, cfnResp.Reason)
+	}
+	if len(queue.items) != 1 {
+		t.Fatalf("queued messages=%d want=1", len(queue.items))
+	}
+}
