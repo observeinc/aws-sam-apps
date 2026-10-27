@@ -608,7 +608,9 @@ Resources:
     DependsOn:
       - DiscoverySchedule
     Properties:
-      ServiceTimeout: 60
+      # The subscriber stops the scan after 70s and answers CloudFormation.
+      # Keep this above that budget.
+      ServiceTimeout: 90
       ServiceToken: !GetAtt Subscriber.Arn
       # List all parameters here, any change will trigger update
       BucketArn: !Ref BucketArn
