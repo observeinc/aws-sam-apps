@@ -18,6 +18,11 @@ const (
 	cleanupPaginationPageSize            = 50
 )
 
+// errYieldContinuation means the scan stopped because the invocation is
+// running out of time. The caller enqueues the current page and returns
+// success so CloudFormation still receives a response.
+var errYieldContinuation = errors.New("yield cleanup for continuation")
+
 // HandleCleanupRequest scans all log groups and removes subscriptions that no longer match the configured patterns.
 func (h *Handler) HandleCleanupRequest(ctx context.Context, cleanupReq *CleanupRequest) (*Response, error) {
 	resp := &Response{
@@ -34,12 +39,15 @@ func (h *Handler) HandleCleanupRequest(ctx context.Context, cleanupReq *CleanupR
 
 	nextToken := cleanupReq.ScanToken
 	remaining := maxGroups
+	yield := false
 	for remaining > 0 {
-		if shouldEnqueueContinuation(ctx) {
+		if shouldEnqueueContinuation(ctx) || ctx.Err() != nil {
+			yield = true
 			break
 		}
 
 		pageLimit := int32(min(remaining, cleanupPaginationPageSize))
+		pageToken := nextToken
 		var output *cloudwatchlogs.DescribeLogGroupsOutput
 		err := h.callCloudWatch(ctx, func() error {
 			var callErr error
@@ -50,6 +58,11 @@ func (h *Handler) HandleCleanupRequest(ctx context.Context, cleanupReq *CleanupR
 			return callErr
 		})
 		if err != nil {
+			if contextDone(err) {
+				yield = true
+				nextToken = pageToken
+				break
+			}
 			return resp, fmt.Errorf("failed to describe log groups: %w", err)
 		}
 
@@ -59,6 +72,11 @@ func (h *Handler) HandleCleanupRequest(ctx context.Context, cleanupReq *CleanupR
 		}
 
 		if err := h.cleanupLogGroupBatch(ctx, cleanupReq, output.LogGroups, resp.Subscription); err != nil {
+			if errors.Is(err, errYieldContinuation) || contextDone(err) {
+				yield = true
+				nextToken = pageToken
+				break
+			}
 			return resp, err
 		}
 
@@ -69,7 +87,7 @@ func (h *Handler) HandleCleanupRequest(ctx context.Context, cleanupReq *CleanupR
 		}
 	}
 
-	if nextToken != nil {
+	if yield || nextToken != nil {
 		if h.Queue == nil {
 			return resp, fmt.Errorf("cleanup continuation requires queue: %w", ErrNoQueue)
 		}
@@ -82,10 +100,12 @@ func (h *Handler) HandleCleanupRequest(ctx context.Context, cleanupReq *CleanupR
 				JobID:                  cleanupReq.JobID,
 			},
 		}
-		if err := h.Queue.Put(ctx, continuation); err != nil {
+		putCtx, putCancel := continuationContext(ctx)
+		defer putCancel()
+		if err := h.Queue.Put(putCtx, continuation); err != nil {
 			return resp, fmt.Errorf("failed to enqueue cleanup continuation: %w", err)
 		}
-		logger.Info("cleanup continuation enqueued", "jobID", cleanupReq.JobID, "nextTokenSet", true, "processed", resp.Subscription.Processed.Load())
+		logger.Info("cleanup continuation enqueued", "jobID", cleanupReq.JobID, "nextTokenSet", nextToken != nil, "processed", resp.Subscription.Processed.Load())
 	}
 
 	logger.Info("cleanup complete", "stats", resp.Subscription)
@@ -96,7 +116,12 @@ func (h *Handler) cleanupLogGroupBatch(ctx context.Context, cleanupReq *CleanupR
 	g, workerCtx := errgroup.WithContext(ctx)
 	g.SetLimit(max(1, h.NumWorkers))
 
+	yield := false
 	for _, logGroup := range logGroups {
+		if shouldEnqueueContinuation(ctx) || ctx.Err() != nil {
+			yield = true
+			break
+		}
 		logGroupName := aws.ToString(logGroup.LogGroupName)
 		stats.Processed.Add(1)
 
@@ -109,7 +134,13 @@ func (h *Handler) cleanupLogGroupBatch(ctx context.Context, cleanupReq *CleanupR
 	}
 
 	if err := g.Wait(); err != nil {
+		if contextDone(err) {
+			return errYieldContinuation
+		}
 		return fmt.Errorf("failed to cleanup log groups: %w", err)
+	}
+	if yield {
+		return errYieldContinuation
 	}
 	return nil
 }
