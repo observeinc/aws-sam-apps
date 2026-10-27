@@ -54,4 +54,12 @@ resource "aws_iam_role_policy" "this" {
   name   = "allowed"
   role   = aws_iam_role.this[0].id
   policy = var.install_policy_json
+
+  # IAM is eventually consistent. CreateStack retries the "role cannot be
+  # assumed" API error, but a call that is accepted while the role is still
+  # propagating rolls the stack back and is not retried. Wait here so the
+  # service role and its inline policy are visible before the stack starts.
+  provisioner "local-exec" {
+    command = "sleep 30"
+  }
 }
