@@ -5,11 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/go-logr/logr"
 )
+
+// CloudFormation ServiceTimeout for Custom::Trigger is 90s
+// (apps/logwriter/template.yaml). Stop work inside that window so the
+// handler can enqueue a continuation and POST a response before
+// CloudFormation gives up. The Lambda timeout is 120s, which leaves room
+// to send the response after this budget.
+const cloudFormationResponseBudget = 70 * time.Second
 
 var (
 	ErrMalformedEvent = errors.New("malformed cloudformation event")
@@ -79,6 +87,11 @@ func (h *Handler) HandleCloudFormation(ctx context.Context, ev *CloudFormationEv
 	response.PhysicalResourceID = lambdacontext.LogStreamName
 	response.Status = cfn.StatusSuccess
 
+	// Bound the scan so a throttled CloudWatch account cannot run until the
+	// Lambda timeout. Continuation picks up the rest on the queue.
+	workCtx, workCancel := context.WithTimeout(ctx, cloudFormationResponseBudget)
+	defer workCancel()
+
 	var handlerResp *Response
 	var handlerErr error
 
@@ -131,7 +144,7 @@ func (h *Handler) HandleCloudFormation(ctx context.Context, ev *CloudFormationEv
 		// that no longer match the new patterns, then subscribe matching log groups
 		req.FullyPrune = true
 
-		handlerResp, handlerErr = h.HandleDiscoveryRequest(ctx, &req)
+		handlerResp, handlerErr = h.HandleDiscoveryRequest(workCtx, &req)
 		if handlerErr != nil {
 			handlerErr = fmt.Errorf("discovery with prune failed during update: %w", handlerErr)
 			break
@@ -159,7 +172,7 @@ func (h *Handler) HandleCloudFormation(ctx context.Context, ev *CloudFormationEv
 				"currentPhysicalResourceId", currentPhysicalResourceId)
 
 			// True stack delete - clean up all subscriptions managed by this stack
-			handlerResp, handlerErr = h.HandleCleanupRequest(ctx, &CleanupRequest{})
+			handlerResp, handlerErr = h.HandleCleanupRequest(workCtx, &CleanupRequest{})
 			if handlerErr != nil {
 				handlerErr = fmt.Errorf("cleanup failed during stack delete: %w", handlerErr)
 			}

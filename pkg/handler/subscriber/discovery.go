@@ -110,6 +110,13 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 				return callErr
 			})
 			if err != nil {
+				if contextDone(err) {
+					continuationInputIndex = inputIdx
+					if nextToken != "" {
+						continuationToken = aws.String(nextToken)
+					}
+					break
+				}
 				return resp, fmt.Errorf("failed to describe log groups: %w", err)
 			}
 			resp.Discovery.RequestCount.Add(1)
@@ -119,10 +126,24 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 			if inline {
 				s, err := h.HandleSubscriptionRequest(ctx, subscriptionRequest)
 				if err != nil {
+					if contextDone(err) {
+						continuationInputIndex = inputIdx
+						if nextToken != "" {
+							continuationToken = aws.String(nextToken)
+						}
+						break
+					}
 					return resp, fmt.Errorf("failed to handle subscription request: %w", err)
 				}
 				resp.Discovery.Subscription.Add(s.Subscription)
 			} else if err := h.Queue.Put(ctx, &Request{SubscriptionRequest: subscriptionRequest}); err != nil {
+				if contextDone(err) {
+					continuationInputIndex = inputIdx
+					if nextToken != "" {
+						continuationToken = aws.String(nextToken)
+					}
+					break
+				}
 				return resp, fmt.Errorf("failed to write to queue: %w", err)
 			}
 
@@ -164,7 +185,9 @@ func (h *Handler) HandleDiscoveryRequest(ctx context.Context, discoveryReq *Disc
 				JobID:                       discoveryReq.JobID,
 			},
 		}
-		if err := h.Queue.Put(ctx, continuation); err != nil {
+		putCtx, putCancel := continuationContext(ctx)
+		defer putCancel()
+		if err := h.Queue.Put(putCtx, continuation); err != nil {
 			return resp, fmt.Errorf("failed to enqueue discovery continuation: %w", err)
 		}
 		logger.Info("discovery continuation enqueued", "jobID", discoveryReq.JobID, "scanInputIndex", continuationInputIndex, "nextTokenSet", continuationToken != nil, "processed", resp.Discovery.LogGroupCount.Load())
@@ -179,4 +202,17 @@ func shouldEnqueueContinuation(ctx context.Context) bool {
 		return false
 	}
 	return time.Until(deadline) <= continuationSafetyWindow
+}
+
+func contextDone(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+}
+
+// continuationContext keeps a queue write alive after the scan context has
+// expired, so the next invocation can resume.
+func continuationContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx.Err() == nil {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
 }
