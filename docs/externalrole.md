@@ -47,3 +47,7 @@ Enabling PollerConfigurator has the net effect of **creating a poller in the Obs
 | Output | Description |
 |--------|-------------|
 | `RoleArn` | IAM role ARN Observe assumes to pull data. Only not emitted when the **`PrimaryRegion`** of the StackSet is different from the region the stack is being deployed in. |
+
+## Multi-account deployment
+
+For deploying ExternalRole across many accounts in an AWS Organization, use the `externalrole-stackset` wrapper template instead of deploying this app directly. The wrapper creates an `AWS::CloudFormation::StackSet` resource that fans out ExternalRole to every account in a target OU. Note: because IAM roles are global, only stack instances where `AWS::Region == PrimaryRegion` actually create the role; other regions skip it. See [docs/multi-account.md](multi-account.md) for the cross-cutting concerns (concurrency, per-instance verification).
