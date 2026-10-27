@@ -1,301 +1,241 @@
 package xraypoller
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
+
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/ptrace"
+
+	"github.com/observeinc/aws-sam-apps/pkg/xrayotel/telemetry"
+	"github.com/observeinc/aws-sam-apps/pkg/xrayotel/translator"
 )
 
 const (
-	spanKindServer   = 2
-	spanKindClient   = 3
-	spanKindProducer = 4
-
-	statusOK    = 1
-	statusError = 2
-
 	// DefaultAPIGatewayFilter limits collection to traces that touch API
 	// Gateway. HTTP APIs (v2) do not emit X-Ray at all.
 	DefaultAPIGatewayFilter = `service(id(type: "AWS::ApiGateway::Stage"))`
+
+	scopeName = "xray-to-otlp-poller"
 )
 
-// Span is an OTLP span encoded the way the OTLP/JSON mapping expects int64
-// fields: as decimal strings.
-type Span struct {
-	TraceID           string      `json:"traceId"`
-	SpanID            string      `json:"spanId"`
-	ParentSpanID      string      `json:"parentSpanId,omitempty"`
-	Name              string      `json:"name"`
-	Kind              int         `json:"kind"`
-	StartTimeUnixNano string      `json:"startTimeUnixNano"`
-	EndTimeUnixNano   string      `json:"endTimeUnixNano"`
-	Attributes        []Attribute `json:"attributes,omitempty"`
-	Status            Status      `json:"status"`
+// TraceBatch collects converted traces for the OTLP exporter.
+type TraceBatch struct {
+	traces ptrace.Traces
 }
 
-type Status struct {
-	Code    int    `json:"code"`
-	Message string `json:"message,omitempty"`
+// NewTraceBatch returns an empty batch.
+func NewTraceBatch() *TraceBatch {
+	return &TraceBatch{traces: ptrace.NewTraces()}
 }
 
-type Attribute struct {
-	Key   string         `json:"key"`
-	Value AttributeValue `json:"value"`
-}
-
-type AttributeValue struct {
-	StringValue string `json:"stringValue,omitempty"`
-	IntValue    string `json:"intValue,omitempty"`
-}
-
-// ResourceSpans groups spans that share a service name.
-type ResourceSpans struct {
-	Resource   Resource    `json:"resource"`
-	ScopeSpans []ScopeSpan `json:"scopeSpans"`
-}
-
-type Resource struct {
-	Attributes []Attribute `json:"attributes"`
-}
-
-type ScopeSpan struct {
-	Scope Scope  `json:"scope"`
-	Spans []Span `json:"spans"`
-}
-
-type Scope struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-type serviceGroup struct {
-	service string
-	account string
-	spans   []Span
-}
-
-// OTelTraceID converts an X-Ray trace id (1-{time}-{rand}) to the 32-hex
-// OTLP trace id so backend spans that use the X-Ray propagator join it.
-func OTelTraceID(xrayID string) (string, error) {
-	parts := strings.Split(xrayID, "-")
-	if len(parts) != 3 || parts[0] != "1" || len(parts[1]) != 8 || len(parts[2]) != 24 {
-		return "", fmt.Errorf("invalid x-ray trace id %q", xrayID)
-	}
-	return parts[1] + parts[2], nil
-}
-
-// ResourceSpansFromDocuments converts X-Ray segment documents into OTLP
-// resource spans. Inferred segments are dropped: they are X-Ray's synthetic
-// view of an OTel-instrumented backend, and the real span arrives separately.
-func ResourceSpansFromDocuments(xrayTraceID string, documents []string, region, scopeVersion string) ([]ResourceSpans, error) {
-	traceID, err := OTelTraceID(xrayTraceID)
-	if err != nil {
-		return nil, err
-	}
-
-	groups := map[string]*serviceGroup{}
-	var order []string
+// Add converts one X-Ray trace's segment documents and appends them.
+// Inferred segments are dropped before translation. The returned count is
+// the number of spans added.
+func (b *TraceBatch) Add(xrayTraceID string, documents []string, region, scopeVersion string) (int, error) {
+	pending := ptrace.NewTraces()
+	added := 0
 	for _, doc := range documents {
-		var segment map[string]any
-		if err := json.Unmarshal([]byte(doc), &segment); err != nil {
-			return nil, fmt.Errorf("parse segment: %w", err)
+		prepared, skip, err := prepareDocument(doc, xrayTraceID)
+		if err != nil {
+			return 0, err
 		}
-		if truthy(segment["inferred"]) {
+		if skip {
 			continue
 		}
-		addSegment(groups, &order, segment, traceID, 0, false)
+		td, _, err := translator.ToTraces(prepared.body, telemetry.Nop{})
+		if err != nil {
+			return 0, err
+		}
+		enrich(td, prepared, region, scopeVersion)
+		added += countSpans(td)
+		td.ResourceSpans().MoveAndAppendTo(pending.ResourceSpans())
 	}
-
-	out := make([]ResourceSpans, 0, len(order))
-	for _, key := range order {
-		group := groups[key]
-		attrs := []Attribute{
-			strAttr("service.name", group.service),
-			strAttr("service.namespace", "aws-xray"),
-			strAttr("cloud.provider", "aws"),
-		}
-		if region != "" {
-			attrs = append(attrs, strAttr("cloud.region", region))
-		}
-		if group.account != "" {
-			attrs = append(attrs, strAttr("cloud.account.id", group.account))
-		}
-		out = append(out, ResourceSpans{
-			Resource: Resource{Attributes: attrs},
-			ScopeSpans: []ScopeSpan{{
-				Scope: Scope{Name: "xray-to-otlp-poller", Version: scopeVersion},
-				Spans: group.spans,
-			}},
-		})
-	}
-	return out, nil
+	pending.ResourceSpans().MoveAndAppendTo(b.traces.ResourceSpans())
+	return added, nil
 }
 
-func addSegment(groups map[string]*serviceGroup, order *[]string, segment map[string]any, traceID string, rootEnd float64, isSub bool) {
-	if truthy(segment["inferred"]) {
+// Traces returns the converted spans. The caller owns the value.
+func (b *TraceBatch) Traces() ptrace.Traces {
+	return b.traces
+}
+
+// Marshal encodes the batch as OTLP/JSON. An empty batch returns nil.
+func (b *TraceBatch) Marshal() ([]byte, error) {
+	if b.traces.ResourceSpans().Len() == 0 {
+		return nil, nil
+	}
+	body, err := (&ptrace.JSONMarshaler{}).MarshalTraces(b.traces)
+	if err != nil {
+		return nil, fmt.Errorf("encode otlp: %w", err)
+	}
+	return body, nil
+}
+
+// preparedDocument is a segment document ready for the translator. root is
+// the decoded form of body, and namespaces holds the original namespace of
+// each subsegment id whose namespace was rewritten.
+type preparedDocument struct {
+	body       []byte
+	root       map[string]any
+	namespaces map[string]string
+}
+
+// prepareDocument drops an inferred document, removes inferred subsegments,
+// maps namespaces the translator rejects, and fills trace_id from the
+// BatchGetTraces id when the document omits it.
+func prepareDocument(doc, xrayTraceID string) (preparedDocument, bool, error) {
+	var root map[string]any
+	dec := json.NewDecoder(strings.NewReader(doc))
+	// Annotations and metadata can hold integers beyond float64 precision.
+	dec.UseNumber()
+	if err := dec.Decode(&root); err != nil {
+		return preparedDocument{}, false, fmt.Errorf("parse segment: %w", err)
+	}
+	if truthy(root["inferred"]) {
+		return preparedDocument{}, true, nil
+	}
+	stripInferred(root)
+	namespaces := map[string]string{}
+	normalizeNamespaces(root, namespaces)
+	if str(root["trace_id"]) == "" {
+		if xrayTraceID == "" {
+			return preparedDocument{}, false, fmt.Errorf("missing trace id")
+		}
+		root["trace_id"] = xrayTraceID
+	}
+	body, err := json.Marshal(root)
+	if err != nil {
+		return preparedDocument{}, false, err
+	}
+	return preparedDocument{body: body, root: root, namespaces: namespaces}, false, nil
+}
+
+func stripInferred(seg map[string]any) {
+	children := slice(seg["subsegments"])
+	if len(children) == 0 {
 		return
 	}
-	spanID := str(segment["id"])
-	if spanID == "" {
+	kept := make([]any, 0, len(children))
+	for _, child := range children {
+		m, ok := child.(map[string]any)
+		if !ok || truthy(m["inferred"]) {
+			continue
+		}
+		stripInferred(m)
+		kept = append(kept, m)
+	}
+	if len(kept) == 0 {
+		delete(seg, "subsegments")
 		return
 	}
-	if !isSub {
-		if end, ok := num(segment["end_time"]); ok {
-			rootEnd = end
+	seg["subsegments"] = kept
+}
+
+// normalizeNamespaces makes every subsegment namespace one the translator
+// accepts: absent, aws, remote, or local. An empty namespace is removed, and
+// any other value, such as API Gateway's "mock" integration, becomes
+// "remote" with the original recorded in replaced by subsegment id.
+func normalizeNamespaces(seg map[string]any, replaced map[string]string) {
+	for _, child := range slice(seg["subsegments"]) {
+		m, ok := child.(map[string]any)
+		if !ok {
+			continue
+		}
+		switch ns := m["namespace"]; ns {
+		case "aws", "remote", "local":
+		case nil, "":
+			delete(m, "namespace")
+		default:
+			replaced[str(m["id"])] = fmt.Sprint(ns)
+			m["namespace"] = "remote"
+		}
+		normalizeNamespaces(m, replaced)
+	}
+}
+
+// enrich stamps resource and span attributes the translator does not set.
+func enrich(td ptrace.Traces, doc preparedDocument, region, scopeVersion string) {
+	resources := td.ResourceSpans()
+	for i := 0; i < resources.Len(); i++ {
+		rs := resources.At(i)
+		attrs := rs.Resource().Attributes()
+		if region != "" {
+			attrs.PutStr("cloud.region", region)
+		}
+		attrs.PutStr("service.namespace", "aws-xray")
+		scopes := rs.ScopeSpans()
+		for j := 0; j < scopes.Len(); j++ {
+			scope := scopes.At(j)
+			scope.Scope().SetName(scopeName)
+			if scopeVersion != "" {
+				scope.Scope().SetVersion(scopeVersion)
+			}
+			stampSegment(scope.Spans(), doc.root, doc.namespaces)
 		}
 	}
-	span := buildSpan(segment, traceID, isSub, rootEnd)
-	service := serviceName(segment)
-	key := service + "\x00" + accountID(segment)
-	group, ok := groups[key]
-	if !ok {
-		group = &serviceGroup{service: service, account: accountID(segment)}
-		groups[key] = group
-		*order = append(*order, key)
-	}
-	group.spans = append(group.spans, span)
+}
 
-	for _, child := range slice(segment["subsegments"]) {
+func stampSegment(spans ptrace.SpanSlice, seg map[string]any, namespaces map[string]string) {
+	if span, ok := findSpan(spans, str(seg["id"])); ok {
+		if origin := str(seg["origin"]); origin != "" {
+			span.Attributes().PutStr("aws.xray.origin", origin)
+		}
+		if ns, ok := namespaces[str(seg["id"])]; ok {
+			span.Attributes().PutStr("aws.xray.namespace", ns)
+		}
+		gw := object(object(seg["aws"])["api_gateway"])
+		if id := str(gw["api_id"]); id != "" {
+			span.Attributes().PutStr("aws.api_gateway.api_id", id)
+		}
+		if stage := str(gw["stage"]); stage != "" {
+			span.Attributes().PutStr("aws.api_gateway.stage", stage)
+		}
+		if reqID := str(gw["request_id"]); reqID != "" {
+			span.Attributes().PutStr("aws.api_gateway.request_id", reqID)
+		}
+	}
+	for _, child := range slice(seg["subsegments"]) {
 		childMap, ok := child.(map[string]any)
 		if !ok {
 			continue
 		}
-		addSegment(groups, order, childMap, traceID, rootEnd, true)
+		stampSegment(spans, childMap, namespaces)
 	}
 }
 
-func buildSpan(segment map[string]any, traceID string, isSub bool, rootEnd float64) Span {
-	start, _ := num(segment["start_time"])
-	end, hasEnd := num(segment["end_time"])
-	if !hasEnd {
-		end = start
+func findSpan(spans ptrace.SpanSlice, hexID string) (ptrace.Span, bool) {
+	raw, err := hex.DecodeString(hexID)
+	if err != nil || len(raw) != 8 {
+		return ptrace.Span{}, false
 	}
-	startNS := epochNanos(start)
-	endNS := epochNanos(end)
-	if endNS == startNS {
-		if rootEnd > end {
-			endNS = epochNanos(rootEnd)
-		} else {
-			endNS = strconv.FormatInt(atoi(startNS)+1_000_000, 10)
+	var id pcommon.SpanID
+	copy(id[:], raw)
+	for i := 0; i < spans.Len(); i++ {
+		if spans.At(i).SpanID() == id {
+			return spans.At(i), true
 		}
 	}
+	return ptrace.Span{}, false
+}
 
-	kind := spanKindServer
-	if isSub {
-		if str(segment["namespace"]) == "remote" {
-			kind = spanKindClient
-		} else {
-			kind = spanKindProducer
+func countSpans(td ptrace.Traces) int {
+	n := 0
+	resources := td.ResourceSpans()
+	for i := 0; i < resources.Len(); i++ {
+		scopes := resources.At(i).ScopeSpans()
+		for j := 0; j < scopes.Len(); j++ {
+			n += scopes.At(j).Spans().Len()
 		}
 	}
-
-	span := Span{
-		TraceID:           traceID,
-		SpanID:            str(segment["id"]),
-		Name:              serviceName(segment),
-		Kind:              kind,
-		StartTimeUnixNano: startNS,
-		EndTimeUnixNano:   endNS,
-		Status:            statusOf(segment),
-	}
-	if parent := str(segment["parent_id"]); parent != "" {
-		span.ParentSpanID = parent
-	}
-
-	span.Attributes = append(span.Attributes, httpAttributes(segment)...)
-	if origin := str(segment["origin"]); origin != "" {
-		span.Attributes = append(span.Attributes, strAttr("aws.xray.origin", origin))
-	}
-	span.Attributes = append(span.Attributes, strAttr("cloud.provider", "aws"))
-	return span
-}
-
-func statusOf(segment map[string]any) Status {
-	switch {
-	case truthy(segment["fault"]):
-		return Status{Code: statusError, Message: "fault"}
-	case truthy(segment["error"]):
-		return Status{Code: statusError, Message: "error"}
-	default:
-		return Status{Code: statusOK}
-	}
-}
-
-func httpAttributes(segment map[string]any) []Attribute {
-	httpMap := object(segment["http"])
-	req := object(httpMap["request"])
-	resp := object(httpMap["response"])
-	var attrs []Attribute
-	if url := str(req["url"]); url != "" {
-		attrs = append(attrs, strAttr("http.url", url))
-	}
-	if method := str(req["method"]); method != "" {
-		attrs = append(attrs, strAttr("http.method", method))
-	}
-	if status, ok := num(resp["status"]); ok {
-		attrs = append(attrs, intAttr("http.status_code", int64(status)))
-	}
-	if ip := str(req["client_ip"]); ip != "" {
-		attrs = append(attrs, strAttr("net.peer.ip", ip))
-	}
-	if ua := str(req["user_agent"]); ua != "" {
-		attrs = append(attrs, strAttr("http.user_agent", ua))
-	}
-	awsMap := object(segment["aws"])
-	if gw := object(awsMap["api_gateway"]); len(gw) > 0 {
-		if id := str(gw["api_id"]); id != "" {
-			attrs = append(attrs, strAttr("aws.api_gateway.api_id", id))
-		}
-		if stage := str(gw["stage"]); stage != "" {
-			attrs = append(attrs, strAttr("aws.api_gateway.stage", stage))
-		}
-		if reqID := str(gw["request_id"]); reqID != "" {
-			attrs = append(attrs, strAttr("aws.api_gateway.request_id", reqID))
-		}
-	}
-	return attrs
-}
-
-func serviceName(segment map[string]any) string {
-	if name := str(segment["name"]); name != "" {
-		return name
-	}
-	if origin := str(segment["origin"]); origin != "" {
-		return origin
-	}
-	return "aws-xray"
-}
-
-func accountID(segment map[string]any) string {
-	return str(object(segment["aws"])["account_id"])
-}
-
-func strAttr(key, value string) Attribute {
-	return Attribute{Key: key, Value: AttributeValue{StringValue: value}}
-}
-
-func intAttr(key string, value int64) Attribute {
-	return Attribute{Key: key, Value: AttributeValue{IntValue: strconv.FormatInt(value, 10)}}
-}
-
-func epochNanos(ts float64) string {
-	return strconv.FormatInt(int64(ts*1_000_000_000), 10)
-}
-
-func atoi(s string) int64 {
-	n, _ := strconv.ParseInt(s, 10, 64)
 	return n
 }
 
 func str(v any) string {
 	s, _ := v.(string)
 	return s
-}
-
-func num(v any) (float64, bool) {
-	f, ok := v.(float64)
-	return f, ok
 }
 
 func truthy(v any) bool {

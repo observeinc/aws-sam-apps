@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/xray"
 	"github.com/aws/aws-sdk-go-v2/service/xray/types"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 const (
@@ -32,9 +33,10 @@ type CursorStore interface {
 	Store(ctx context.Context, end time.Time) error
 }
 
-// Exporter delivers one OTLP/JSON payload.
+// Exporter delivers converted traces. Implementations batch the upload so
+// one polling window cannot become a single unbounded request.
 type Exporter interface {
-	Export(ctx context.Context, body []byte) error
+	Export(ctx context.Context, traces ptrace.Traces) error
 }
 
 // Poller reads a window of X-Ray traces and exports them as OTLP.
@@ -109,7 +111,7 @@ func (p *Poller) Run(ctx context.Context, now time.Time) (Result, error) {
 	if err != nil {
 		return result, err
 	}
-	var resources []ResourceSpans
+	batch := NewTraceBatch()
 	for _, trace := range traces {
 		if trace.Id == nil {
 			continue
@@ -120,25 +122,18 @@ func (p *Poller) Run(ctx context.Context, now time.Time) (Result, error) {
 				docs = append(docs, *segment.Document)
 			}
 		}
-		group, err := ResourceSpansFromDocuments(*trace.Id, docs, p.Region, p.scopeVersion())
+		n, err := batch.Add(*trace.Id, docs, p.Region, p.scopeVersion())
 		if err != nil {
 			// A single bad document must not pin the cursor. The next poll
 			// would read the same window and fail the same way.
 			p.Logger.Error(err, "skipping x-ray trace", "trace", *trace.Id)
 			continue
 		}
-		for _, resource := range group {
-			result.Spans += len(resource.ScopeSpans[0].Spans)
-		}
-		resources = append(resources, group...)
+		result.Spans += n
 	}
 
 	if result.Spans > 0 {
-		body, err := marshalPayload(resources)
-		if err != nil {
-			return result, err
-		}
-		if err := p.Exporter.Export(ctx, body); err != nil {
+		if err := p.Exporter.Export(ctx, batch.Traces()); err != nil {
 			return result, err
 		}
 	}
@@ -154,10 +149,14 @@ func (p *Poller) listTraceIDs(ctx context.Context, start, end time.Time) ([]stri
 	var token *string
 	for {
 		in := &xray.GetTraceSummariesInput{
-			StartTime:     aws.Time(start),
-			EndTime:       aws.Time(end),
-			Sampling:      aws.Bool(false),
-			TimeRangeType: types.TimeRangeTypeTraceId,
+			StartTime: aws.Time(start),
+			EndTime:   aws.Time(end),
+			Sampling:  aws.Bool(false),
+			// Event time, not the trace-id timestamp. A segment that arrives
+			// after the trace started is selected again when its event time
+			// falls in a later window. Span ids are stable, so reposting the
+			// earlier spans does not create a second copy.
+			TimeRangeType: types.TimeRangeTypeEvent,
 			NextToken:     token,
 		}
 		if p.Filter != "" {
@@ -219,10 +218,10 @@ func (p *Poller) batchGet(ctx context.Context, ids []string) ([]types.Trace, err
 	return traces, nil
 }
 
-// window returns the half-open range of trace-start times to read.
-// The end is lagged so X-Ray has time to index the traces. A stored cursor
-// is the previous end, so successive polls do not overlap. A large gap is
-// capped so one invocation cannot try to drain days of traces.
+// window returns the half-open range of event times to read. The end is
+// lagged so X-Ray has time to index segments. A stored cursor is the previous
+// end, so successive polls do not overlap. A large gap is capped so one
+// invocation cannot try to drain days of traces.
 func window(now, cursor time.Time, hasCursor bool, safetyLag, initialLookback, maxWindow time.Duration) (start, end time.Time, ok bool) {
 	end = now.Add(-safetyLag)
 	if hasCursor {

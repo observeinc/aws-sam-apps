@@ -96,6 +96,7 @@ Metadata:
           - EnableXRayPoller
           - XRayPollIntervalMinutes
           - XRayFilterExpression
+          - XRayTargetPackage
           - ObserveIngestToken
       - Label:
           default: Debugging Options
@@ -505,10 +506,18 @@ Parameters:
   XRayPollIntervalMinutes:
     Type: Number
     Default: 1
-    AllowedValues: [1, 2, 5]
+    MinValue: 1
+    MaxValue: 15
     Description: >-
-      How often, in minutes, the X-Ray poller runs. Used only when
-      EnableXRayPoller is true.
+      How often, in minutes, the X-Ray poller runs. Any integer from 1 to
+      15. Used only when EnableXRayPoller is true.
+  XRayTargetPackage:
+    Type: String
+    Default: Tracing
+    AllowedPattern: '^[A-Za-z0-9_-]*$'
+    Description: >-
+      x-observe-target-package header the X-Ray poller sends. Default
+      Tracing. Used only when EnableXRayPoller is true.
   XRayFilterExpression:
     Type: String
     Default: 'service(id(type: "AWS::ApiGateway::Stage"))'
@@ -857,9 +866,10 @@ Resources:
       NotificationARNs:
         - !Ref Topic
       Parameters:
-        ObserveCustomerId: !Ref ObserveAccountID
+        ObserveAccountID: !Ref ObserveAccountID
         ObserveDomainName: !Ref ObserveDomainName
         ObserveIngestToken: !Ref ObserveIngestToken
+        ObserveTargetPackage: !Ref XRayTargetPackage
         PollIntervalMinutes: !Ref XRayPollIntervalMinutes
         FilterExpression: !Ref XRayFilterExpression
         LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix

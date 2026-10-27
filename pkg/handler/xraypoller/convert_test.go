@@ -5,20 +5,7 @@ import (
 	"testing"
 )
 
-func TestOTelTraceID(t *testing.T) {
-	got, err := OTelTraceID("1-69fba214-225558552b59105d29f40f79")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != "69fba214225558552b59105d29f40f79" {
-		t.Fatalf("trace id: %s", got)
-	}
-	if _, err := OTelTraceID("not-a-trace"); err == nil {
-		t.Fatal("expected error")
-	}
-}
-
-func TestResourceSpansFromDocuments(t *testing.T) {
+func TestOTLPPayload(t *testing.T) {
 	root := map[string]any{
 		"id":         "abcdef1234567890",
 		"name":       "my-api",
@@ -41,7 +28,7 @@ func TestResourceSpansFromDocuments(t *testing.T) {
 				"id":         "1234abcd1234abcd",
 				"name":       "DynamoDB",
 				"start_time": 100.1,
-				"end_time":   100.1,
+				"end_time":   100.2,
 				"namespace":  "remote",
 				"parent_id":  "abcdef1234567890",
 			},
@@ -58,78 +45,256 @@ func TestResourceSpansFromDocuments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := ResourceSpansFromDocuments("1-69fba214-225558552b59105d29f40f79", []string{string(doc)}, "us-west-2", "test")
+	batch := NewTraceBatch()
+	n, err := batch.Add("1-69fba214-225558552b59105d29f40f79", []string{string(doc)}, "us-west-2", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("resource groups: %d", len(got))
+	if n != 2 {
+		t.Fatalf("spans: %d", n)
+	}
+	body, err := batch.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := decodePayload(t, body)
+	if len(payload.ResourceSpans) != 1 {
+		t.Fatalf("resources: %d", len(payload.ResourceSpans))
+	}
+	rs := payload.ResourceSpans[0]
+	if attr(rs.Resource, "service.name") != "my-api" {
+		t.Fatalf("service: %s", attr(rs.Resource, "service.name"))
+	}
+	if attr(rs.Resource, "cloud.region") != "us-west-2" {
+		t.Fatalf("region: %s", attr(rs.Resource, "cloud.region"))
+	}
+	if attr(rs.Resource, "service.namespace") != "aws-xray" {
+		t.Fatalf("namespace: %s", attr(rs.Resource, "service.namespace"))
+	}
+	spans := rs.ScopeSpans[0].Spans
+	if len(spans) != 2 {
+		t.Fatalf("span count: %d", len(spans))
+	}
+	api := spans[0]
+	if api.Name != "my-api" || api.Kind != 2 {
+		t.Fatalf("root span: %+v", api)
+	}
+	if api.TraceID != "69fba214225558552b59105d29f40f79" {
+		t.Fatalf("trace id: %s", api.TraceID)
+	}
+	if attr(api, "aws.api_gateway.stage") != "prod" {
+		t.Fatalf("stage: %s", attr(api, "aws.api_gateway.stage"))
+	}
+	if attr(api, "aws.xray.origin") != "AWS::ApiGateway::Stage" {
+		t.Fatalf("origin: %s", attr(api, "aws.xray.origin"))
+	}
+	if attr(api, "http.method") != "GET" {
+		t.Fatalf("method: %s", attr(api, "http.method"))
 	}
 
-	api := findService(t, got, "my-api")
-	apiSpan := api.ScopeSpans[0].Spans[0]
-	if apiSpan.Kind != spanKindServer {
-		t.Fatalf("root kind: %d", apiSpan.Kind)
+	ddb := spans[1]
+	if ddb.Name != "DynamoDB" || ddb.Kind != 3 {
+		t.Fatalf("subsegment: %+v", ddb)
 	}
-	if apiSpan.TraceID != "69fba214225558552b59105d29f40f79" {
-		t.Fatalf("trace id: %s", apiSpan.TraceID)
+	if ddb.ParentSpanID != "abcdef1234567890" {
+		t.Fatalf("parent: %s", ddb.ParentSpanID)
 	}
-	if attr(apiSpan, "aws.api_gateway.stage") != "prod" {
-		t.Fatalf("stage: %s", attr(apiSpan, "aws.api_gateway.stage"))
-	}
-	if attr(api.Resource, "cloud.region") != "us-west-2" {
-		t.Fatalf("region: %s", attr(api.Resource, "cloud.region"))
-	}
+}
 
-	ddb := findService(t, got, "DynamoDB")
-	span := ddb.ScopeSpans[0].Spans[0]
-	if span.Kind != spanKindClient {
-		t.Fatalf("subsegment kind: %d", span.Kind)
+func TestNestedSubsegmentInheritsParent(t *testing.T) {
+	root := map[string]any{
+		"id":         "aaaaaaaaaaaaaaaa",
+		"name":       "my-api",
+		"start_time": 100.0,
+		"end_time":   100.5,
+		"origin":     "AWS::ApiGateway::Stage",
+		"subsegments": []any{
+			map[string]any{
+				"id":         "bbbbbbbbbbbbbbbb",
+				"name":       "Lambda",
+				"start_time": 100.1,
+				"end_time":   100.4,
+				"namespace":  "aws",
+				"subsegments": []any{
+					map[string]any{
+						"id":         "cccccccccccccccc",
+						"name":       "work",
+						"start_time": 100.2,
+						"end_time":   100.2,
+					},
+				},
+			},
+		},
 	}
-	if span.ParentSpanID != "abcdef1234567890" {
-		t.Fatalf("parent: %s", span.ParentSpanID)
+	doc, err := json.Marshal(root)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if span.EndTimeUnixNano == span.StartTimeUnixNano {
-		t.Fatal("zero-duration subsegment was not extended to the root end")
+	batch := NewTraceBatch()
+	n, err := batch.Add("1-69fba214-225558552b59105d29f40f79", []string{string(doc)}, "us-west-2", "test")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if span.EndTimeUnixNano != epochNanos(100.5) {
-		t.Fatalf("end: %s", span.EndTimeUnixNano)
+	if n != 3 {
+		t.Fatalf("spans: %d", n)
 	}
+	spans := decodePayload(t, mustMarshal(t, batch)).ResourceSpans[0].ScopeSpans[0].Spans
+	byName := map[string]otlpSpan{}
+	for _, span := range spans {
+		byName[span.Name] = span
+	}
+	if byName["my-api"].ParentSpanID != "" || byName["my-api"].Kind != 2 {
+		t.Fatalf("root: %+v", byName["my-api"])
+	}
+	if byName["Lambda"].ParentSpanID != "aaaaaaaaaaaaaaaa" || byName["Lambda"].Kind != 3 {
+		t.Fatalf("lambda: %+v", byName["Lambda"])
+	}
+	if byName["work"].ParentSpanID != "bbbbbbbbbbbbbbbb" || byName["work"].Kind != 1 {
+		t.Fatalf("work: %+v", byName["work"])
+	}
+	payload := decodePayload(t, mustMarshal(t, batch))
+	if attr(payload.ResourceSpans[0].Resource, "service.name") != "my-api" {
+		t.Fatal("downstream subsegment took its own service name")
+	}
+	if len(payload.ResourceSpans) != 1 {
+		t.Fatalf("resources: %d", len(payload.ResourceSpans))
+	}
+}
+
+func TestUnknownNamespaceBecomesClient(t *testing.T) {
+	doc := `{"id":"aaaaaaaaaaaaaaaa","name":"api/e2e","start_time":1,"end_time":2,"origin":"AWS::ApiGateway::Stage",` +
+		`"subsegments":[{"id":"bbbbbbbbbbbbbbbb","name":"Mock","namespace":"mock","start_time":1,"end_time":1.5}]}`
+	batch := NewTraceBatch()
+	n, err := batch.Add("1-69fba214-225558552b59105d29f40f79", []string{doc}, "us-west-2", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("spans: %d", n)
+	}
+	var mock otlpSpan
+	for _, span := range decodePayload(t, mustMarshal(t, batch)).ResourceSpans[0].ScopeSpans[0].Spans {
+		if span.Name == "Mock" {
+			mock = span
+		}
+	}
+	if mock.Kind != 3 || mock.ParentSpanID != "aaaaaaaaaaaaaaaa" {
+		t.Fatalf("mock: %+v", mock)
+	}
+	if attr(mock, "aws.xray.namespace") != "mock" {
+		t.Fatalf("namespace attr: %q", attr(mock, "aws.xray.namespace"))
+	}
+}
+
+func TestEmptyNamespaceIsLocal(t *testing.T) {
+	doc := `{"id":"aaaaaaaaaaaaaaaa","name":"svc","start_time":1,"end_time":2,` +
+		`"subsegments":[{"id":"bbbbbbbbbbbbbbbb","name":"work","namespace":"","start_time":1,"end_time":1.5}]}`
+	batch := NewTraceBatch()
+	n, err := batch.Add("1-69fba214-225558552b59105d29f40f79", []string{doc}, "us-west-2", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("spans: %d", n)
+	}
+	for _, span := range decodePayload(t, mustMarshal(t, batch)).ResourceSpans[0].ScopeSpans[0].Spans {
+		if span.Name == "work" && (span.Kind != 1 || attr(span, "aws.xray.namespace") != "") {
+			t.Fatalf("work: %+v", span)
+		}
+	}
+}
+
+func TestLargeIntegersSurviveNormalization(t *testing.T) {
+	doc := `{"id":"aaaaaaaaaaaaaaaa","name":"svc","start_time":1,"end_time":2,` +
+		`"aws":{"elastic_beanstalk":{"environment_name":"prod","version_label":"v1","deployment_id":9007199254740993}}}`
+	batch := NewTraceBatch()
+	if _, err := batch.Add("1-69fba214-225558552b59105d29f40f79", []string{doc}, "us-west-2", "test"); err != nil {
+		t.Fatal(err)
+	}
+	resource := decodePayload(t, mustMarshal(t, batch)).ResourceSpans[0].Resource
+	if got := attr(resource, "service.instance.id"); got != "9007199254740993" {
+		t.Fatalf("service.instance.id: %q", got)
+	}
+}
+
+func mustMarshal(t *testing.T, batch *TraceBatch) []byte {
+	t.Helper()
+	body, err := batch.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return body
 }
 
 func TestInferredRootIsDropped(t *testing.T) {
 	doc := `{"id":"abcdef1234567890","name":"backend","inferred":true,"start_time":1,"end_time":2}`
-	got, err := ResourceSpansFromDocuments("1-69fba214-225558552b59105d29f40f79", []string{doc}, "us-east-1", "test")
+	batch := NewTraceBatch()
+	n, err := batch.Add("1-69fba214-225558552b59105d29f40f79", []string{doc}, "us-east-1", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 0 {
-		t.Fatalf("expected no spans, got %#v", got)
+	if n != 0 {
+		t.Fatalf("spans: %d", n)
+	}
+	body, err := batch.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body != nil {
+		t.Fatalf("payload: %s", body)
 	}
 }
 
-func findService(t *testing.T, groups []ResourceSpans, name string) ResourceSpans {
+type otlpPayload struct {
+	ResourceSpans []otlpResourceSpans `json:"resourceSpans"`
+}
+
+type otlpResourceSpans struct {
+	Resource   otlpResource    `json:"resource"`
+	ScopeSpans []otlpScopeSpan `json:"scopeSpans"`
+}
+
+type otlpResource struct {
+	Attributes []otlpAttribute `json:"attributes"`
+}
+
+type otlpScopeSpan struct {
+	Spans []otlpSpan `json:"spans"`
+}
+
+type otlpSpan struct {
+	TraceID      string          `json:"traceId"`
+	SpanID       string          `json:"spanId"`
+	ParentSpanID string          `json:"parentSpanId"`
+	Name         string          `json:"name"`
+	Kind         int             `json:"kind"`
+	Attributes   []otlpAttribute `json:"attributes"`
+}
+
+type otlpAttribute struct {
+	Key   string `json:"key"`
+	Value struct {
+		StringValue string `json:"stringValue"`
+	} `json:"value"`
+}
+
+func decodePayload(t *testing.T, body []byte) otlpPayload {
 	t.Helper()
-	for _, group := range groups {
-		if attr(group.Resource, "service.name") == name {
-			return group
-		}
+	var payload otlpPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatal(err)
 	}
-	t.Fatalf("missing service %s", name)
-	return ResourceSpans{}
+	return payload
 }
 
-func attr(holder interface{ attributes() []Attribute }, key string) string {
+func attr(holder interface{ attributes() []otlpAttribute }, key string) string {
 	for _, attribute := range holder.attributes() {
 		if attribute.Key == key {
-			if attribute.Value.StringValue != "" {
-				return attribute.Value.StringValue
-			}
-			return attribute.Value.IntValue
+			return attribute.Value.StringValue
 		}
 	}
 	return ""
 }
 
-func (r Resource) attributes() []Attribute { return r.Attributes }
-func (s Span) attributes() []Attribute     { return s.Attributes }
+func (r otlpResource) attributes() []otlpAttribute { return r.Attributes }
+func (s otlpSpan) attributes() []otlpAttribute     { return s.Attributes }

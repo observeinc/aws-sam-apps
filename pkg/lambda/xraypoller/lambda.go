@@ -13,6 +13,7 @@ import (
 	ssmtypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/aws/aws-sdk-go-v2/service/xray"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/observeinc/aws-sam-apps/pkg/handler/xraypoller"
 	"github.com/observeinc/aws-sam-apps/pkg/logging"
@@ -21,8 +22,9 @@ import (
 
 // Config is loaded from the Lambda environment.
 type Config struct {
-	CustomerID             string `env:"OBSERVE_CUSTOMER_ID,required"`
+	AccountID              string `env:"OBSERVE_ACCOUNT_ID,required"`
 	Domain                 string `env:"OBSERVE_DOMAIN_NAME,required"`
+	TargetPackage          string `env:"OBSERVE_TARGET_PACKAGE,default=Tracing"`
 	SecretID               string `env:"OBSERVE_INGEST_TOKEN_SECRET_ID,required"`
 	Filter                 string `env:"FILTER_EXPRESSION"`
 	FunctionName           string `env:"AWS_LAMBDA_FUNCTION_NAME"`
@@ -56,8 +58,8 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 	secrets := secretsmanager.NewFromConfig(awsCfg)
 	store := &ssmCursor{client: ssm.NewFromConfig(awsCfg), name: cfg.CursorName}
 	exporter := &xraypoller.HTTPExporter{
-		URL:   xraypoller.Endpoint(cfg.CustomerID, cfg.Domain),
-		Token: "",
+		URL:           xraypoller.Endpoint(cfg.AccountID, cfg.Domain),
+		TargetPackage: cfg.TargetPackage,
 	}
 	poller := &xraypoller.Poller{
 		XRay:            xray.NewFromConfig(awsCfg),
@@ -94,7 +96,7 @@ type secretExporter struct {
 	inner    *xraypoller.HTTPExporter
 }
 
-func (s *secretExporter) Export(ctx context.Context, body []byte) error {
+func (s *secretExporter) Export(ctx context.Context, traces ptrace.Traces) error {
 	out, err := s.secrets.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(s.secretID),
 	})
@@ -105,7 +107,7 @@ func (s *secretExporter) Export(ctx context.Context, body []byte) error {
 		return fmt.Errorf("ingest token secret %s is empty", s.secretID)
 	}
 	s.inner.Token = *out.SecretString
-	return s.inner.Export(ctx, body)
+	return s.inner.Export(ctx, traces)
 }
 
 type ssmCursor struct {

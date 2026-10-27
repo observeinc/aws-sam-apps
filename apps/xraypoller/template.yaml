@@ -20,9 +20,9 @@ Metadata:
     SourceCodeUrl: https://github.com/observeinc/aws-sam-apps
 
 Parameters:
-  ObserveCustomerId:
+  ObserveAccountID:
     Type: String
-    Description: Observe customer id used in the collect hostname.
+    Description: Observe account id used in the collect hostname.
     AllowedPattern: '^\d+$'
   ObserveDomainName:
     Type: String
@@ -38,11 +38,20 @@ Parameters:
       Long-lived ingest token secret associated with the collection datastream.
       Stored in Secrets Manager. The Lambda reads it at runtime; it is not left
       in the function environment. Revoke it from the Observe ingest-token page.
+  ObserveTargetPackage:
+    Type: String
+    Default: Tracing
+    AllowedPattern: '^[A-Za-z0-9_-]+$'
+    Description: >-
+      Value of the x-observe-target-package header. Tracing is the usual
+      package for OTLP spans.
   PollIntervalMinutes:
     Type: Number
     Default: 1
-    AllowedValues: [1, 2, 5]
-    Description: How often, in minutes, to poll X-Ray.
+    MinValue: 1
+    MaxValue: 15
+    Description: >-
+      How often, in minutes, to poll X-Ray. Any integer from 1 to 15.
   FilterExpression:
     Type: String
     Default: 'service(id(type: "AWS::ApiGateway::Stage"))'
@@ -95,7 +104,6 @@ Resources:
     Properties:
       Description: Customer-managed key for the X-Ray poller ingest token.
       EnableKeyRotation: true
-      PendingWindowInDays: 7
       KeyPolicy:
         Version: '2012-10-17'
         Statement:
@@ -103,7 +111,30 @@ Resources:
             Effect: Allow
             Principal:
               AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
-            Action: kms:*
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncryptFrom
+              - kms:ReEncryptTo
+              - kms:GenerateDataKey
+              - kms:GenerateDataKeyWithoutPlaintext
+              - kms:DescribeKey
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:RevokeGrant
+              - kms:EnableKey
+              - kms:DisableKey
+              - kms:GetKeyPolicy
+              - kms:PutKeyPolicy
+              - kms:GetKeyRotationStatus
+              - kms:EnableKeyRotation
+              - kms:DisableKeyRotation
+              - kms:ListResourceTags
+              - kms:TagResource
+              - kms:UntagResource
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:UpdateKeyDescription
             Resource: "*"
   IngestTokenSecret:
     Type: AWS::SecretsManager::Secret
@@ -220,8 +251,9 @@ Resources:
           Value: xray-poller
       Environment:
         Variables:
-          OBSERVE_CUSTOMER_ID: !Ref ObserveCustomerId
+          OBSERVE_ACCOUNT_ID: !Ref ObserveAccountID
           OBSERVE_DOMAIN_NAME: !Ref ObserveDomainName
+          OBSERVE_TARGET_PACKAGE: !Ref ObserveTargetPackage
           OBSERVE_INGEST_TOKEN_SECRET_ID: !Ref IngestTokenSecret
           FILTER_EXPRESSION: !Ref FilterExpression
           CURSOR_PARAMETER_NAME:

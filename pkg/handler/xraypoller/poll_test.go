@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/xray"
 	"github.com/aws/aws-sdk-go-v2/service/xray/types"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 func TestExcludeService(t *testing.T) {
@@ -77,7 +78,7 @@ func TestRunAdvancesCursorAfterExport(t *testing.T) {
 	p := &Poller{
 		XRay:     fake,
 		Cursor:   cursor,
-		Exporter: exporterFunc(func(context.Context, []byte) error { exported++; return nil }),
+		Exporter: exporterFunc(func(context.Context, ptrace.Traces) error { exported++; return nil }),
 		Region:   "us-west-2",
 		Filter:   DefaultAPIGatewayFilter,
 		Logger:   logr.Discard(),
@@ -96,6 +97,9 @@ func TestRunAdvancesCursorAfterExport(t *testing.T) {
 	if fake.filter != DefaultAPIGatewayFilter {
 		t.Fatalf("filter %q", fake.filter)
 	}
+	if fake.timeRange != types.TimeRangeTypeEvent {
+		t.Fatalf("time range %s", fake.timeRange)
+	}
 }
 
 func TestRunDoesNotAdvanceCursorWhenExportFails(t *testing.T) {
@@ -110,7 +114,7 @@ func TestRunDoesNotAdvanceCursorWhenExportFails(t *testing.T) {
 			},
 		},
 		Cursor:   cursor,
-		Exporter: exporterFunc(func(context.Context, []byte) error { return errors.New("observe down") }),
+		Exporter: exporterFunc(func(context.Context, ptrace.Traces) error { return errors.New("observe down") }),
 		Logger:   logr.Discard(),
 		Sleep:    func(context.Context, time.Duration) error { return nil },
 	}
@@ -144,7 +148,7 @@ func TestBatchGetRetriesUnprocessedAndFollowsNextToken(t *testing.T) {
 	p := &Poller{
 		XRay:     fake,
 		Cursor:   &memCursor{},
-		Exporter: exporterFunc(func(context.Context, []byte) error { return nil }),
+		Exporter: exporterFunc(func(context.Context, ptrace.Traces) error { return nil }),
 		Logger:   logr.Discard(),
 		Sleep:    func(context.Context, time.Duration) error { return nil },
 	}
@@ -160,9 +164,11 @@ func TestBatchGetRetriesUnprocessedAndFollowsNextToken(t *testing.T) {
 	}
 }
 
-type exporterFunc func(context.Context, []byte) error
+type exporterFunc func(context.Context, ptrace.Traces) error
 
-func (f exporterFunc) Export(ctx context.Context, body []byte) error { return f(ctx, body) }
+func (f exporterFunc) Export(ctx context.Context, traces ptrace.Traces) error {
+	return f(ctx, traces)
+}
 
 type memCursor struct {
 	stored time.Time
@@ -182,6 +188,7 @@ func (m *memCursor) Store(_ context.Context, end time.Time) error {
 type fakeXRay struct {
 	summaries       []string
 	filter          string
+	timeRange       types.TimeRangeType
 	traces          map[string][]string
 	page            map[string][]string
 	unprocessedOnce map[string]bool
@@ -193,6 +200,7 @@ func (f *fakeXRay) GetTraceSummaries(_ context.Context, in *xray.GetTraceSummari
 	if in.FilterExpression != nil {
 		f.filter = *in.FilterExpression
 	}
+	f.timeRange = in.TimeRangeType
 	f.summaryPages++
 	if f.summaryPages == 1 && len(f.summaries) > 1 {
 		return &xray.GetTraceSummariesOutput{
