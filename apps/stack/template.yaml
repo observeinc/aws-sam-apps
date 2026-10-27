@@ -89,6 +89,15 @@ Metadata:
           - MetricsConfiguratorLambdaS3Key
           - PollerConfiguratorLambdaS3Key
           - MetricTagLambdaS3Key
+          - XRayPollerLambdaS3Key
+      - Label:
+          default: X-Ray traces
+        Parameters:
+          - EnableXRayPoller
+          - XRayPollIntervalMinutes
+          - XRayFilterExpression
+          - XRayTargetPackage
+          - ObserveIngestToken
       - Label:
           default: Debugging Options
         Parameters:
@@ -478,6 +487,52 @@ Parameters:
     Description: >-
       S3 key for the MetricTag Lambda code ZIP.
     Default: ''
+  XRayPollerLambdaS3Key:
+    Type: String
+    Description: >-
+      S3 key for the X-Ray poller Lambda code ZIP.
+    Default: ''
+  EnableXRayPoller:
+    Type: String
+    Description: >-
+      Deploy a Lambda that polls X-Ray and forwards managed-service traces
+      (API Gateway by default) to Observe as OTLP spans. Leave blank to use
+      the default ('false'). This does not enable X-Ray on API Gateway.
+    AllowedValues:
+      - ''
+      - 'true'
+      - 'false'
+    Default: 'false'
+  XRayPollIntervalMinutes:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 15
+    Description: >-
+      How often, in minutes, the X-Ray poller runs. Any integer from 1 to
+      15. Used only when EnableXRayPoller is true.
+  XRayTargetPackage:
+    Type: String
+    Default: Tracing
+    AllowedPattern: '^[A-Za-z0-9_-]*$'
+    Description: >-
+      x-observe-target-package header the X-Ray poller sends. Default
+      Tracing. Used only when EnableXRayPoller is true.
+  XRayFilterExpression:
+    Type: String
+    Default: 'service(id(type: "AWS::ApiGateway::Stage"))'
+    Description: >-
+      X-Ray filter expression. The default reads API Gateway traces. Set an
+      empty string to read every trace in the region. Used only when
+      EnableXRayPoller is true.
+  ObserveIngestToken:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: >-
+      Long-lived ingest token secret for the X-Ray poller. Required when
+      EnableXRayPoller is true. Stored in Secrets Manager in the nested
+      stack. Revoke it from the Observe ingest-token page.
   MetricTagLambdaNameOverride:
     Type: String
     Description: >-
@@ -558,6 +613,9 @@ Conditions:
     - !Equals
       - !Ref EnableMetricTag
       - 'true'
+  EnableXRayPollerApp: !Equals
+    - !Ref EnableXRayPoller
+    - 'true'
 Resources:
   Topic:
     Type: "AWS::SNS::Topic"
@@ -800,6 +858,23 @@ Resources:
         LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
         LambdaS3Key: !Ref PollerConfiguratorLambdaS3Key
         PermissionsBoundary: !Ref PermissionsBoundary
+  XRayPoller:
+    Type: AWS::Serverless::Application
+    Condition: EnableXRayPollerApp
+    Properties:
+      Location: ../xraypoller/template.yaml
+      NotificationARNs:
+        - !Ref Topic
+      Parameters:
+        ObserveAccountID: !Ref ObserveAccountID
+        ObserveDomainName: !Ref ObserveDomainName
+        ObserveIngestToken: !Ref ObserveIngestToken
+        ObserveTargetPackage: !Ref XRayTargetPackage
+        PollIntervalMinutes: !Ref XRayPollIntervalMinutes
+        FilterExpression: !Ref XRayFilterExpression
+        LambdaS3BucketPrefix: !Ref LambdaS3BucketPrefix
+        LambdaS3Key: !Ref XRayPollerLambdaS3Key
+        PermissionsBoundary: !Ref PermissionsBoundary
 Outputs:
   BucketName:
     Description: >-
@@ -893,6 +968,21 @@ Outputs:
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberLogGroupName
+  XRayPollerFunctionArn:
+    Description: >-
+      X-Ray poller Lambda ARN. Only present when EnableXRayPoller is true.
+    Condition: EnableXRayPollerApp
+    Value: !GetAtt
+      - XRayPoller
+      - Outputs.FunctionArn
+  XRayPollerLogGroupName:
+    Description: >-
+      Log group for the X-Ray poller. Only present when EnableXRayPoller
+      is true.
+    Condition: EnableXRayPollerApp
+    Value: !GetAtt
+      - XRayPoller
+      - Outputs.LogGroupName
   PollerRoleArn:
     Description: >-
       ARN for IAM Role to be assumed by CloudWatch for metric delivery. This
