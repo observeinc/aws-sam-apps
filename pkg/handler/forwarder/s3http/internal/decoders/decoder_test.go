@@ -102,6 +102,29 @@ func TestDecoders(t *testing.T) {
 	}
 }
 
+func TestAWSConfigDecoderSkipsItemsWithoutARN(t *testing.T) {
+	t.Parallel()
+	input := `{"configurationItems":[{"resourceType":"AWS::Config::ConfigurationRecorder","resourceId":"default"},{"ARN":"arn:aws:s3:::example","resourceType":"AWS::S3::Bucket","resourceId":"example"}]}`
+	decoder, err := decoders.Get("", "application/x-aws-config", bytes.NewBufferString(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []json.RawMessage
+	for decoder.More() {
+		var item json.RawMessage
+		if err := decoder.Decode(&item); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, item)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d items, want 1", len(got))
+	}
+	if !bytes.Contains(got[0], []byte(`"ARN":"arn:aws:s3:::example"`)) {
+		t.Fatalf("unexpected item: %s", got[0])
+	}
+}
+
 func readFile(t *testing.T, filename string) io.Reader {
 	t.Helper()
 	file, err := os.Open(filename)

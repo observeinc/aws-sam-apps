@@ -15,14 +15,15 @@ var (
 )
 
 type Config struct {
-	DestinationURI     string // S3 URI to write messages and copy files to
-	MaxFileSize        int64  // maximum file size in bytes for the files to be processed
-	SourceBucketNames  []string
-	SourceObjectKeys   []string
-	Override           Override
-	S3Client           S3Client
-	GetTime            func() *time.Time
-	MaxConcurrentTasks int // fan out limit
+	DestinationURI      string // S3 URI to write messages and copy files to
+	MaxFileSize         int64  // maximum file size in bytes for the files to be processed
+	SourceBucketNames   []string
+	SourceObjectKeys    []string
+	Override            Override
+	S3Client            S3Client
+	GetTime             func() *time.Time
+	MaxConcurrentTasks  int // fan out limit
+	AWSConfigEntityMode bool
 }
 
 func (c *Config) Validate() error {
@@ -34,6 +35,8 @@ func (c *Config) Validate() error {
 		switch {
 		case err != nil:
 			errs = append(errs, fmt.Errorf("%w: %w", ErrInvalidDestination, err))
+		case c.AWSConfigEntityMode && u.Scheme != "https":
+			errs = append(errs, fmt.Errorf("%w: AWS Config entity mode requires https", ErrInvalidDestination))
 		case u.Scheme == "s3":
 		case u.Scheme == "https":
 		default:

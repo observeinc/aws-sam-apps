@@ -42,6 +42,9 @@ type RunInput struct {
 	MaxRecordSize  *int // maximum size in bytes for each record
 	CapacityFactor *int // channel capacity, calculated as a multiple of concurrency
 	GzipLevel      *int // whether to enable gzip when writing batch
+	Prefix         []byte
+	Delimiter      []byte
+	Suffix         []byte
 }
 
 // Run processes all events from a decoder and feeds them into 1 or more batch handlers.
@@ -72,10 +75,18 @@ func Run(ctx context.Context, r *RunInput) error {
 		capacityFactor = *v
 	}
 
+	delimiter := r.Delimiter
+	suffix := r.Suffix
+	if delimiter == nil {
+		delimiter = []byte("\n")
+		suffix = []byte("\n")
+	}
 	q := NewQueue(&QueueConfig{
 		MaxBatchSize: maxBatchSize,
 		Capacity:     capacityFactor * maxConcurrency,
-		Delimiter:    []byte("\n"),
+		Prefix:       r.Prefix,
+		Delimiter:    delimiter,
+		Suffix:       suffix,
 		GzipLevel:    r.GzipLevel,
 	})
 

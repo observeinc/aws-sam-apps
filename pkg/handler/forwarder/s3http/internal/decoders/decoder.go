@@ -21,7 +21,7 @@ var decoders = map[string]DecoderFactory{
 	"text/csv":                               CSVDecoderFactory,
 	"application/x-aws-cloudwatchlogs":       CloudWatchLogsDecoderFactory,
 	"application/x-aws-cloudwatchmetrics":    JSONDecoderFactory,
-	"application/x-aws-config":               FilteredNestedJSONDecoderFactory(ConfigurationItem{}),
+	"application/x-aws-config":               ConfigurationItemDecoderFactory,
 	"application/x-aws-change":               FilteredJSONDecoderFactory(ConfigurationDiff{}),
 	"application/x-aws-cloudtrail":           NestedJSONDecoderFactory,
 	"application/x-aws-sqs":                  JSONDecoderFactory,

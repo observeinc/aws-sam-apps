@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/aws/aws-lambda-go/events"
+
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder"
 
 	"github.com/google/go-cmp/cmp"
@@ -13,6 +15,51 @@ import (
 // helper function for creating int64 pointers from integers (if needed).
 func pointerToInt64(val int64) *int64 {
 	return &val
+}
+
+func TestConfigEntityInput(t *testing.T) {
+	t.Parallel()
+	change := `{"messageType":"ConfigurationItemChangeNotification","configurationItem":{"accountId":"123456789012","ARN":"arn:aws:ec2:us-west-2:123456789012:instance/i-1"}}`
+	snapshot := `{"messageType":"ConfigurationSnapshotDeliveryCompleted","s3Bucket":"config-bucket","s3ObjectKey":"AWSLogs/snapshot.json.gz"}`
+
+	testcases := []struct {
+		name        string
+		body        string
+		wantChange  string
+		wantCopies  []forwarder.CopyRecord
+		wantHandled bool
+	}{
+		{name: "change", body: change, wantChange: change, wantHandled: true},
+		{name: "snapshot through SNS", body: snsBody(t, snapshot), wantCopies: []forwarder.CopyRecord{{URI: "s3://config-bucket/AWSLogs/snapshot.json.gz"}}, wantHandled: true},
+		{name: "snapshot through EventBridge", body: `{"source":"aws.config","detail":` + snapshot + `}`, wantCopies: []forwarder.CopyRecord{{URI: "s3://config-bucket/AWSLogs/snapshot.json.gz"}}, wantHandled: true},
+		{name: "SNS S3 notification is handled without a duplicate copy", body: snsBody(t, `{"Records":[{"eventSource":"aws:s3","s3":{"bucket":{"name":"config-bucket"},"object":{"key":"AWSLogs/snapshot.json.gz"}}}]}`), wantHandled: true},
+		{name: "irrelevant", body: `{"messageType":"ComplianceChangeNotification"}`, wantHandled: true},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gotChange, gotCopies, gotHandled := forwarder.GetConfigEntityInput(&events.SQSMessage{Body: tc.body})
+			if diff := cmp.Diff(string(gotChange), tc.wantChange); diff != "" {
+				t.Errorf("unexpected change (-got +want):\n%s", diff)
+			}
+			if diff := cmp.Diff(gotCopies, tc.wantCopies); diff != "" {
+				t.Errorf("unexpected copies (-got +want):\n%s", diff)
+			}
+			if gotHandled != tc.wantHandled {
+				t.Errorf("unexpected handled value: got %t, want %t", gotHandled, tc.wantHandled)
+			}
+		})
+	}
+}
+
+func snsBody(t *testing.T, message string) string {
+	t.Helper()
+	body, err := json.Marshal(events.SNSEntity{Message: message})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(body)
 }
 
 func TestObjectCreated(t *testing.T) {

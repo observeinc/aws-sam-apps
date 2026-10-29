@@ -45,6 +45,24 @@ func TestRunner(t *testing.T) {
 				"{\"hello\": \"world\"}\n{\"hello\": \"world\"}\n",
 			},
 		},
+		{
+			RunInput: &batch.RunInput{
+				MaxBatchSize:   ptr(42),
+				MaxConcurrency: ptr(1),
+				Prefix:         []byte("["),
+				Delimiter:      []byte(","),
+				Suffix:         []byte("]"),
+			},
+			Input: `
+			{"hello": "world"}
+			{"hello": "world"}
+			{"hello": "world"}
+			`,
+			ExpectedBatches: []string{
+				`[{"hello": "world"},{"hello": "world"}]`,
+				`[{"hello": "world"}]`,
+			},
+		},
 	}
 
 	for i, tc := range testcases {

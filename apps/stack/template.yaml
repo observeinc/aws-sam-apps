@@ -25,6 +25,7 @@ Metadata:
         Parameters:
           - DestinationUri
           - DataAccessPointArn
+          - AuthSecretArn
       - Label:
           default: AWS Config
         Parameters:
@@ -73,6 +74,7 @@ Metadata:
       - Label:
           default: Forwarder Options
         Parameters:
+          - AWSConfigEntityMode
           - SourceBucketNames
           - SourceObjectKeys
           - SourceKMSKeyArns
@@ -102,10 +104,26 @@ Parameters:
       The URI for your destination, e.g. `s3://bucket-alias/ds101/`. S3 URIs
       must end in a forward slash.
     AllowedPattern: "^(s3:\/\/.+\/|https:\/\/.+)$"
+  AWSConfigEntityMode:
+    Type: String
+    Description: >-
+      Send AWS Config changes and expanded snapshots to an AWS entity endpoint.
+      This mode ignores non-Config source records.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
   DataAccessPointArn:
     Type: String
     Description: >-
       The access point ARN for your Filedrop.
+    AllowedPattern: "^(arn:.*)?$"
+    Default: ''
+  AuthSecretArn:
+    Type: String
+    Description: >-
+      Optional Secrets Manager ARN containing JSON username and password fields
+      used for HTTP Basic authentication.
     AllowedPattern: "^(arn:.*)?$"
     Default: ''
   ConfigDeliveryBucketName:
@@ -539,6 +557,12 @@ Conditions:
   EnableSubscription: !Or
     - !Condition HasLogGroupNamePatterns
     - !Condition HasLogGroupNamePrefixes
+  EnableLogWriter: !Equals
+    - !Ref AWSConfigEntityMode
+    - 'false'
+  EnableLogSubscription: !And
+    - !Condition EnableLogWriter
+    - !Condition EnableSubscription
   EnableMetricsPollerRole: !Not
     - !Equals
       - !Ref ObserveAwsAccountId
@@ -653,6 +677,8 @@ Resources:
       NotificationARNs:
         - !Ref Topic
       Parameters:
+        AWSConfigEntityMode: !Ref AWSConfigEntityMode
+        AuthSecretArn: !Ref AuthSecretArn
         DataAccessPointArn: !Ref DataAccessPointArn
         DestinationUri: !Ref DestinationUri
         SourceBucketNames: !Join
@@ -724,6 +750,7 @@ Resources:
           - Outputs.QueueArn
   LogWriter:
     Type: AWS::Serverless::Application
+    Condition: EnableLogWriter
     Properties:
       Location: ../logwriter/template.yaml
       NotificationARNs:
@@ -846,6 +873,7 @@ Outputs:
       LogWriter Kinesis Firehose Delivery Stream ARN. CloudWatch Log Groups
       subscribed to this Firehose will have their logs batched and written to
       S3.
+    Condition: EnableLogWriter
     Value: !GetAtt
       - LogWriter
       - Outputs.FirehoseArn
@@ -854,6 +882,7 @@ Outputs:
       ARN for IAM Role to be assumed by CloudWatch for log delivery. This value
       is required when configuring a subscription towards the Firehose Delivery
       Stream.
+    Condition: EnableLogWriter
     Value: !GetAtt
       - LogWriter
       - Outputs.DestinationRoleArn
@@ -861,6 +890,7 @@ Outputs:
     Description: >-
       LogWriter Firehose Log Group Name. These logs may contain useful
       information for debugging Firehose delivery to S3.
+    Condition: EnableLogWriter
     Value: !GetAtt
       - LogWriter
       - Outputs.FirehoseLogGroupName
@@ -873,7 +903,7 @@ Outputs:
     Description: >-
       Subscriber Function ARN. This function is responsible for log group
       discovery, filtering and subscription.
-    Condition: EnableSubscription
+    Condition: EnableLogSubscription
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberArn
@@ -881,7 +911,7 @@ Outputs:
     Description: >-
       LogWriter Subscriber Queue ARN. This queue is used by the subscriber
       function to fan out execution of subscription requests.
-    Condition: EnableSubscription
+    Condition: EnableLogSubscription
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberQueueArn
@@ -889,7 +919,7 @@ Outputs:
     Description: >-
       LogWriter Subscriber Log Group Name. This log group contains useful
       information for debugging the Subscriber function.
-    Condition: EnableSubscription
+    Condition: EnableLogSubscription
     Value: !GetAtt
       - LogWriter
       - Outputs.SubscriberLogGroupName

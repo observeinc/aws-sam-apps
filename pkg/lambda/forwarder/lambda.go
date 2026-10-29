@@ -2,11 +2,15 @@ package forwarder
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-logr/logr"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -32,6 +36,10 @@ type S3Client interface {
 	s3.HeadBucketAPIClient
 }
 
+type SecretsManagerClient interface {
+	GetSecretValue(context.Context, *secretsmanager.GetSecretValueInput, ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error)
+}
+
 type Config struct {
 	DestinationURI       string           `env:"DESTINATION_URI,required"`
 	MaxFileSize          int64            `env:"MAX_FILE_SIZE"`
@@ -40,6 +48,8 @@ type Config struct {
 	SourceBucketNames    []string         `env:"SOURCE_BUCKET_NAMES"`
 	SourceObjectKeys     []string         `env:"SOURCE_OBJECT_KEYS"`
 	MaxConcurrentTasks   int              `env:"MAX_CONCURRENT_TASKS"`
+	AWSConfigEntityMode  bool             `env:"AWS_CONFIG_ENTITY_MODE"`
+	AuthSecretARN        string           `env:"AUTH_SECRET_ARN"`
 
 	Logging *logging.Config
 
@@ -50,8 +60,33 @@ type Config struct {
 	S3HTTPGzipLevel *int `env:"S3_HTTP_GZIP_LEVEL,default=1"`
 
 	// The following variables are not configurable via environment
-	HTTPInsecureSkipVerify bool     `json:"-"`
-	AWSS3Client            S3Client `json:"-"`
+	HTTPInsecureSkipVerify  bool                 `json:"-"`
+	AWSS3Client             S3Client             `json:"-"`
+	AWSSecretsManagerClient SecretsManagerClient `json:"-"`
+}
+
+type basicAuthSecret struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func getAuthorizationHeader(ctx context.Context, client SecretsManagerClient, secretARN string) (string, error) {
+	if secretARN == "" {
+		return "", nil
+	}
+	output, err := client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: aws.String(secretARN)})
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve HTTP auth secret: %w", err)
+	}
+	var secret basicAuthSecret
+	if err := json.Unmarshal([]byte(aws.ToString(output.SecretString)), &secret); err != nil {
+		return "", fmt.Errorf("failed to decode HTTP auth secret: %w", err)
+	}
+	if secret.Username == "" || secret.Password == "" {
+		return "", fmt.Errorf("HTTP auth secret must contain non-empty username and password")
+	}
+	encoded := base64.StdEncoding.EncodeToString([]byte(secret.Username + ":" + secret.Password))
+	return "Basic " + encoded, nil
 }
 
 type Lambda struct {
@@ -61,6 +96,9 @@ type Lambda struct {
 }
 
 func New(ctx context.Context, cfg *Config) (*Lambda, error) {
+	if cfg.AuthSecretARN != "" && !strings.HasPrefix(cfg.DestinationURI, "https://") {
+		return nil, fmt.Errorf("HTTP auth secret requires an HTTPS destination")
+	}
 	logger := logging.New(cfg.Logging)
 	logger.V(4).Info("initialized", "config", cfg)
 
@@ -126,10 +164,25 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 	var s3Client forwarder.S3Client = awsS3Client
 	if strings.HasPrefix(cfg.DestinationURI, "https") {
 		logger.V(4).Info("loading http client")
+		var secretsClient = cfg.AWSSecretsManagerClient
+		if secretsClient == nil {
+			secretsClient = secretsmanager.NewFromConfig(awsCfg)
+		}
+		authorizationHeader, authErr := getAuthorizationHeader(ctx, secretsClient, cfg.AuthSecretARN)
+		if authErr != nil {
+			return nil, authErr
+		}
 		s3Client, err = s3http.New(&s3http.Config{
 			DestinationURI:     cfg.DestinationURI,
 			GetObjectAPIClient: awsS3Client,
 			GzipLevel:          cfg.S3HTTPGzipLevel,
+			BatchFormat: func() string {
+				if cfg.AWSConfigEntityMode {
+					return s3http.BatchFormatJSONArray
+				}
+				return s3http.BatchFormatNDJSON
+			}(),
+			AuthorizationHeader: authorizationHeader,
 			HTTPClient: tracing.NewHTTPClient(&tracing.HTTPClientConfig{
 				TracerProvider:     tracerProvider,
 				Logger:             &logger,
@@ -142,13 +195,14 @@ func New(ctx context.Context, cfg *Config) (*Lambda, error) {
 	}
 
 	f, err := forwarder.New(&forwarder.Config{
-		DestinationURI:     cfg.DestinationURI,
-		MaxFileSize:        cfg.MaxFileSize,
-		S3Client:           s3Client,
-		Override:           append(override.Sets{customOverrides}, presets...),
-		SourceBucketNames:  cfg.SourceBucketNames,
-		SourceObjectKeys:   cfg.SourceObjectKeys,
-		MaxConcurrentTasks: cfg.MaxConcurrentTasks,
+		DestinationURI:      cfg.DestinationURI,
+		MaxFileSize:         cfg.MaxFileSize,
+		S3Client:            s3Client,
+		Override:            append(override.Sets{customOverrides}, presets...),
+		SourceBucketNames:   cfg.SourceBucketNames,
+		SourceObjectKeys:    cfg.SourceObjectKeys,
+		MaxConcurrentTasks:  cfg.MaxConcurrentTasks,
+		AWSConfigEntityMode: cfg.AWSConfigEntityMode,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handler: %w", err)

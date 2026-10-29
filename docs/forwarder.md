@@ -40,12 +40,14 @@ The forwarder stack can be configured with the following parameters:
 |-----------------|---------|-------------|
 | **`DestinationUri`** | String | The URI for your destination, e.g.  `s3://bucket-alias/ds101/`. S3 URIs must end in a forward slash. |
 | `DataAccessPointArn` | String | The access point ARN for your Filedrop. |
+| `AuthSecretArn` | String | Optional Secrets Manager ARN containing `username` and `password` fields for HTTP Basic authentication. |
 | `NameOverride` | String | Name of IAM role expected by Filedrop. This name will also be applied to the SQS Queue and Lambda Function processing events. In the absence of a value, the stack name will be used. |
 | `SourceBucketNames` | CommaDelimitedList | A list of bucket names which the forwarder is allowed to read from.  This list only affects permissions, and supports wildcards. In order to have files copied to Filedrop, you must also subscribe S3 Bucket Notifications to the forwarder. |
 | `SourceObjectKeys` | CommaDelimitedList | A list of object keys which the forwarder should process. This list applies across all source buckets, and supports wildcards. |
 | `SourceTopicArns` | CommaDelimitedList | A list of SNS topics the forwarder is allowed to be subscribed to. |
 | `SourceKMSKeyArns` | CommaDelimitedList | A list of KMS Key ARNs the forwarder is allowed to use to decrypt objects in S3. |
 | `ContentTypeOverrides` | CommaDelimitedList | A list of key value pairs. The key is a regular expression which is applied to the S3 source (<bucket>/<key>) of forwarded files. The value is the content type to set for matching files. For example, `\.json$=application/x-ndjson` would forward all files ending in `.json` as newline delimited JSON files. |
+| `AWSConfigEntityMode` | String | Forward AWS Config changes and expanded snapshots to an AWS entity endpoint. Allowed values: `true` and `false`. Default: `false`. |
 | `MaxFileSize` | String | Max file size for objects to process (in bytes), default is 1GB |
 | `MemorySize` | String | The amount of memory, in megabytes, that your function has access to. |
 | `Timeout` | String | The amount of time that Lambda allows a function to run before stopping it. The maximum allowed value is 900 seconds. |
@@ -181,3 +183,28 @@ Given it is not always possible to filter events at their source, the Forwarder 
 For backward compatability, the forwarder supports sending data to an HTTPS endpoint. Every `s3:CopyObject` triggers an `s3:GetObject` from the source. The source file is converted into newline delimited JSON and submitted over one or more HTTP POST requests. By default, a request body will not exceed 10MB when uncompressed.
 
 Submitting to an HTTP endpoint has multiple limitations when compared to using Filedrop. The forwarder must read, process and transmit the source file, which consumes both memory and time. The lambda function must therefore be sized according to the maximum file size it is expected to handle. Overall, HTTP mode supports smaller file sizes and less content types, and is provided only as a bridge towards Filedrop adoption.
+
+### AWS Config entity mode
+
+Set `AWSConfigEntityMode=true` when the HTTP destination is an AWS entity
+endpoint. This mode:
+
+- accepts `ConfigurationItemChangeNotification` messages from AWS Config;
+- follows `ConfigurationSnapshotDeliveryCompleted` messages to the referenced
+  S3 object and expands its `configurationItems` array;
+- sends bounded JSON arrays with `application/json` instead of newline-delimited
+  JSON;
+- ignores unrelated SNS and S3 notifications; and
+- omits AWS Config items without an ARN because the entity schema requires one.
+
+The destination must use HTTPS. Set `AuthSecretArn` to a Secrets Manager secret
+whose value has this shape:
+
+```json
+{"username":"example","password":"example"}
+```
+
+Grant the stack access to the snapshot bucket with `SourceBucketNames`, and add
+the AWS Config SNS topic to `SourceTopicArns`. Subscribe that topic to the
+forwarder queue after deployment. The queue and dead-letter queue provide
+bounded retries for both change notifications and snapshots.

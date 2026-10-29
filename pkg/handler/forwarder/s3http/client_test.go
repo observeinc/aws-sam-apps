@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,8 +32,10 @@ func TestClientPut(t *testing.T) {
 
 	testcases := []struct {
 		*s3.PutObjectInput
-		Path   string
-		Expect string
+		Path                string
+		BatchFormat         string
+		AuthorizationHeader string
+		Expect              string
 	}{
 		{
 			PutObjectInput: &s3.PutObjectInput{
@@ -51,6 +54,27 @@ func TestClientPut(t *testing.T) {
 
 				{"text":"hello world"}
 			`),
+		},
+		{
+			PutObjectInput: &s3.PutObjectInput{
+				Bucket:      aws.String("test"),
+				Key:         aws.String("config.json"),
+				ContentType: aws.String("text/plain"),
+				Body:        strings.NewReader("hello world"),
+			},
+			BatchFormat:         s3http.BatchFormatJSONArray,
+			AuthorizationHeader: "Basic dXNlcjpwYXNz",
+			Expect: strings.TrimSuffix(format(`
+				POST /?content-type=text%2Fplain&key=config.json HTTP/1.1
+				Host: 127.0.0.1:<removed>
+				Accept-Encoding: gzip
+				Authorization: Basic dXNlcjpwYXNz
+				Content-Length: 24
+				Content-Type: application/json
+				User-Agent: Go-http-client/1.1
+
+				[{"text":"hello world"}]
+			`), "\n"),
 		},
 		{
 			PutObjectInput: &s3.PutObjectInput{
@@ -96,9 +120,11 @@ func TestClientPut(t *testing.T) {
 
 			// upload object
 			client, err := s3http.New(&s3http.Config{
-				DestinationURI:     fmt.Sprintf("%s/%s", s.URL, tt.Path),
-				GetObjectAPIClient: &awstest.S3Client{},
-				HTTPClient:         s.Client(),
+				DestinationURI:      fmt.Sprintf("%s/%s", s.URL, tt.Path),
+				GetObjectAPIClient:  &awstest.S3Client{},
+				HTTPClient:          s.Client(),
+				BatchFormat:         tt.BatchFormat,
+				AuthorizationHeader: tt.AuthorizationHeader,
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -114,6 +140,66 @@ func TestClientPut(t *testing.T) {
 				t.Fatal("response does not match", diff)
 			}
 		})
+	}
+}
+
+func TestCopyConfigSnapshotAsJSONArray(t *testing.T) {
+	t.Parallel()
+
+	const snapshot = `{"fileVersion":"1.0","configurationItems":[{"awsAccountId":"123456789012","ARN":"arn:aws:ec2:us-west-2:123456789012:instance/i-1","resourceType":"AWS::EC2::Instance"},{"awsAccountId":"123456789012","ARN":"arn:aws:s3:::example","resourceType":"AWS::S3::Bucket"}]}`
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	if _, err := io.WriteString(writer, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var body []byte
+	server := httptest.NewTLSServer(http.HandlerFunc(func(_ http.ResponseWriter, request *http.Request) {
+		var err error
+		body, err = io.ReadAll(request.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		if got := request.Header.Get("Content-Type"); got != "application/json" {
+			t.Errorf("unexpected content type %q", got)
+		}
+	}))
+	defer server.Close()
+
+	client, err := s3http.New(&s3http.Config{
+		DestinationURI: server.URL,
+		GetObjectAPIClient: &awstest.S3Client{GetObjectFunc: func(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{Body: io.NopCloser(bytes.NewReader(compressed.Bytes()))}, nil
+		}},
+		HTTPClient:  server.Client(),
+		BatchFormat: s3http.BatchFormatJSONArray,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.CopyObject(context.Background(), &s3.CopyObjectInput{
+		Bucket:          aws.String("destination"),
+		Key:             aws.String("snapshot.json.gz"),
+		CopySource:      aws.String("config-bucket/snapshot.json.gz"),
+		ContentType:     aws.String("application/x-aws-config"),
+		ContentEncoding: aws.String("gzip"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var items []map[string]any
+	if err := json.Unmarshal(body, &items); err != nil {
+		t.Fatalf("request body is not a JSON array: %v; body: %s", err, body)
+	}
+	if len(items) != 2 {
+		t.Fatalf("got %d items, want 2", len(items))
+	}
+	if got := items[0]["awsAccountId"]; got != "123456789012" {
+		t.Errorf("unexpected account ID %#v", got)
 	}
 }
 
