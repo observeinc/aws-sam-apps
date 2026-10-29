@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/tagging"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 )
@@ -215,4 +216,51 @@ type slowTaggingClient struct {
 func (s *slowTaggingClient) GetResources(ctx context.Context, job model.DiscoveryJob, region string) ([]*model.TaggedResource, error) {
 	<-s.ready
 	return s.inner.GetResources(ctx, job, region)
+}
+
+func TestEnrichLine_accountAlias(t *testing.T) {
+	var calls atomic.Int32
+	e := newEnricher(nil)
+	e.AccountAlias = func(context.Context) (string, string, error) {
+		calls.Add(1)
+		return "123", "my-alias", nil
+	}
+
+	for i := 0; i < 2; i++ {
+		out, err := e.EnrichLine(context.Background(), []byte(ec2Line))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var obj map[string]any
+		if err := json.Unmarshal(out, &obj); err != nil {
+			t.Fatal(err)
+		}
+		if obj["account_alias"] != "my-alias" {
+			t.Errorf("expected account_alias=my-alias, got %v", obj["account_alias"])
+		}
+	}
+	if calls.Load() != 1 {
+		t.Errorf("expected alias lookup to be cached, got %d calls", calls.Load())
+	}
+
+	other := `{"namespace":"Custom/X","region":"us-east-1","account_id":"999","metric_name":"M","dimensions":{}}`
+	out, err := e.EnrichLine(context.Background(), []byte(other))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var obj map[string]any
+	_ = json.Unmarshal(out, &obj)
+	if _, ok := obj["account_alias"]; ok {
+		t.Errorf("expected no account_alias for foreign account, got %v", obj["account_alias"])
+	}
+}
+
+func TestLookupAccountAlias_noLambdaContext(t *testing.T) {
+	if _, _, err := lookupAccountAlias(context.Background()); err == nil {
+		t.Error("expected error without lambda context")
+	}
+	ctx := lambdacontext.NewContext(context.Background(), &lambdacontext.LambdaContext{InvokedFunctionArn: "bogus"})
+	if _, _, err := lookupAccountAlias(ctx); err == nil {
+		t.Error("expected error for malformed function ARN")
+	}
 }
