@@ -20,6 +20,7 @@ Metadata:
         Parameters:
           - DestinationUri
           - DataAccessPointArn
+          - AuthSecretArn
           - NameOverride
       - Label:
           default: Data Sources
@@ -29,6 +30,7 @@ Metadata:
           - SourceTopicArns
           - SourceKMSKeyArns
           - ContentTypeOverrides
+          - AWSConfigEntityMode
       - Label:
           default: Sizing
         Parameters:
@@ -51,6 +53,13 @@ Parameters:
     Type: String
     Description: >-
       The access point ARN for your Filedrop.
+    AllowedPattern: "^(arn:.*)?$"
+    Default: ''
+  AuthSecretArn:
+    Type: String
+    Description: >-
+      Optional Secrets Manager ARN containing JSON username and password fields
+      used for HTTP Basic authentication.
     AllowedPattern: "^(arn:.*)?$"
     Default: ''
   NameOverride:
@@ -99,6 +108,15 @@ Parameters:
       as newline delimited JSON
       files.
     Default: ''
+  AWSConfigEntityMode:
+    Type: String
+    Description: >-
+      Send AWS Config change notifications and expanded snapshot items to an
+      AWS entity endpoint as JSON. Other source records are ignored.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
   MaxFileSize:
     Type: String
     Description: Max file size for objects to process (in bytes), default is 1GB
@@ -195,6 +213,10 @@ Conditions:
   DisableOTEL: !Equals
     - !Ref DebugEndpoint
     - ''
+  HasAuthSecret: !Not
+    - !Equals
+      - !Ref AuthSecretArn
+      - ''
 
 Resources:
   DeadLetter:
@@ -412,6 +434,17 @@ Resources:
                   Action:
                     - kms:Decrypt
                   Resource: !Ref SourceKMSKeyArns
+        - !If
+          - HasAuthSecret
+          - PolicyName: http-auth-secret
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - secretsmanager:GetSecretValue
+                  Resource: !Ref AuthSecretArn
+          - !Ref AWS::NoValue
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -462,6 +495,7 @@ Resources:
       Environment:
         Variables:
           DESTINATION_URI: !Ref DestinationUri
+          AUTH_SECRET_ARN: !Ref AuthSecretArn
           VERBOSITY: !If
             - UseDefaultVerbosity
             - 1
@@ -479,6 +513,7 @@ Resources:
           SOURCE_OBJECT_KEYS: !Join
             - ','
             - !Ref SourceObjectKeys
+          AWS_CONFIG_ENTITY_MODE: !Ref AWSConfigEntityMode
           OTEL_EXPORTER_OTLP_ENDPOINT: !Ref DebugEndpoint
           OTEL_TRACES_EXPORTER: !If [DisableOTEL, "none", "otlp"]
 Outputs:

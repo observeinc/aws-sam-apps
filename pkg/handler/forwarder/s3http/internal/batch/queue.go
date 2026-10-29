@@ -20,7 +20,9 @@ type QueueConfig struct {
 	MaxBatchSize int  // maximum batch size in bytes
 	Capacity     int  // channel capacity
 	GzipLevel    *int // gzip compression level
+	Prefix       []byte
 	Delimiter    []byte
+	Suffix       []byte
 }
 
 // Queue appends item to buffer until batch size is reached.
@@ -38,23 +40,34 @@ type Queue struct {
 	written       int
 	maxBatchSize  int
 	ch            chan *bytes.Buffer // channel containing batches
+	prefix        []byte
 	delimiter     []byte
+	suffix        []byte
+	records       int
 }
 
 // Push a record to queue for batching.
-// We assume record includes delimiter.
 func (q *Queue) Push(ctx context.Context, record []byte) error {
-	if q.maxBatchSize > 0 && q.written+len(record)+len(q.delimiter) > q.maxBatchSize {
-		if len(record) > q.maxBatchSize {
+	additional := len(record) + len(q.suffix)
+	if q.records == 0 {
+		additional += len(q.prefix)
+	} else {
+		additional += len(q.delimiter)
+	}
+	if q.maxBatchSize > 0 && q.written+additional > q.maxBatchSize {
+		if q.records == 0 {
 			return fmt.Errorf("%w: %d", ErrRecordLenExceedsBatchSize, len(record))
 		}
 
 		if err := q.flush(ctx); err != nil {
 			return fmt.Errorf("failed to flush batch: %w", err)
 		}
+		if len(q.prefix)+len(record)+len(q.suffix) > q.maxBatchSize {
+			return fmt.Errorf("%w: %d", ErrRecordLenExceedsBatchSize, len(record))
+		}
 	}
 
-	if q.written == 0 {
+	if q.records == 0 {
 		buf, ok := bufPool.Get().(*bytes.Buffer)
 		if !ok {
 			panic("failed type assertion")
@@ -62,6 +75,19 @@ func (q *Queue) Push(ctx context.Context, record []byte) error {
 		buf.Reset()
 		q.buffer = buf
 		q.writer, q.closer = q.newWriterFunc(buf)
+		if len(q.prefix) > 0 {
+			n, err := q.writer.Write(q.prefix)
+			if err != nil {
+				return fmt.Errorf("failed to buffer prefix: %w", err)
+			}
+			q.written += n
+		}
+	} else if len(q.delimiter) > 0 {
+		n, err := q.writer.Write(q.delimiter)
+		if err != nil {
+			return fmt.Errorf("failed to buffer delimiter: %w", err)
+		}
+		q.written += n
 	}
 
 	n, err := q.writer.Write(record)
@@ -69,20 +95,18 @@ func (q *Queue) Push(ctx context.Context, record []byte) error {
 		return fmt.Errorf("failed to buffer record: %w", err)
 	}
 	q.written += n
-
-	if len(q.delimiter) > 0 {
-		n, err = q.writer.Write(q.delimiter)
-		if err != nil {
-			return fmt.Errorf("failed to buffer delimiter: %w", err)
-		}
-		q.written += n
-	}
+	q.records++
 	return nil
 }
 
 func (q *Queue) flush(ctx context.Context) error {
-	if q.written == 0 {
+	if q.records == 0 {
 		return nil
+	}
+	if len(q.suffix) > 0 {
+		if _, err := q.writer.Write(q.suffix); err != nil {
+			return fmt.Errorf("failed to buffer suffix: %w", err)
+		}
 	}
 
 	if err := q.closer.Close(); err != nil {
@@ -90,6 +114,7 @@ func (q *Queue) flush(ctx context.Context) error {
 	}
 
 	q.written = 0
+	q.records = 0
 
 	select {
 	case q.ch <- q.buffer:
@@ -140,7 +165,9 @@ func NewQueue(cfg *QueueConfig) *Queue {
 			return buf, io.NopCloser(buf)
 		},
 		maxBatchSize: cfg.MaxBatchSize,
+		prefix:       cfg.Prefix,
 		delimiter:    cfg.Delimiter,
+		suffix:       cfg.Suffix,
 		ch:           make(chan *bytes.Buffer, cfg.Capacity),
 	}
 

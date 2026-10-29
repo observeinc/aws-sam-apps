@@ -8,6 +8,11 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
+const (
+	configurationItemChangeNotification    = "ConfigurationItemChangeNotification"
+	configurationSnapshotDeliveryCompleted = "ConfigurationSnapshotDeliveryCompleted"
+)
+
 type SQSMessage struct {
 	events.SQSMessage
 	ErrorMessage string `json:"error,omitempty"`
@@ -20,6 +25,48 @@ type CopyRecord struct {
 
 type CopyEvent struct {
 	Copy []CopyRecord `json:"copy"`
+}
+
+type configNotification struct {
+	MessageType string `json:"messageType"`
+	S3Bucket    string `json:"s3Bucket"`
+	S3ObjectKey string `json:"s3ObjectKey"`
+}
+
+type eventBridgeConfigNotification struct {
+	Source string          `json:"source"`
+	Detail json.RawMessage `json:"detail"`
+}
+
+// GetConfigEntityInput extracts either a resource change or an S3 object from
+// the AWS Config notifications delivered through SNS, EventBridge, or SQS.
+func GetConfigEntityInput(m *events.SQSMessage) (change json.RawMessage, copies []CopyRecord, handled bool) {
+	message := []byte(m.Body)
+	var snsEntity events.SNSEntity
+	if err := json.Unmarshal(message, &snsEntity); err == nil && snsEntity.Message != "" {
+		message = []byte(snsEntity.Message)
+		handled = true
+	}
+
+	var event eventBridgeConfigNotification
+	if err := json.Unmarshal(message, &event); err == nil && event.Source == "aws.config" && len(event.Detail) > 0 {
+		message = event.Detail
+		handled = true
+	}
+
+	var notification configNotification
+	if err := json.Unmarshal(message, &notification); err != nil {
+		return nil, nil, handled
+	}
+	switch notification.MessageType {
+	case configurationItemChangeNotification:
+		return append(json.RawMessage(nil), message...), nil, true
+	case configurationSnapshotDeliveryCompleted:
+		if notification.S3Bucket != "" && notification.S3ObjectKey != "" {
+			return nil, []CopyRecord{{URI: fmt.Sprintf("s3://%s/%s", notification.S3Bucket, notification.S3ObjectKey)}}, true
+		}
+	}
+	return nil, nil, handled || notification.MessageType != ""
 }
 
 func GetObjectCreated(m *events.SQSMessage) (copyRecords []CopyRecord) {

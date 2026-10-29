@@ -362,6 +362,90 @@ func TestHandler(t *testing.T) {
 	}
 }
 
+func TestAWSConfigEntityMode(t *testing.T) {
+	t.Parallel()
+
+	t.Run("change notification", func(t *testing.T) {
+		t.Parallel()
+		const body = `{"messageType":"ConfigurationItemChangeNotification","configurationItem":{"configurationItemStatus":"ResourceDeleted","accountId":"123456789012","ARN":"arn:aws:ec2:us-west-2:123456789012:instance/i-deleted"}}`
+		var got []byte
+		client := &awstest.S3Client{
+			PutObjectFunc: func(_ context.Context, input *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+				var err error
+				got, err = io.ReadAll(input.Body)
+				if err != nil {
+					return nil, err
+				}
+				if value := aws.ToString(input.ContentType); value != "application/x-aws-change" {
+					t.Errorf("unexpected content type %q", value)
+				}
+				return &s3.PutObjectOutput{}, nil
+			},
+		}
+		h, err := forwarder.New(&forwarder.Config{
+			DestinationURI:      "https://example.com/v1/aws/v1/entity",
+			SourceBucketNames:   []string{"*"},
+			SourceObjectKeys:    []string{"*"},
+			S3Client:            client,
+			AWSConfigEntityMode: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := h.Handle(context.Background(), events.SQSEvent{Records: []events.SQSMessage{{MessageId: "change", Body: body}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(response.BatchItemFailures) != 0 {
+			t.Fatalf("unexpected failures: %#v", response.BatchItemFailures)
+		}
+		if diff := cmp.Diff(string(got), body); diff != "" {
+			t.Errorf("unexpected body (-got +want):\n%s", diff)
+		}
+	})
+
+	t.Run("snapshot notification", func(t *testing.T) {
+		t.Parallel()
+		var got *s3.CopyObjectInput
+		client := &awstest.S3Client{
+			CopyObjectFunc: func(_ context.Context, input *s3.CopyObjectInput, _ ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+				got = input
+				return &s3.CopyObjectOutput{}, nil
+			},
+		}
+		h, err := forwarder.New(&forwarder.Config{
+			DestinationURI:      "https://example.com/v1/aws/v1/entity",
+			SourceBucketNames:   []string{"config-bucket"},
+			SourceObjectKeys:    []string{"*ConfigSnapshot*"},
+			S3Client:            client,
+			AWSConfigEntityMode: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := `{"messageType":"ConfigurationSnapshotDeliveryCompleted","s3Bucket":"config-bucket","s3ObjectKey":"AWSLogs/ConfigSnapshot/snapshot.json.gz"}`
+		response, err := h.Handle(context.Background(), events.SQSEvent{Records: []events.SQSMessage{{MessageId: "snapshot", Body: body}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(response.BatchItemFailures) != 0 {
+			t.Fatalf("unexpected failures: %#v", response.BatchItemFailures)
+		}
+		if got == nil {
+			t.Fatal("CopyObject was not called")
+		}
+		if value := aws.ToString(got.CopySource); value != "config-bucket/AWSLogs/ConfigSnapshot/snapshot.json.gz" {
+			t.Errorf("unexpected copy source %q", value)
+		}
+		if value := aws.ToString(got.ContentType); value != "application/x-aws-config" {
+			t.Errorf("unexpected content type %q", value)
+		}
+		if value := aws.ToString(got.ContentEncoding); value != "gzip" {
+			t.Errorf("unexpected content encoding %q", value)
+		}
+	})
+}
+
 func TestRecorder(t *testing.T) {
 	t.Parallel()
 

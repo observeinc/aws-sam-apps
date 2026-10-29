@@ -41,13 +41,14 @@ type Override interface {
 type Handler struct {
 	handler.Mux
 
-	MaxFileSize        int64
-	DestinationURI     *url.URL
-	S3Client           S3Client
-	Override           Override
-	ObjectPolicy       interface{ Allow(string) bool }
-	Now                func() time.Time
-	MaxConcurrentTasks int
+	MaxFileSize         int64
+	DestinationURI      *url.URL
+	S3Client            S3Client
+	Override            Override
+	ObjectPolicy        interface{ Allow(string) bool }
+	Now                 func() time.Time
+	MaxConcurrentTasks  int
+	AWSConfigEntityMode bool
 }
 
 // encodeCopySourceKey URL-encodes each path segment of an S3 key for use in
@@ -146,9 +147,34 @@ func (h *Handler) WriteSQS(ctx context.Context, r io.Reader) error {
 }
 
 func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	if h.AWSConfigEntityMode {
+		return h.processConfigEntityRecord(ctx, record)
+	}
+	return h.processCopies(ctx, GetObjectCreated(record), false)
+}
 
-	copyRecords := GetObjectCreated(record)
+func (h *Handler) processConfigEntityRecord(ctx context.Context, record *events.SQSMessage) error {
+	change, copies, handled := GetConfigEntityInput(record)
+	if len(change) > 0 {
+		_, err := h.S3Client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket:      aws.String(h.DestinationURI.Host),
+			Key:         aws.String("aws-config-change"),
+			Body:        bytes.NewReader(change),
+			ContentType: aws.String("application/x-aws-change"),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to forward AWS Config change: %w", err)
+		}
+		return nil
+	}
+	if len(copies) == 0 && !handled {
+		copies = GetObjectCreated(record)
+	}
+	return h.processCopies(ctx, copies, true)
+}
+
+func (h *Handler) processCopies(ctx context.Context, copyRecords []CopyRecord, awsConfig bool) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	for _, copyRecord := range copyRecords {
 		sourceURL, err := url.Parse(copyRecord.URI)
 		if err != nil {
@@ -175,6 +201,10 @@ func (h *Handler) ProcessRecord(ctx context.Context, record *events.SQSMessage) 
 				logger.V(6).Info("ignoring object")
 				continue
 			}
+		}
+		if awsConfig {
+			copyInput.ContentType = aws.String("application/x-aws-config")
+			copyInput.ContentEncoding = aws.String("gzip")
 		}
 
 		if _, err := h.S3Client.CopyObject(ctx, copyInput); err != nil {
@@ -224,12 +254,14 @@ func (h *Handler) Handle(ctx context.Context, request events.SQSEvent) (response
 				ItemIdentifier: result.MessageId,
 			})
 		}
-		if e := encoder.Encode(result); e != nil {
-			err = errors.Join(err, fmt.Errorf("failed to encode message: %w", e))
+		if !h.AWSConfigEntityMode {
+			if e := encoder.Encode(result); e != nil {
+				err = errors.Join(err, fmt.Errorf("failed to encode message: %w", e))
+			}
 		}
 	}
 
-	if err == nil {
+	if err == nil && !h.AWSConfigEntityMode {
 		err = h.WriteSQS(ctx, &messages)
 	}
 
@@ -251,13 +283,14 @@ func New(cfg *Config) (h *Handler, err error) {
 	objectFilter, _ := NewObjectFilter(cfg.SourceBucketNames, cfg.SourceObjectKeys)
 
 	h = &Handler{
-		DestinationURI:     u,
-		S3Client:           cfg.S3Client,
-		MaxFileSize:        cfg.MaxFileSize,
-		Override:           cfg.Override,
-		ObjectPolicy:       objectFilter,
-		Now:                time.Now,
-		MaxConcurrentTasks: maxConcurrentTasks,
+		DestinationURI:      u,
+		S3Client:            cfg.S3Client,
+		MaxFileSize:         cfg.MaxFileSize,
+		Override:            cfg.Override,
+		ObjectPolicy:        objectFilter,
+		Now:                 time.Now,
+		MaxConcurrentTasks:  maxConcurrentTasks,
+		AWSConfigEntityMode: cfg.AWSConfigEntityMode,
 	}
 
 	return h, nil

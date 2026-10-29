@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-logr/logr"
 
-	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/seekable"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/batch"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/decoders"
 	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/s3http/internal/request"
+	"github.com/observeinc/aws-sam-apps/pkg/handler/forwarder/seekable"
 )
 
 var (
@@ -34,8 +34,10 @@ type GetObjectAPIClient interface {
 // Client implements an S3 compatible shim layer that uploads data to HTTP.
 type Client struct {
 	GetObjectAPIClient
-	RequestBuilder *request.Builder
-	GzipLevel      *int
+	RequestBuilder      *request.Builder
+	GzipLevel           *int
+	BatchFormat         string
+	AuthorizationHeader string
 }
 
 func queryUnescapeOrOriginal(s string) string {
@@ -186,8 +188,16 @@ func (c *Client) PutObject(ctx context.Context, params *s3.PutObjectInput, _ ...
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
 
-	headers := map[string]string{
-		"Content-Type": "application/x-ndjson",
+	headers := map[string]string{"Content-Type": "application/x-ndjson"}
+	var prefix, delimiter, suffix []byte
+	if c.BatchFormat == BatchFormatJSONArray {
+		headers["Content-Type"] = "application/json"
+		prefix = []byte("[")
+		delimiter = []byte(",")
+		suffix = []byte("]")
+	}
+	if c.AuthorizationHeader != "" {
+		headers["Authorization"] = c.AuthorizationHeader
 	}
 	if c.GzipLevel != nil {
 		headers["Content-Encoding"] = "gzip"
@@ -200,6 +210,9 @@ func (c *Client) PutObject(ctx context.Context, params *s3.PutObjectInput, _ ...
 			"content-type": aws.ToString(params.ContentType),
 			"key":          aws.ToString(params.Key),
 		}, headers),
+		Prefix:    prefix,
+		Delimiter: delimiter,
+		Suffix:    suffix,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to process: %w", err)
@@ -213,8 +226,10 @@ func New(cfg *Config) (*Client, error) {
 	}
 
 	return &Client{
-		GetObjectAPIClient: cfg.GetObjectAPIClient,
-		GzipLevel:          cfg.GzipLevel,
+		GetObjectAPIClient:  cfg.GetObjectAPIClient,
+		GzipLevel:           cfg.GzipLevel,
+		BatchFormat:         cfg.BatchFormat,
+		AuthorizationHeader: cfg.AuthorizationHeader,
 		RequestBuilder: &request.Builder{
 			URL:    cfg.DestinationURI,
 			Client: cfg.HTTPClient,

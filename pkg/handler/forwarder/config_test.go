@@ -30,6 +30,14 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			Config: forwarder.Config{
+				DestinationURI:      "s3://test",
+				S3Client:            &awstest.S3Client{},
+				AWSConfigEntityMode: true,
+			},
+			ExpectError: forwarder.ErrInvalidDestination,
+		},
+		{
+			Config: forwarder.Config{
 				DestinationURI: "ftp://example.com",
 				S3Client:       &awstest.S3Client{},
 			},
