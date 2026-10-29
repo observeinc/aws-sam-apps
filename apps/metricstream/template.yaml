@@ -461,11 +461,12 @@ Resources:
             Statement:
               - Effect: Allow
                 # Follows YACE auth docs (see yet-another-cloudwatch-exporter
-                # README #authentication) minus cloudwatch:* and
-                # iam:ListAccountAliases which are not needed because this
-                # Lambda enriches Firehose records and does not scrape
-                # CloudWatch.
+                # README #authentication) minus cloudwatch:* which is not
+                # needed because this Lambda enriches Firehose records and
+                # does not scrape CloudWatch. iam:ListAccountAliases is used
+                # to add account_alias to records from the local account.
                 Action:
+                  - iam:ListAccountAliases
                   - tag:GetResources
                   - autoscaling:DescribeAutoScalingGroups
                   - apigateway:GET

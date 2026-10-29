@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/aws/aws-lambda-go/lambdacontext"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/amp"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway"
@@ -17,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
 	"github.com/aws/aws-sdk-go-v2/service/shield"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway"
@@ -32,12 +36,31 @@ type Config struct {
 	ResourceCacheTTLSeconds int
 }
 
+const (
+	aliasCacheTTL      = time.Hour
+	aliasErrorCacheTTL = 5 * time.Minute
+)
+
+// AccountAliasFunc returns the account ID the Lambda runs in and its IAM
+// account alias (empty if none is set).
+type AccountAliasFunc func(ctx context.Context) (accountID, alias string, err error)
+
 // Enricher adds resource_tags to metric stream JSON objects (one per line).
 type Enricher struct {
 	Logger *slog.Logger
 
 	// CacheTTL is how long tagged resource lists are reused per cache key.
 	CacheTTL time.Duration
+
+	// AccountAlias resolves the local account alias. IAM aliases can only be
+	// read for the caller's own account, so records from other (e.g. OAM
+	// source) accounts are not annotated.
+	AccountAlias AccountAliasFunc
+
+	aliasMu      sync.Mutex
+	aliasAccount string
+	aliasValue   string
+	aliasExpires time.Time
 
 	mu              sync.Mutex
 	sf              singleflight.Group
@@ -64,9 +87,66 @@ func New(cfg *Config, logger *slog.Logger) (*Enricher, error) {
 	return &Enricher{
 		Logger:          logger,
 		CacheTTL:        ttl,
+		AccountAlias:    lookupAccountAlias,
 		taggingByRegion: make(map[string]tagging.Client),
 		cache:           make(map[string]*cacheEntry),
 	}, nil
+}
+
+// lookupAccountAlias reads the local account ID from the invoked function ARN
+// (arn:aws:lambda:region:account:function:name) and its first IAM alias.
+func lookupAccountAlias(ctx context.Context) (string, string, error) {
+	lc, ok := lambdacontext.FromContext(ctx)
+	if !ok {
+		return "", "", errors.New("no lambda context")
+	}
+	parts := strings.Split(lc.InvokedFunctionArn, ":")
+	if len(parts) < 5 || parts[4] == "" {
+		return "", "", fmt.Errorf("unexpected function ARN %q", lc.InvokedFunctionArn)
+	}
+	accountID := parts[4]
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		return accountID, "", err
+	}
+	out, err := iam.NewFromConfig(cfg).ListAccountAliases(ctx, &iam.ListAccountAliasesInput{})
+	if err != nil {
+		return accountID, "", err
+	}
+	if len(out.AccountAliases) > 0 {
+		return accountID, out.AccountAliases[0], nil
+	}
+	return accountID, "", nil
+}
+
+// accountAlias returns the cached alias for accountID, or "" if accountID is
+// not the local account or no alias is configured.
+func (e *Enricher) accountAlias(ctx context.Context, accountID string) string {
+	if e.AccountAlias == nil || accountID == "" {
+		return ""
+	}
+	e.aliasMu.Lock()
+	defer e.aliasMu.Unlock()
+	if time.Now().After(e.aliasExpires) {
+		id, alias, err := e.AccountAlias(ctx)
+		ttl := aliasCacheTTL
+		if err != nil {
+			e.Logger.Warn("account alias lookup failed", "err", err)
+			ttl = aliasErrorCacheTTL
+		}
+		if id != "" {
+			e.aliasAccount = id
+		}
+		if err == nil {
+			e.aliasValue = alias
+		}
+		e.aliasExpires = time.Now().Add(ttl)
+	}
+	if accountID != e.aliasAccount {
+		return ""
+	}
+	return e.aliasValue
 }
 
 // taggingClient returns a cached YACE tagging client for the given region,
@@ -205,6 +285,9 @@ func (e *Enricher) EnrichLine(ctx context.Context, lineJSON []byte) ([]byte, err
 	}
 	obj["resource_tags"] = tags
 	obj["resource_arn"] = arn
+	if alias := e.accountAlias(ctx, accountID); alias != "" {
+		obj["account_alias"] = alias
+	}
 
 	out, err := json.Marshal(obj)
 	if err != nil {
