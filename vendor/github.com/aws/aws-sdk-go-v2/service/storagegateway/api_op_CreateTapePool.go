@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a new custom tape pool. You can use custom tape pool to enable tape
@@ -64,6 +65,28 @@ type CreateTapePoolInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateTapePoolInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateTapePoolInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateTapePoolInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.PoolName != nil {
+		s.WriteString(schemas.CreateTapePoolInput_PoolName, *v.PoolName)
+	}
+	if v.RetentionLockTimeInDays != nil {
+		s.WriteInt32(schemas.CreateTapePoolInput_RetentionLockTimeInDays, *v.RetentionLockTimeInDays)
+	}
+	if v.RetentionLockType != "" {
+		s.WriteString(schemas.CreateTapePoolInput_RetentionLockType, string(v.RetentionLockType))
+	}
+	if v.StorageClass != "" {
+		s.WriteString(schemas.CreateTapePoolInput_StorageClass, string(v.StorageClass))
+	}
+	serializeTags(s, schemas.CreateTapePoolInput_Tags, v.Tags)
+}
+
 type CreateTapePoolOutput struct {
 
 	// The unique Amazon Resource Name (ARN) that represents the custom tape pool. Use
@@ -77,44 +100,48 @@ type CreateTapePoolOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateTapePoolOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateTapePoolOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateTapePoolOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.PoolARN != nil {
+		s.WriteString(schemas.CreateTapePoolOutput_PoolARN, *v.PoolARN)
+	}
+}
+func (v *CreateTapePoolOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateTapePoolOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateTapePoolOutput_PoolARN:
+			v.PoolARN = new(string)
+			return d.ReadString(schemas.CreateTapePoolOutput_PoolARN, v.PoolARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateTapePoolMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateTapePool{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateTapePool, schemas.CreateTapePoolInput, schemas.CreateTapePoolOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateTapePool{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateTapePool, schemas.CreateTapePoolInput, schemas.CreateTapePoolOutput), output: &CreateTapePoolOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTapePoolValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateTapePool"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

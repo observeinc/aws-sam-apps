@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Shuts down a Tape Gateway or Volume Gateway. To specify which gateway to shut
@@ -58,6 +59,18 @@ type ShutdownGatewayInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ShutdownGatewayInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ShutdownGatewayInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ShutdownGatewayInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.ShutdownGatewayInput_GatewayARN, *v.GatewayARN)
+	}
+}
+
 // A JSON object containing the Amazon Resource Name (ARN) of the gateway that was
 // shut down.
 type ShutdownGatewayOutput struct {
@@ -72,44 +85,48 @@ type ShutdownGatewayOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ShutdownGatewayOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ShutdownGatewayOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ShutdownGatewayOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.ShutdownGatewayOutput_GatewayARN, *v.GatewayARN)
+	}
+}
+func (v *ShutdownGatewayOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ShutdownGatewayOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ShutdownGatewayOutput_GatewayARN:
+			v.GatewayARN = new(string)
+			return d.ReadString(schemas.ShutdownGatewayOutput_GatewayARN, v.GatewayARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationShutdownGatewayMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpShutdownGateway{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ShutdownGateway, schemas.ShutdownGatewayInput, schemas.ShutdownGatewayOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpShutdownGateway{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ShutdownGateway, schemas.ShutdownGatewayInput, schemas.ShutdownGatewayOutput), output: &ShutdownGatewayOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpShutdownGatewayValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ShutdownGateway"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

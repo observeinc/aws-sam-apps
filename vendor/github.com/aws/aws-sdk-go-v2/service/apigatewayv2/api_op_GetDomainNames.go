@@ -4,9 +4,10 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets the domain names for an AWS account.
@@ -37,6 +38,21 @@ type GetDomainNamesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetDomainNamesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetDomainNamesRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetDomainNamesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.MaxResults != nil {
+		s.WriteString(schemas.GetDomainNamesRequest_MaxResults, *v.MaxResults)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetDomainNamesRequest_NextToken, *v.NextToken)
+	}
+}
+
 type GetDomainNamesOutput struct {
 
 	// The elements from this collection.
@@ -52,41 +68,48 @@ type GetDomainNamesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetDomainNamesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetDomainNamesResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetDomainNamesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serialize__listOfDomainName(s, schemas.GetDomainNamesResponse_Items, v.Items)
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetDomainNamesResponse_NextToken, *v.NextToken)
+	}
+}
+func (v *GetDomainNamesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetDomainNamesResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetDomainNamesResponse_Items:
+			return deserialize__listOfDomainName(d, schemas.GetDomainNamesResponse_Items, &v.Items)
+		case schemas.GetDomainNamesResponse_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.GetDomainNamesResponse_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetDomainNamesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetDomainNames{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetDomainNames, schemas.GetDomainNamesRequest, schemas.GetDomainNamesResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetDomainNames{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetDomainNames, schemas.GetDomainNamesRequest, schemas.GetDomainNamesResponse), output: &GetDomainNamesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetDomainNames"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

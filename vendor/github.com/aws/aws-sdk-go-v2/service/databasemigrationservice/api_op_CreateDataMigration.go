@@ -4,9 +4,10 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a data migration using the provided settings.
@@ -78,6 +79,39 @@ type CreateDataMigrationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateDataMigrationInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateDataMigrationMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateDataMigrationInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataMigrationName != nil {
+		s.WriteString(schemas.CreateDataMigrationMessage_DataMigrationName, *v.DataMigrationName)
+	}
+	if v.DataMigrationType != "" {
+		s.WriteString(schemas.CreateDataMigrationMessage_DataMigrationType, string(v.DataMigrationType))
+	}
+	if v.EnableCloudwatchLogs != nil {
+		s.WriteBool(schemas.CreateDataMigrationMessage_EnableCloudwatchLogs, *v.EnableCloudwatchLogs)
+	}
+	if v.MigrationProjectIdentifier != nil {
+		s.WriteString(schemas.CreateDataMigrationMessage_MigrationProjectIdentifier, *v.MigrationProjectIdentifier)
+	}
+	if v.NumberOfJobs != nil {
+		s.WriteInt32(schemas.CreateDataMigrationMessage_NumberOfJobs, *v.NumberOfJobs)
+	}
+	if v.SelectionRules != nil {
+		s.WriteString(schemas.CreateDataMigrationMessage_SelectionRules, *v.SelectionRules)
+	}
+	if v.ServiceAccessRoleArn != nil {
+		s.WriteString(schemas.CreateDataMigrationMessage_ServiceAccessRoleArn, *v.ServiceAccessRoleArn)
+	}
+	serializeSourceDataSettings(s, schemas.CreateDataMigrationMessage_SourceDataSettings, v.SourceDataSettings)
+	serializeTagList(s, schemas.CreateDataMigrationMessage_Tags, v.Tags)
+	serializeTargetDataSettings(s, schemas.CreateDataMigrationMessage_TargetDataSettings, v.TargetDataSettings)
+}
+
 type CreateDataMigrationOutput struct {
 
 	// Information about the created data migration.
@@ -89,44 +123,50 @@ type CreateDataMigrationOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateDataMigrationOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateDataMigrationResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateDataMigrationOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DataMigration != nil {
+		s.WriteStruct(schemas.CreateDataMigrationResponse_DataMigration)
+		v.DataMigration.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *CreateDataMigrationOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateDataMigrationResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateDataMigrationResponse_DataMigration:
+			v.DataMigration = &types.DataMigration{}
+			return v.DataMigration.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateDataMigrationMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateDataMigration{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateDataMigration, schemas.CreateDataMigrationMessage, schemas.CreateDataMigrationResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateDataMigration{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateDataMigration, schemas.CreateDataMigrationMessage, schemas.CreateDataMigrationResponse), output: &CreateDataMigrationOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateDataMigrationValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateDataMigration"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Activates the gateway you previously deployed on your host. In the activation
@@ -130,6 +131,37 @@ type ActivateGatewayInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ActivateGatewayInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ActivateGatewayInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ActivateGatewayInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ActivationKey != nil {
+		s.WriteString(schemas.ActivateGatewayInput_ActivationKey, *v.ActivationKey)
+	}
+	if v.GatewayName != nil {
+		s.WriteString(schemas.ActivateGatewayInput_GatewayName, *v.GatewayName)
+	}
+	if v.GatewayRegion != nil {
+		s.WriteString(schemas.ActivateGatewayInput_GatewayRegion, *v.GatewayRegion)
+	}
+	if v.GatewayTimezone != nil {
+		s.WriteString(schemas.ActivateGatewayInput_GatewayTimezone, *v.GatewayTimezone)
+	}
+	if v.GatewayType != nil {
+		s.WriteString(schemas.ActivateGatewayInput_GatewayType, *v.GatewayType)
+	}
+	if v.MediumChangerType != nil {
+		s.WriteString(schemas.ActivateGatewayInput_MediumChangerType, *v.MediumChangerType)
+	}
+	serializeTags(s, schemas.ActivateGatewayInput_Tags, v.Tags)
+	if v.TapeDriveType != nil {
+		s.WriteString(schemas.ActivateGatewayInput_TapeDriveType, *v.TapeDriveType)
+	}
+}
+
 // Storage Gateway returns the Amazon Resource Name (ARN) of the activated
 // gateway. It is a string made of information such as your account, gateway name,
 // and Amazon Web Services Region. This ARN is used to reference the gateway in
@@ -150,44 +182,48 @@ type ActivateGatewayOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ActivateGatewayOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ActivateGatewayOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ActivateGatewayOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.ActivateGatewayOutput_GatewayARN, *v.GatewayARN)
+	}
+}
+func (v *ActivateGatewayOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ActivateGatewayOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ActivateGatewayOutput_GatewayARN:
+			v.GatewayARN = new(string)
+			return d.ReadString(schemas.ActivateGatewayOutput_GatewayARN, v.GatewayARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationActivateGatewayMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpActivateGateway{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ActivateGateway, schemas.ActivateGatewayInput, schemas.ActivateGatewayOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpActivateGateway{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ActivateGateway, schemas.ActivateGatewayInput, schemas.ActivateGatewayOutput), output: &ActivateGatewayOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpActivateGatewayValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ActivateGateway"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

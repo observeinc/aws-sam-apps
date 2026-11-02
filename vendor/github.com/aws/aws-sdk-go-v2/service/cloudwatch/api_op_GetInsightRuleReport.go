@@ -4,9 +4,10 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"time"
 )
 
@@ -122,6 +123,34 @@ type GetInsightRuleReportInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetInsightRuleReportInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetInsightRuleReportInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetInsightRuleReportInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.EndTime != nil {
+		s.WriteTime(schemas.GetInsightRuleReportInput_EndTime, *v.EndTime)
+	}
+	if v.MaxContributorCount != nil {
+		s.WriteInt32(schemas.GetInsightRuleReportInput_MaxContributorCount, *v.MaxContributorCount)
+	}
+	serializeInsightRuleMetricList(s, schemas.GetInsightRuleReportInput_Metrics, v.Metrics)
+	if v.OrderBy != nil {
+		s.WriteString(schemas.GetInsightRuleReportInput_OrderBy, *v.OrderBy)
+	}
+	if v.Period != nil {
+		s.WriteInt32(schemas.GetInsightRuleReportInput_Period, *v.Period)
+	}
+	if v.RuleName != nil {
+		s.WriteString(schemas.GetInsightRuleReportInput_RuleName, *v.RuleName)
+	}
+	if v.StartTime != nil {
+		s.WriteTime(schemas.GetInsightRuleReportInput_StartTime, *v.StartTime)
+	}
+}
+
 type GetInsightRuleReportOutput struct {
 
 	// The sum of the values from all individual contributors that match the rule.
@@ -155,35 +184,63 @@ type GetInsightRuleReportOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetInsightRuleReportOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetInsightRuleReportOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetInsightRuleReportOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AggregateValue != nil {
+		s.WriteFloat64(schemas.GetInsightRuleReportOutput_AggregateValue, *v.AggregateValue)
+	}
+	if v.AggregationStatistic != nil {
+		s.WriteString(schemas.GetInsightRuleReportOutput_AggregationStatistic, *v.AggregationStatistic)
+	}
+	if v.ApproximateUniqueCount != nil {
+		s.WriteInt64(schemas.GetInsightRuleReportOutput_ApproximateUniqueCount, *v.ApproximateUniqueCount)
+	}
+	serializeInsightRuleContributors(s, schemas.GetInsightRuleReportOutput_Contributors, v.Contributors)
+	serializeInsightRuleContributorKeyLabels(s, schemas.GetInsightRuleReportOutput_KeyLabels, v.KeyLabels)
+	serializeInsightRuleMetricDatapoints(s, schemas.GetInsightRuleReportOutput_MetricDatapoints, v.MetricDatapoints)
+}
+func (v *GetInsightRuleReportOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetInsightRuleReportOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetInsightRuleReportOutput_AggregateValue:
+			v.AggregateValue = new(float64)
+			return d.ReadFloat64(schemas.GetInsightRuleReportOutput_AggregateValue, v.AggregateValue)
+		case schemas.GetInsightRuleReportOutput_AggregationStatistic:
+			v.AggregationStatistic = new(string)
+			return d.ReadString(schemas.GetInsightRuleReportOutput_AggregationStatistic, v.AggregationStatistic)
+		case schemas.GetInsightRuleReportOutput_ApproximateUniqueCount:
+			v.ApproximateUniqueCount = new(int64)
+			return d.ReadInt64(schemas.GetInsightRuleReportOutput_ApproximateUniqueCount, v.ApproximateUniqueCount)
+		case schemas.GetInsightRuleReportOutput_Contributors:
+			return deserializeInsightRuleContributors(d, schemas.GetInsightRuleReportOutput_Contributors, &v.Contributors)
+		case schemas.GetInsightRuleReportOutput_KeyLabels:
+			return deserializeInsightRuleContributorKeyLabels(d, schemas.GetInsightRuleReportOutput_KeyLabels, &v.KeyLabels)
+		case schemas.GetInsightRuleReportOutput_MetricDatapoints:
+			return deserializeInsightRuleMetricDatapoints(d, schemas.GetInsightRuleReportOutput_MetricDatapoints, &v.MetricDatapoints)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetInsightRuleReportMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpGetInsightRuleReport{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetInsightRuleReport, schemas.GetInsightRuleReportInput, schemas.GetInsightRuleReportOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpGetInsightRuleReport{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetInsightRuleReport, schemas.GetInsightRuleReportInput, schemas.GetInsightRuleReportOutput), output: &GetInsightRuleReportOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -193,9 +250,6 @@ func (c *Client) addOperationGetInsightRuleReportMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addOpGetInsightRuleReportValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetInsightRuleReport"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

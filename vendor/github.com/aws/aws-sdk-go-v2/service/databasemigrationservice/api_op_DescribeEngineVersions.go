@@ -5,9 +5,10 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns information about the replication instance versions used in the project.
@@ -41,6 +42,21 @@ type DescribeEngineVersionsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEngineVersionsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEngineVersionsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEngineVersionsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeEngineVersionsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeEngineVersionsMessage_MaxRecords, *v.MaxRecords)
+	}
+}
+
 type DescribeEngineVersionsOutput struct {
 
 	// Returned EngineVersion objects that describe the replication instance engine
@@ -58,41 +74,48 @@ type DescribeEngineVersionsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEngineVersionsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEngineVersionsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEngineVersionsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeEngineVersionList(s, schemas.DescribeEngineVersionsResponse_EngineVersions, v.EngineVersions)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeEngineVersionsResponse_Marker, *v.Marker)
+	}
+}
+func (v *DescribeEngineVersionsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeEngineVersionsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeEngineVersionsResponse_EngineVersions:
+			return deserializeEngineVersionList(d, schemas.DescribeEngineVersionsResponse_EngineVersions, &v.EngineVersions)
+		case schemas.DescribeEngineVersionsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeEngineVersionsResponse_Marker, v.Marker)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeEngineVersionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeEngineVersions{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEngineVersions, schemas.DescribeEngineVersionsMessage, schemas.DescribeEngineVersionsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeEngineVersions{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEngineVersions, schemas.DescribeEngineVersionsMessage, schemas.DescribeEngineVersionsResponse), output: &DescribeEngineVersionsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeEngineVersions"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

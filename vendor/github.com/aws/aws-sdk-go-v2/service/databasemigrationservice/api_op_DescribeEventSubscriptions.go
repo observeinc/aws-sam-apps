@@ -5,9 +5,10 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Lists all the event subscriptions for a customer account. The description of a
@@ -58,6 +59,25 @@ type DescribeEventSubscriptionsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEventSubscriptionsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEventSubscriptionsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEventSubscriptionsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeEventSubscriptionsMessage_Filters, v.Filters)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeEventSubscriptionsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeEventSubscriptionsMessage_MaxRecords, *v.MaxRecords)
+	}
+	if v.SubscriptionName != nil {
+		s.WriteString(schemas.DescribeEventSubscriptionsMessage_SubscriptionName, *v.SubscriptionName)
+	}
+}
+
 type DescribeEventSubscriptionsOutput struct {
 
 	// A list of event subscriptions.
@@ -74,44 +94,51 @@ type DescribeEventSubscriptionsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEventSubscriptionsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEventSubscriptionsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEventSubscriptionsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeEventSubscriptionsList(s, schemas.DescribeEventSubscriptionsResponse_EventSubscriptionsList, v.EventSubscriptionsList)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeEventSubscriptionsResponse_Marker, *v.Marker)
+	}
+}
+func (v *DescribeEventSubscriptionsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeEventSubscriptionsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeEventSubscriptionsResponse_EventSubscriptionsList:
+			return deserializeEventSubscriptionsList(d, schemas.DescribeEventSubscriptionsResponse_EventSubscriptionsList, &v.EventSubscriptionsList)
+		case schemas.DescribeEventSubscriptionsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeEventSubscriptionsResponse_Marker, v.Marker)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeEventSubscriptionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeEventSubscriptions{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEventSubscriptions, schemas.DescribeEventSubscriptionsMessage, schemas.DescribeEventSubscriptionsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeEventSubscriptions{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEventSubscriptions, schemas.DescribeEventSubscriptionsMessage, schemas.DescribeEventSubscriptionsResponse), output: &DescribeEventSubscriptionsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeEventSubscriptionsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeEventSubscriptions"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

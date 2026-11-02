@@ -4,8 +4,9 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 //	End of support notice: On May 20, 2026, Amazon Web Services will end support
@@ -42,6 +43,16 @@ type DeleteFleetAdvisorDatabasesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteFleetAdvisorDatabasesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteFleetAdvisorDatabasesRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteFleetAdvisorDatabasesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeStringList(s, schemas.DeleteFleetAdvisorDatabasesRequest_DatabaseIds, v.DatabaseIds)
+}
+
 type DeleteFleetAdvisorDatabasesOutput struct {
 
 	// The IDs of the databases that the operation deleted.
@@ -53,44 +64,45 @@ type DeleteFleetAdvisorDatabasesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeleteFleetAdvisorDatabasesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeleteFleetAdvisorDatabasesResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeleteFleetAdvisorDatabasesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeStringList(s, schemas.DeleteFleetAdvisorDatabasesResponse_DatabaseIds, v.DatabaseIds)
+}
+func (v *DeleteFleetAdvisorDatabasesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DeleteFleetAdvisorDatabasesResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DeleteFleetAdvisorDatabasesResponse_DatabaseIds:
+			return deserializeStringList(d, schemas.DeleteFleetAdvisorDatabasesResponse_DatabaseIds, &v.DatabaseIds)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeleteFleetAdvisorDatabasesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteFleetAdvisorDatabases{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteFleetAdvisorDatabases, schemas.DeleteFleetAdvisorDatabasesRequest, schemas.DeleteFleetAdvisorDatabasesResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeleteFleetAdvisorDatabases{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeleteFleetAdvisorDatabases, schemas.DeleteFleetAdvisorDatabasesRequest, schemas.DeleteFleetAdvisorDatabasesResponse), output: &DeleteFleetAdvisorDatabasesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteFleetAdvisorDatabasesValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DeleteFleetAdvisorDatabases"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

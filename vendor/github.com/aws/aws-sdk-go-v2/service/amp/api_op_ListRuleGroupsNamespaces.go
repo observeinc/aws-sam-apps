@@ -5,9 +5,10 @@ package amp
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/amp/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns a list of rule groups namespaces in a workspace.
@@ -55,6 +56,46 @@ type ListRuleGroupsNamespacesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListRuleGroupsNamespacesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListRuleGroupsNamespacesRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListRuleGroupsNamespacesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.MaxResults != nil {
+		s.WriteInt32(schemas.ListRuleGroupsNamespacesRequest_maxResults, *v.MaxResults)
+	}
+	if v.Name != nil {
+		s.WriteString(schemas.ListRuleGroupsNamespacesRequest_name, *v.Name)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListRuleGroupsNamespacesRequest_nextToken, *v.NextToken)
+	}
+	if v.WorkspaceId != nil {
+		s.WriteString(schemas.ListRuleGroupsNamespacesRequest_workspaceId, *v.WorkspaceId)
+	}
+}
+func (v *ListRuleGroupsNamespacesInput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListRuleGroupsNamespacesRequest, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListRuleGroupsNamespacesRequest_maxResults:
+			v.MaxResults = new(int32)
+			return d.ReadInt32(schemas.ListRuleGroupsNamespacesRequest_maxResults, v.MaxResults)
+		case schemas.ListRuleGroupsNamespacesRequest_name:
+			v.Name = new(string)
+			return d.ReadString(schemas.ListRuleGroupsNamespacesRequest_name, v.Name)
+		case schemas.ListRuleGroupsNamespacesRequest_nextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.ListRuleGroupsNamespacesRequest_nextToken, v.NextToken)
+		case schemas.ListRuleGroupsNamespacesRequest_workspaceId:
+			v.WorkspaceId = new(string)
+			return d.ReadString(schemas.ListRuleGroupsNamespacesRequest_workspaceId, v.WorkspaceId)
+		}
+		return nil
+	})
+}
+
 // Represents the output of a ListRuleGroupsNamespaces operation.
 type ListRuleGroupsNamespacesOutput struct {
 
@@ -74,44 +115,51 @@ type ListRuleGroupsNamespacesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListRuleGroupsNamespacesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListRuleGroupsNamespacesResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListRuleGroupsNamespacesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListRuleGroupsNamespacesResponse_nextToken, *v.NextToken)
+	}
+	serializeRuleGroupsNamespaceSummaryList(s, schemas.ListRuleGroupsNamespacesResponse_ruleGroupsNamespaces, v.RuleGroupsNamespaces)
+}
+func (v *ListRuleGroupsNamespacesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListRuleGroupsNamespacesResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListRuleGroupsNamespacesResponse_nextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.ListRuleGroupsNamespacesResponse_nextToken, v.NextToken)
+		case schemas.ListRuleGroupsNamespacesResponse_ruleGroupsNamespaces:
+			return deserializeRuleGroupsNamespaceSummaryList(d, schemas.ListRuleGroupsNamespacesResponse_ruleGroupsNamespaces, &v.RuleGroupsNamespaces)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListRuleGroupsNamespacesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpListRuleGroupsNamespaces{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListRuleGroupsNamespaces, schemas.ListRuleGroupsNamespacesRequest, schemas.ListRuleGroupsNamespacesResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpListRuleGroupsNamespaces{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListRuleGroupsNamespaces, schemas.ListRuleGroupsNamespacesRequest, schemas.ListRuleGroupsNamespacesResponse), output: &ListRuleGroupsNamespacesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListRuleGroupsNamespacesValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListRuleGroupsNamespaces"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

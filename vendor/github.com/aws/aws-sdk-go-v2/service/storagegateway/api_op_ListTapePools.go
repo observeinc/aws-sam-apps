@@ -5,9 +5,10 @@ package storagegateway
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Lists custom tape pools. You specify custom tape pools to list by specifying
@@ -51,6 +52,22 @@ type ListTapePoolsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListTapePoolsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListTapePoolsInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListTapePoolsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Limit != nil {
+		s.WriteInt32(schemas.ListTapePoolsInput_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.ListTapePoolsInput_Marker, *v.Marker)
+	}
+	serializePoolARNs(s, schemas.ListTapePoolsInput_PoolARNs, v.PoolARNs)
+}
+
 type ListTapePoolsOutput struct {
 
 	// A string that indicates the position at which to begin the returned list of
@@ -69,41 +86,48 @@ type ListTapePoolsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListTapePoolsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListTapePoolsOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListTapePoolsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.ListTapePoolsOutput_Marker, *v.Marker)
+	}
+	serializePoolInfos(s, schemas.ListTapePoolsOutput_PoolInfos, v.PoolInfos)
+}
+func (v *ListTapePoolsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListTapePoolsOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListTapePoolsOutput_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.ListTapePoolsOutput_Marker, v.Marker)
+		case schemas.ListTapePoolsOutput_PoolInfos:
+			return deserializePoolInfos(d, schemas.ListTapePoolsOutput_PoolInfos, &v.PoolInfos)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListTapePoolsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListTapePools{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListTapePools, schemas.ListTapePoolsInput, schemas.ListTapePoolsOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListTapePools{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListTapePools, schemas.ListTapePoolsInput, schemas.ListTapePoolsOutput), output: &ListTapePoolsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListTapePools"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

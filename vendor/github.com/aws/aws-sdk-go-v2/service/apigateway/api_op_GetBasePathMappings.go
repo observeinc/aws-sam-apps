@@ -5,9 +5,10 @@ package apigateway
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Represents a collection of BasePathMapping resources.
@@ -48,6 +49,27 @@ type GetBasePathMappingsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetBasePathMappingsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetBasePathMappingsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetBasePathMappingsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DomainName != nil {
+		s.WriteString(schemas.GetBasePathMappingsRequest_domainName, *v.DomainName)
+	}
+	if v.DomainNameId != nil {
+		s.WriteString(schemas.GetBasePathMappingsRequest_domainNameId, *v.DomainNameId)
+	}
+	if v.Limit != nil {
+		s.WriteInt32(schemas.GetBasePathMappingsRequest_limit, *v.Limit)
+	}
+	if v.Position != nil {
+		s.WriteString(schemas.GetBasePathMappingsRequest_position, *v.Position)
+	}
+}
+
 // Represents a collection of BasePathMapping resources.
 type GetBasePathMappingsOutput struct {
 
@@ -63,44 +85,51 @@ type GetBasePathMappingsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetBasePathMappingsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.BasePathMappings)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetBasePathMappingsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeListOfBasePathMapping(s, schemas.BasePathMappings_items, v.Items)
+	if v.Position != nil {
+		s.WriteString(schemas.BasePathMappings_position, *v.Position)
+	}
+}
+func (v *GetBasePathMappingsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.BasePathMappings, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.BasePathMappings_items:
+			return deserializeListOfBasePathMapping(d, schemas.BasePathMappings_items, &v.Items)
+		case schemas.BasePathMappings_position:
+			v.Position = new(string)
+			return d.ReadString(schemas.BasePathMappings_position, v.Position)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetBasePathMappingsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetBasePathMappings{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetBasePathMappings, schemas.GetBasePathMappingsRequest, schemas.BasePathMappings)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetBasePathMappings{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetBasePathMappings, schemas.GetBasePathMappingsRequest, schemas.BasePathMappings), output: &GetBasePathMappingsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetBasePathMappingsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetBasePathMappings"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

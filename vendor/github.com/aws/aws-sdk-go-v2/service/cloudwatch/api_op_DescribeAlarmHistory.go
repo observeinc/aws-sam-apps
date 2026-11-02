@@ -5,9 +5,10 @@ package cloudwatch
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"time"
 )
 
@@ -74,6 +75,40 @@ type DescribeAlarmHistoryInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeAlarmHistoryInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeAlarmHistoryInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeAlarmHistoryInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AlarmContributorId != nil {
+		s.WriteString(schemas.DescribeAlarmHistoryInput_AlarmContributorId, *v.AlarmContributorId)
+	}
+	if v.AlarmName != nil {
+		s.WriteString(schemas.DescribeAlarmHistoryInput_AlarmName, *v.AlarmName)
+	}
+	serializeAlarmTypes(s, schemas.DescribeAlarmHistoryInput_AlarmTypes, v.AlarmTypes)
+	if v.EndDate != nil {
+		s.WriteTime(schemas.DescribeAlarmHistoryInput_EndDate, *v.EndDate)
+	}
+	if v.HistoryItemType != "" {
+		s.WriteString(schemas.DescribeAlarmHistoryInput_HistoryItemType, string(v.HistoryItemType))
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeAlarmHistoryInput_MaxRecords, *v.MaxRecords)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeAlarmHistoryInput_NextToken, *v.NextToken)
+	}
+	if v.ScanBy != "" {
+		s.WriteString(schemas.DescribeAlarmHistoryInput_ScanBy, string(v.ScanBy))
+	}
+	if v.StartDate != nil {
+		s.WriteTime(schemas.DescribeAlarmHistoryInput_StartDate, *v.StartDate)
+	}
+}
+
 type DescribeAlarmHistoryOutput struct {
 
 	// The alarm histories, in JSON format.
@@ -88,44 +123,51 @@ type DescribeAlarmHistoryOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeAlarmHistoryOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeAlarmHistoryOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeAlarmHistoryOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeAlarmHistoryItems(s, schemas.DescribeAlarmHistoryOutput_AlarmHistoryItems, v.AlarmHistoryItems)
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeAlarmHistoryOutput_NextToken, *v.NextToken)
+	}
+}
+func (v *DescribeAlarmHistoryOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeAlarmHistoryOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeAlarmHistoryOutput_AlarmHistoryItems:
+			return deserializeAlarmHistoryItems(d, schemas.DescribeAlarmHistoryOutput_AlarmHistoryItems, &v.AlarmHistoryItems)
+		case schemas.DescribeAlarmHistoryOutput_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.DescribeAlarmHistoryOutput_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeAlarmHistoryMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpDescribeAlarmHistory{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeAlarmHistory, schemas.DescribeAlarmHistoryInput, schemas.DescribeAlarmHistoryOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpDescribeAlarmHistory{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeAlarmHistory, schemas.DescribeAlarmHistoryInput, schemas.DescribeAlarmHistoryOutput), output: &DescribeAlarmHistoryOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeAlarmHistory"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

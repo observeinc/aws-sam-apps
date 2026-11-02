@@ -5,9 +5,10 @@ package amp
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/amp/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates or updates a resource-based policy for an Amazon Managed Service for
@@ -75,6 +76,27 @@ type PutResourcePolicyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *PutResourcePolicyInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.PutResourcePolicyRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutResourcePolicyInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ClientToken != nil {
+		s.WriteString(schemas.PutResourcePolicyRequest_clientToken, *v.ClientToken)
+	}
+	if v.PolicyDocument != nil {
+		s.WriteString(schemas.PutResourcePolicyRequest_policyDocument, *v.PolicyDocument)
+	}
+	if v.RevisionId != nil {
+		s.WriteString(schemas.PutResourcePolicyRequest_revisionId, *v.RevisionId)
+	}
+	if v.WorkspaceId != nil {
+		s.WriteString(schemas.PutResourcePolicyRequest_workspaceId, *v.WorkspaceId)
+	}
+}
+
 type PutResourcePolicyOutput struct {
 
 	// The current status of the resource-based policy.
@@ -93,35 +115,52 @@ type PutResourcePolicyOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *PutResourcePolicyOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.PutResourcePolicyResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *PutResourcePolicyOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.PolicyStatus != "" {
+		s.WriteString(schemas.PutResourcePolicyResponse_policyStatus, string(v.PolicyStatus))
+	}
+	if v.RevisionId != nil {
+		s.WriteString(schemas.PutResourcePolicyResponse_revisionId, *v.RevisionId)
+	}
+}
+func (v *PutResourcePolicyOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.PutResourcePolicyResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.PutResourcePolicyResponse_policyStatus:
+			var ev string
+			if err := d.ReadString(schemas.PutResourcePolicyResponse_policyStatus, &ev); err != nil {
+				return err
+			}
+			v.PolicyStatus = types.WorkspacePolicyStatusCode(ev)
+			return nil
+		case schemas.PutResourcePolicyResponse_revisionId:
+			v.RevisionId = new(string)
+			return d.ReadString(schemas.PutResourcePolicyResponse_revisionId, v.RevisionId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpPutResourcePolicy{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutResourcePolicy, schemas.PutResourcePolicyRequest, schemas.PutResourcePolicyResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpPutResourcePolicy{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.PutResourcePolicy, schemas.PutResourcePolicyRequest, schemas.PutResourcePolicyResponse), output: &PutResourcePolicyOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
@@ -131,9 +170,6 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addOpPutResourcePolicyValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "PutResourcePolicy"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

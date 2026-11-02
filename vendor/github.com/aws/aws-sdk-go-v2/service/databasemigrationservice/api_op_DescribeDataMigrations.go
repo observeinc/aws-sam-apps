@@ -5,9 +5,10 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns information about data migrations.
@@ -54,6 +55,28 @@ type DescribeDataMigrationsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeDataMigrationsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeDataMigrationsMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeDataMigrationsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeDataMigrationsMessage_Filters, v.Filters)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeDataMigrationsMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeDataMigrationsMessage_MaxRecords, *v.MaxRecords)
+	}
+	if v.WithoutSettings != nil {
+		s.WriteBool(schemas.DescribeDataMigrationsMessage_WithoutSettings, *v.WithoutSettings)
+	}
+	if v.WithoutStatistics != nil {
+		s.WriteBool(schemas.DescribeDataMigrationsMessage_WithoutStatistics, *v.WithoutStatistics)
+	}
+}
+
 type DescribeDataMigrationsOutput struct {
 
 	// Returns information about the data migrations used in the project.
@@ -70,44 +93,51 @@ type DescribeDataMigrationsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeDataMigrationsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeDataMigrationsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeDataMigrationsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeDataMigrations(s, schemas.DescribeDataMigrationsResponse_DataMigrations, v.DataMigrations)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeDataMigrationsResponse_Marker, *v.Marker)
+	}
+}
+func (v *DescribeDataMigrationsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeDataMigrationsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeDataMigrationsResponse_DataMigrations:
+			return deserializeDataMigrations(d, schemas.DescribeDataMigrationsResponse_DataMigrations, &v.DataMigrations)
+		case schemas.DescribeDataMigrationsResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeDataMigrationsResponse_Marker, v.Marker)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeDataMigrationsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeDataMigrations{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeDataMigrations, schemas.DescribeDataMigrationsMessage, schemas.DescribeDataMigrationsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeDataMigrations{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeDataMigrations, schemas.DescribeDataMigrationsMessage, schemas.DescribeDataMigrationsResponse), output: &DescribeDataMigrationsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeDataMigrationsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeDataMigrations"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

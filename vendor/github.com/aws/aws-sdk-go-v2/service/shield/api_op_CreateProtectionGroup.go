@@ -4,9 +4,10 @@ package shield
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/shield/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/shield/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a grouping of protected resources so they can be handled as a
@@ -81,6 +82,29 @@ type CreateProtectionGroupInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateProtectionGroupInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateProtectionGroupRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateProtectionGroupInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Aggregation != "" {
+		s.WriteString(schemas.CreateProtectionGroupRequest_Aggregation, string(v.Aggregation))
+	}
+	serializeProtectionGroupMembers(s, schemas.CreateProtectionGroupRequest_Members, v.Members)
+	if v.Pattern != "" {
+		s.WriteString(schemas.CreateProtectionGroupRequest_Pattern, string(v.Pattern))
+	}
+	if v.ProtectionGroupId != nil {
+		s.WriteString(schemas.CreateProtectionGroupRequest_ProtectionGroupId, *v.ProtectionGroupId)
+	}
+	if v.ResourceType != "" {
+		s.WriteString(schemas.CreateProtectionGroupRequest_ResourceType, string(v.ResourceType))
+	}
+	serializeTagList(s, schemas.CreateProtectionGroupRequest_Tags, v.Tags)
+}
+
 type CreateProtectionGroupOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -88,44 +112,42 @@ type CreateProtectionGroupOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateProtectionGroupOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateProtectionGroupResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateProtectionGroupOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *CreateProtectionGroupOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateProtectionGroupResponse, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateProtectionGroupMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateProtectionGroup{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateProtectionGroup, schemas.CreateProtectionGroupRequest, schemas.CreateProtectionGroupResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateProtectionGroup{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateProtectionGroup, schemas.CreateProtectionGroupRequest, schemas.CreateProtectionGroupResponse), output: &CreateProtectionGroupOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateProtectionGroupValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateProtectionGroup"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

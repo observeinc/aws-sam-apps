@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns information about the specified cache report, including completion
@@ -36,6 +37,18 @@ type DescribeCacheReportInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeCacheReportInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeCacheReportInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeCacheReportInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CacheReportARN != nil {
+		s.WriteString(schemas.DescribeCacheReportInput_CacheReportARN, *v.CacheReportARN)
+	}
+}
+
 type DescribeCacheReportOutput struct {
 
 	// Contains all informational fields associated with a cache report. Includes
@@ -48,44 +61,50 @@ type DescribeCacheReportOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeCacheReportOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeCacheReportOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeCacheReportOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CacheReportInfo != nil {
+		s.WriteStruct(schemas.DescribeCacheReportOutput_CacheReportInfo)
+		v.CacheReportInfo.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *DescribeCacheReportOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeCacheReportOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeCacheReportOutput_CacheReportInfo:
+			v.CacheReportInfo = &types.CacheReportInfo{}
+			return v.CacheReportInfo.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeCacheReportMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeCacheReport{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeCacheReport, schemas.DescribeCacheReportInput, schemas.DescribeCacheReportOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeCacheReport{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeCacheReport, schemas.DescribeCacheReportInput, schemas.DescribeCacheReportOutput), output: &DescribeCacheReportOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeCacheReportValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeCacheReport"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

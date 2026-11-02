@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Disassociates an Amazon FSx file system from the specified gateway. After the
@@ -43,6 +44,21 @@ type DisassociateFileSystemInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisassociateFileSystemInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisassociateFileSystemInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisassociateFileSystemInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.FileSystemAssociationARN != nil {
+		s.WriteString(schemas.DisassociateFileSystemInput_FileSystemAssociationARN, *v.FileSystemAssociationARN)
+	}
+	if v.ForceDelete != false {
+		s.WriteBool(schemas.DisassociateFileSystemInput_ForceDelete, v.ForceDelete)
+	}
+}
+
 type DisassociateFileSystemOutput struct {
 
 	// The Amazon Resource Name (ARN) of the deleted file system association.
@@ -54,44 +70,48 @@ type DisassociateFileSystemOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisassociateFileSystemOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisassociateFileSystemOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisassociateFileSystemOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.FileSystemAssociationARN != nil {
+		s.WriteString(schemas.DisassociateFileSystemOutput_FileSystemAssociationARN, *v.FileSystemAssociationARN)
+	}
+}
+func (v *DisassociateFileSystemOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DisassociateFileSystemOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DisassociateFileSystemOutput_FileSystemAssociationARN:
+			v.FileSystemAssociationARN = new(string)
+			return d.ReadString(schemas.DisassociateFileSystemOutput_FileSystemAssociationARN, v.FileSystemAssociationARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDisassociateFileSystemMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDisassociateFileSystem{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisassociateFileSystem, schemas.DisassociateFileSystemInput, schemas.DisassociateFileSystemOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDisassociateFileSystem{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisassociateFileSystem, schemas.DisassociateFileSystemInput, schemas.DisassociateFileSystemOutput), output: &DisassociateFileSystemOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisassociateFileSystemValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DisassociateFileSystem"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

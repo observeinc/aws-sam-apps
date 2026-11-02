@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Initiates a snapshot of a gateway from a volume recovery point. This operation
@@ -71,6 +72,22 @@ type CreateSnapshotFromVolumeRecoveryPointInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateSnapshotFromVolumeRecoveryPointInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateSnapshotFromVolumeRecoveryPointInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateSnapshotFromVolumeRecoveryPointInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.SnapshotDescription != nil {
+		s.WriteString(schemas.CreateSnapshotFromVolumeRecoveryPointInput_SnapshotDescription, *v.SnapshotDescription)
+	}
+	serializeTags(s, schemas.CreateSnapshotFromVolumeRecoveryPointInput_Tags, v.Tags)
+	if v.VolumeARN != nil {
+		s.WriteString(schemas.CreateSnapshotFromVolumeRecoveryPointInput_VolumeARN, *v.VolumeARN)
+	}
+}
+
 type CreateSnapshotFromVolumeRecoveryPointOutput struct {
 
 	// The ID of the snapshot.
@@ -89,44 +106,60 @@ type CreateSnapshotFromVolumeRecoveryPointOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateSnapshotFromVolumeRecoveryPointOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateSnapshotFromVolumeRecoveryPointOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateSnapshotFromVolumeRecoveryPointOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.SnapshotId != nil {
+		s.WriteString(schemas.CreateSnapshotFromVolumeRecoveryPointOutput_SnapshotId, *v.SnapshotId)
+	}
+	if v.VolumeARN != nil {
+		s.WriteString(schemas.CreateSnapshotFromVolumeRecoveryPointOutput_VolumeARN, *v.VolumeARN)
+	}
+	if v.VolumeRecoveryPointTime != nil {
+		s.WriteString(schemas.CreateSnapshotFromVolumeRecoveryPointOutput_VolumeRecoveryPointTime, *v.VolumeRecoveryPointTime)
+	}
+}
+func (v *CreateSnapshotFromVolumeRecoveryPointOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateSnapshotFromVolumeRecoveryPointOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateSnapshotFromVolumeRecoveryPointOutput_SnapshotId:
+			v.SnapshotId = new(string)
+			return d.ReadString(schemas.CreateSnapshotFromVolumeRecoveryPointOutput_SnapshotId, v.SnapshotId)
+		case schemas.CreateSnapshotFromVolumeRecoveryPointOutput_VolumeARN:
+			v.VolumeARN = new(string)
+			return d.ReadString(schemas.CreateSnapshotFromVolumeRecoveryPointOutput_VolumeARN, v.VolumeARN)
+		case schemas.CreateSnapshotFromVolumeRecoveryPointOutput_VolumeRecoveryPointTime:
+			v.VolumeRecoveryPointTime = new(string)
+			return d.ReadString(schemas.CreateSnapshotFromVolumeRecoveryPointOutput_VolumeRecoveryPointTime, v.VolumeRecoveryPointTime)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateSnapshotFromVolumeRecoveryPointMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateSnapshotFromVolumeRecoveryPoint{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateSnapshotFromVolumeRecoveryPoint, schemas.CreateSnapshotFromVolumeRecoveryPointInput, schemas.CreateSnapshotFromVolumeRecoveryPointOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateSnapshotFromVolumeRecoveryPoint{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateSnapshotFromVolumeRecoveryPoint, schemas.CreateSnapshotFromVolumeRecoveryPointInput, schemas.CreateSnapshotFromVolumeRecoveryPointOutput), output: &CreateSnapshotFromVolumeRecoveryPointOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateSnapshotFromVolumeRecoveryPointValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateSnapshotFromVolumeRecoveryPoint"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
