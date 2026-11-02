@@ -4,12 +4,18 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Modifies the specified schema conversion configuration using the provided
 // parameters.
+//
+// Required permissions: dms:UpdateConversionConfiguration . For more information,
+// see [Actions, resources, and condition keys for Database Migration Service].
+//
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
 func (c *Client) ModifyConversionConfiguration(ctx context.Context, params *ModifyConversionConfigurationInput, optFns ...func(*Options)) (*ModifyConversionConfigurationOutput, error) {
 	if params == nil {
 		params = &ModifyConversionConfigurationInput{}
@@ -27,7 +33,15 @@ func (c *Client) ModifyConversionConfiguration(ctx context.Context, params *Modi
 
 type ModifyConversionConfigurationInput struct {
 
-	// The new conversion configuration.
+	// A JSON string that contains the schema conversion settings to update. For the
+	// format and available settings, see [Specifying schema conversion settings for migration projects].
+	//
+	// Usage:
+	//
+	//   - Include only the sections and keys to change. The operation merges supplied
+	//   values with the existing configuration.
+	//
+	// [Specifying schema conversion settings for migration projects]: https://docs.aws.amazon.com/dms/latest/userguide/schema-conversion-settings.html
 	//
 	// This member is required.
 	ConversionConfiguration *string
@@ -38,6 +52,21 @@ type ModifyConversionConfigurationInput struct {
 	MigrationProjectIdentifier *string
 
 	noSmithyDocumentSerde
+}
+
+func (v *ModifyConversionConfigurationInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyConversionConfigurationMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyConversionConfigurationInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ConversionConfiguration != nil {
+		s.WriteString(schemas.ModifyConversionConfigurationMessage_ConversionConfiguration, *v.ConversionConfiguration)
+	}
+	if v.MigrationProjectIdentifier != nil {
+		s.WriteString(schemas.ModifyConversionConfigurationMessage_MigrationProjectIdentifier, *v.MigrationProjectIdentifier)
+	}
 }
 
 type ModifyConversionConfigurationOutput struct {
@@ -51,44 +80,48 @@ type ModifyConversionConfigurationOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ModifyConversionConfigurationOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyConversionConfigurationResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyConversionConfigurationOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.MigrationProjectIdentifier != nil {
+		s.WriteString(schemas.ModifyConversionConfigurationResponse_MigrationProjectIdentifier, *v.MigrationProjectIdentifier)
+	}
+}
+func (v *ModifyConversionConfigurationOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ModifyConversionConfigurationResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ModifyConversionConfigurationResponse_MigrationProjectIdentifier:
+			v.MigrationProjectIdentifier = new(string)
+			return d.ReadString(schemas.ModifyConversionConfigurationResponse_MigrationProjectIdentifier, v.MigrationProjectIdentifier)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationModifyConversionConfigurationMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpModifyConversionConfiguration{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyConversionConfiguration, schemas.ModifyConversionConfigurationMessage, schemas.ModifyConversionConfigurationResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpModifyConversionConfiguration{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyConversionConfiguration, schemas.ModifyConversionConfigurationMessage, schemas.ModifyConversionConfigurationResponse), output: &ModifyConversionConfigurationOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyConversionConfigurationValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ModifyConversionConfiguration"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

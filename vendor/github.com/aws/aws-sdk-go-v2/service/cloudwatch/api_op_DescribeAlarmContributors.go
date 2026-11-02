@@ -4,9 +4,10 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns the information of the current alarm contributors that are in ALARM
@@ -41,6 +42,21 @@ type DescribeAlarmContributorsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeAlarmContributorsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeAlarmContributorsInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeAlarmContributorsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AlarmName != nil {
+		s.WriteString(schemas.DescribeAlarmContributorsInput_AlarmName, *v.AlarmName)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeAlarmContributorsInput_NextToken, *v.NextToken)
+	}
+}
+
 type DescribeAlarmContributorsOutput struct {
 
 	// A list of alarm contributors that provide details about the individual time
@@ -58,35 +74,45 @@ type DescribeAlarmContributorsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeAlarmContributorsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeAlarmContributorsOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeAlarmContributorsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeAlarmContributors(s, schemas.DescribeAlarmContributorsOutput_AlarmContributors, v.AlarmContributors)
+	if v.NextToken != nil {
+		s.WriteString(schemas.DescribeAlarmContributorsOutput_NextToken, *v.NextToken)
+	}
+}
+func (v *DescribeAlarmContributorsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeAlarmContributorsOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeAlarmContributorsOutput_AlarmContributors:
+			return deserializeAlarmContributors(d, schemas.DescribeAlarmContributorsOutput_AlarmContributors, &v.AlarmContributors)
+		case schemas.DescribeAlarmContributorsOutput_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.DescribeAlarmContributorsOutput_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeAlarmContributorsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpDescribeAlarmContributors{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeAlarmContributors, schemas.DescribeAlarmContributorsInput, schemas.DescribeAlarmContributorsOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpDescribeAlarmContributors{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeAlarmContributors, schemas.DescribeAlarmContributorsInput, schemas.DescribeAlarmContributorsOutput), output: &DescribeAlarmContributorsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
@@ -96,9 +122,6 @@ func (c *Client) addOperationDescribeAlarmContributorsMiddlewares(stack *middlew
 		return err
 	}
 	if err = addOpDescribeAlarmContributorsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeAlarmContributors"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

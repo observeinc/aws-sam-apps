@@ -4,9 +4,10 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"time"
 )
 
@@ -45,6 +46,26 @@ type UpdateProductPageInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateProductPageInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateProductPageRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateProductPageInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DisplayContent != nil {
+		s.WriteStruct(schemas.UpdateProductPageRequest_DisplayContent)
+		v.DisplayContent.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.PortalProductId != nil {
+		s.WriteString(schemas.UpdateProductPageRequest_PortalProductId, *v.PortalProductId)
+	}
+	if v.ProductPageId != nil {
+		s.WriteString(schemas.UpdateProductPageRequest_ProductPageId, *v.ProductPageId)
+	}
+}
+
 type UpdateProductPageOutput struct {
 
 	// The content of the product page.
@@ -65,44 +86,68 @@ type UpdateProductPageOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateProductPageOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateProductPageResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateProductPageOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DisplayContent != nil {
+		s.WriteStruct(schemas.UpdateProductPageResponse_DisplayContent)
+		v.DisplayContent.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.LastModified != nil {
+		s.WriteTime(schemas.UpdateProductPageResponse_LastModified, *v.LastModified)
+	}
+	if v.ProductPageArn != nil {
+		s.WriteString(schemas.UpdateProductPageResponse_ProductPageArn, *v.ProductPageArn)
+	}
+	if v.ProductPageId != nil {
+		s.WriteString(schemas.UpdateProductPageResponse_ProductPageId, *v.ProductPageId)
+	}
+}
+func (v *UpdateProductPageOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.UpdateProductPageResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.UpdateProductPageResponse_DisplayContent:
+			v.DisplayContent = &types.DisplayContent{}
+			return v.DisplayContent.Deserialize(d)
+		case schemas.UpdateProductPageResponse_LastModified:
+			v.LastModified = new(time.Time)
+			return d.ReadTime(schemas.UpdateProductPageResponse_LastModified, v.LastModified)
+		case schemas.UpdateProductPageResponse_ProductPageArn:
+			v.ProductPageArn = new(string)
+			return d.ReadString(schemas.UpdateProductPageResponse_ProductPageArn, v.ProductPageArn)
+		case schemas.UpdateProductPageResponse_ProductPageId:
+			v.ProductPageId = new(string)
+			return d.ReadString(schemas.UpdateProductPageResponse_ProductPageId, v.ProductPageId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationUpdateProductPageMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpUpdateProductPage{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateProductPage, schemas.UpdateProductPageRequest, schemas.UpdateProductPageResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpUpdateProductPage{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateProductPage, schemas.UpdateProductPageRequest, schemas.UpdateProductPageResponse), output: &UpdateProductPageOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateProductPageValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "UpdateProductPage"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,8 +4,9 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 //	End of support notice: On May 20, 2026, Amazon Web Services will end support
@@ -56,6 +57,27 @@ type CreateFleetAdvisorCollectorInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateFleetAdvisorCollectorInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateFleetAdvisorCollectorRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateFleetAdvisorCollectorInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CollectorName != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorRequest_CollectorName, *v.CollectorName)
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorRequest_Description, *v.Description)
+	}
+	if v.S3BucketName != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorRequest_S3BucketName, *v.S3BucketName)
+	}
+	if v.ServiceAccessRoleArn != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorRequest_ServiceAccessRoleArn, *v.ServiceAccessRoleArn)
+	}
+}
+
 type CreateFleetAdvisorCollectorOutput struct {
 
 	// The name of the new Fleet Advisor collector.
@@ -80,44 +102,72 @@ type CreateFleetAdvisorCollectorOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateFleetAdvisorCollectorOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateFleetAdvisorCollectorResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateFleetAdvisorCollectorOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CollectorName != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorResponse_CollectorName, *v.CollectorName)
+	}
+	if v.CollectorReferencedId != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorResponse_CollectorReferencedId, *v.CollectorReferencedId)
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorResponse_Description, *v.Description)
+	}
+	if v.S3BucketName != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorResponse_S3BucketName, *v.S3BucketName)
+	}
+	if v.ServiceAccessRoleArn != nil {
+		s.WriteString(schemas.CreateFleetAdvisorCollectorResponse_ServiceAccessRoleArn, *v.ServiceAccessRoleArn)
+	}
+}
+func (v *CreateFleetAdvisorCollectorOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateFleetAdvisorCollectorResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateFleetAdvisorCollectorResponse_CollectorName:
+			v.CollectorName = new(string)
+			return d.ReadString(schemas.CreateFleetAdvisorCollectorResponse_CollectorName, v.CollectorName)
+		case schemas.CreateFleetAdvisorCollectorResponse_CollectorReferencedId:
+			v.CollectorReferencedId = new(string)
+			return d.ReadString(schemas.CreateFleetAdvisorCollectorResponse_CollectorReferencedId, v.CollectorReferencedId)
+		case schemas.CreateFleetAdvisorCollectorResponse_Description:
+			v.Description = new(string)
+			return d.ReadString(schemas.CreateFleetAdvisorCollectorResponse_Description, v.Description)
+		case schemas.CreateFleetAdvisorCollectorResponse_S3BucketName:
+			v.S3BucketName = new(string)
+			return d.ReadString(schemas.CreateFleetAdvisorCollectorResponse_S3BucketName, v.S3BucketName)
+		case schemas.CreateFleetAdvisorCollectorResponse_ServiceAccessRoleArn:
+			v.ServiceAccessRoleArn = new(string)
+			return d.ReadString(schemas.CreateFleetAdvisorCollectorResponse_ServiceAccessRoleArn, v.ServiceAccessRoleArn)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateFleetAdvisorCollectorMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateFleetAdvisorCollector{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateFleetAdvisorCollector, schemas.CreateFleetAdvisorCollectorRequest, schemas.CreateFleetAdvisorCollectorResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateFleetAdvisorCollector{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateFleetAdvisorCollector, schemas.CreateFleetAdvisorCollectorRequest, schemas.CreateFleetAdvisorCollectorResponse), output: &CreateFleetAdvisorCollectorOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateFleetAdvisorCollectorValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateFleetAdvisorCollector"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

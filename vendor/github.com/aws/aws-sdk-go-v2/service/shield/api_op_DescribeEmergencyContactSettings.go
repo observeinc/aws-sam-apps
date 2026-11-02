@@ -4,9 +4,10 @@ package shield
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/shield/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/shield/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // A list of email addresses and phone numbers that the Shield Response Team (SRT)
@@ -31,6 +32,15 @@ type DescribeEmergencyContactSettingsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEmergencyContactSettingsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEmergencyContactSettingsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEmergencyContactSettingsInput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+
 type DescribeEmergencyContactSettingsOutput struct {
 
 	// A list of email addresses and phone numbers that the Shield Response Team (SRT)
@@ -44,41 +54,42 @@ type DescribeEmergencyContactSettingsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeEmergencyContactSettingsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeEmergencyContactSettingsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeEmergencyContactSettingsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeEmergencyContactList(s, schemas.DescribeEmergencyContactSettingsResponse_EmergencyContactList, v.EmergencyContactList)
+}
+func (v *DescribeEmergencyContactSettingsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeEmergencyContactSettingsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeEmergencyContactSettingsResponse_EmergencyContactList:
+			return deserializeEmergencyContactList(d, schemas.DescribeEmergencyContactSettingsResponse_EmergencyContactList, &v.EmergencyContactList)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeEmergencyContactSettingsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeEmergencyContactSettings{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEmergencyContactSettings, schemas.DescribeEmergencyContactSettingsRequest, schemas.DescribeEmergencyContactSettingsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeEmergencyContactSettings{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeEmergencyContactSettings, schemas.DescribeEmergencyContactSettingsRequest, schemas.DescribeEmergencyContactSettingsResponse), output: &DescribeEmergencyContactSettingsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeEmergencyContactSettings"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

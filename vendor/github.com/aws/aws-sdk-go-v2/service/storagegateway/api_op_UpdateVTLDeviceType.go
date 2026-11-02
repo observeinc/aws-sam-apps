@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Updates the type of medium changer in a tape gateway. When you activate a tape
@@ -44,6 +45,21 @@ type UpdateVTLDeviceTypeInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateVTLDeviceTypeInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateVTLDeviceTypeInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateVTLDeviceTypeInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DeviceType != nil {
+		s.WriteString(schemas.UpdateVTLDeviceTypeInput_DeviceType, *v.DeviceType)
+	}
+	if v.VTLDeviceARN != nil {
+		s.WriteString(schemas.UpdateVTLDeviceTypeInput_VTLDeviceARN, *v.VTLDeviceARN)
+	}
+}
+
 // UpdateVTLDeviceTypeOutput
 type UpdateVTLDeviceTypeOutput struct {
 
@@ -56,44 +72,48 @@ type UpdateVTLDeviceTypeOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateVTLDeviceTypeOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateVTLDeviceTypeOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateVTLDeviceTypeOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.VTLDeviceARN != nil {
+		s.WriteString(schemas.UpdateVTLDeviceTypeOutput_VTLDeviceARN, *v.VTLDeviceARN)
+	}
+}
+func (v *UpdateVTLDeviceTypeOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.UpdateVTLDeviceTypeOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.UpdateVTLDeviceTypeOutput_VTLDeviceARN:
+			v.VTLDeviceARN = new(string)
+			return d.ReadString(schemas.UpdateVTLDeviceTypeOutput_VTLDeviceARN, v.VTLDeviceARN)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationUpdateVTLDeviceTypeMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdateVTLDeviceType{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateVTLDeviceType, schemas.UpdateVTLDeviceTypeInput, schemas.UpdateVTLDeviceTypeOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpUpdateVTLDeviceType{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateVTLDeviceType, schemas.UpdateVTLDeviceTypeInput, schemas.UpdateVTLDeviceTypeOutput), output: &UpdateVTLDeviceTypeOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateVTLDeviceTypeValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "UpdateVTLDeviceType"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

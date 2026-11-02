@@ -4,8 +4,9 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Starts a process that cleans the specified file share's cache of file entries
@@ -62,6 +63,21 @@ type EvictFilesFailingUploadInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *EvictFilesFailingUploadInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.EvictFilesFailingUploadInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *EvictFilesFailingUploadInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.FileShareARN != nil {
+		s.WriteString(schemas.EvictFilesFailingUploadInput_FileShareARN, *v.FileShareARN)
+	}
+	if v.ForceRemove != false {
+		s.WriteBool(schemas.EvictFilesFailingUploadInput_ForceRemove, v.ForceRemove)
+	}
+}
+
 type EvictFilesFailingUploadOutput struct {
 
 	// The randomly generated ID of the CloudWatch notification associated with the
@@ -74,44 +90,48 @@ type EvictFilesFailingUploadOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *EvictFilesFailingUploadOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.EvictFilesFailingUploadOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *EvictFilesFailingUploadOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.NotificationId != nil {
+		s.WriteString(schemas.EvictFilesFailingUploadOutput_NotificationId, *v.NotificationId)
+	}
+}
+func (v *EvictFilesFailingUploadOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.EvictFilesFailingUploadOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.EvictFilesFailingUploadOutput_NotificationId:
+			v.NotificationId = new(string)
+			return d.ReadString(schemas.EvictFilesFailingUploadOutput_NotificationId, v.NotificationId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationEvictFilesFailingUploadMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpEvictFilesFailingUpload{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.EvictFilesFailingUpload, schemas.EvictFilesFailingUploadInput, schemas.EvictFilesFailingUploadOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpEvictFilesFailingUpload{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.EvictFilesFailingUpload, schemas.EvictFilesFailingUploadInput, schemas.EvictFilesFailingUploadOutput), output: &EvictFilesFailingUploadOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpEvictFilesFailingUploadValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "EvictFilesFailingUpload"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,9 +4,10 @@ package apigateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets a documentation part.
@@ -41,6 +42,21 @@ type GetDocumentationPartInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetDocumentationPartInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetDocumentationPartRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetDocumentationPartInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DocumentationPartId != nil {
+		s.WriteString(schemas.GetDocumentationPartRequest_documentationPartId, *v.DocumentationPartId)
+	}
+	if v.RestApiId != nil {
+		s.WriteString(schemas.GetDocumentationPartRequest_restApiId, *v.RestApiId)
+	}
+}
+
 // A documentation part for a targeted API entity.
 type GetDocumentationPartOutput struct {
 
@@ -69,44 +85,62 @@ type GetDocumentationPartOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetDocumentationPartOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DocumentationPart)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetDocumentationPartOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Id != nil {
+		s.WriteString(schemas.DocumentationPart_id, *v.Id)
+	}
+	if v.Location != nil {
+		s.WriteStruct(schemas.DocumentationPart_location)
+		v.Location.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.Properties != nil {
+		s.WriteString(schemas.DocumentationPart_properties, *v.Properties)
+	}
+}
+func (v *GetDocumentationPartOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DocumentationPart, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DocumentationPart_id:
+			v.Id = new(string)
+			return d.ReadString(schemas.DocumentationPart_id, v.Id)
+		case schemas.DocumentationPart_location:
+			v.Location = &types.DocumentationPartLocation{}
+			return v.Location.Deserialize(d)
+		case schemas.DocumentationPart_properties:
+			v.Properties = new(string)
+			return d.ReadString(schemas.DocumentationPart_properties, v.Properties)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetDocumentationPartMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetDocumentationPart{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetDocumentationPart, schemas.GetDocumentationPartRequest, schemas.DocumentationPart)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetDocumentationPart{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetDocumentationPart, schemas.GetDocumentationPartRequest, schemas.DocumentationPart), output: &GetDocumentationPartOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetDocumentationPartValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetDocumentationPart"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,9 +4,10 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets a collection of VPC links.
@@ -37,6 +38,21 @@ type GetVpcLinksInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetVpcLinksInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetVpcLinksRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetVpcLinksInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.MaxResults != nil {
+		s.WriteString(schemas.GetVpcLinksRequest_MaxResults, *v.MaxResults)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetVpcLinksRequest_NextToken, *v.NextToken)
+	}
+}
+
 type GetVpcLinksOutput struct {
 
 	// A collection of VPC links.
@@ -52,41 +68,48 @@ type GetVpcLinksOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetVpcLinksOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetVpcLinksResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetVpcLinksOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serialize__listOfVpcLink(s, schemas.GetVpcLinksResponse_Items, v.Items)
+	if v.NextToken != nil {
+		s.WriteString(schemas.GetVpcLinksResponse_NextToken, *v.NextToken)
+	}
+}
+func (v *GetVpcLinksOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetVpcLinksResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetVpcLinksResponse_Items:
+			return deserialize__listOfVpcLink(d, schemas.GetVpcLinksResponse_Items, &v.Items)
+		case schemas.GetVpcLinksResponse_NextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.GetVpcLinksResponse_NextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetVpcLinksMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetVpcLinks{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetVpcLinks, schemas.GetVpcLinksRequest, schemas.GetVpcLinksResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetVpcLinks{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetVpcLinks, schemas.GetVpcLinksRequest, schemas.GetVpcLinksResponse), output: &GetVpcLinksOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetVpcLinks"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

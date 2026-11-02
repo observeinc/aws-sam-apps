@@ -4,9 +4,10 @@ package apigatewayv2
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a RouteResponse for a Route.
@@ -56,6 +57,29 @@ type CreateRouteResponseInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateRouteResponseInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateRouteResponseRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateRouteResponseInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ApiId != nil {
+		s.WriteString(schemas.CreateRouteResponseRequest_ApiId, *v.ApiId)
+	}
+	if v.ModelSelectionExpression != nil {
+		s.WriteString(schemas.CreateRouteResponseRequest_ModelSelectionExpression, *v.ModelSelectionExpression)
+	}
+	serializeRouteModels(s, schemas.CreateRouteResponseRequest_ResponseModels, v.ResponseModels)
+	serializeRouteParameters(s, schemas.CreateRouteResponseRequest_ResponseParameters, v.ResponseParameters)
+	if v.RouteId != nil {
+		s.WriteString(schemas.CreateRouteResponseRequest_RouteId, *v.RouteId)
+	}
+	if v.RouteResponseKey != nil {
+		s.WriteString(schemas.CreateRouteResponseRequest_RouteResponseKey, *v.RouteResponseKey)
+	}
+}
+
 type CreateRouteResponseOutput struct {
 
 	// Represents the model selection expression of a route response. Supported only
@@ -80,44 +104,66 @@ type CreateRouteResponseOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateRouteResponseOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateRouteResponseResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateRouteResponseOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ModelSelectionExpression != nil {
+		s.WriteString(schemas.CreateRouteResponseResponse_ModelSelectionExpression, *v.ModelSelectionExpression)
+	}
+	serializeRouteModels(s, schemas.CreateRouteResponseResponse_ResponseModels, v.ResponseModels)
+	serializeRouteParameters(s, schemas.CreateRouteResponseResponse_ResponseParameters, v.ResponseParameters)
+	if v.RouteResponseId != nil {
+		s.WriteString(schemas.CreateRouteResponseResponse_RouteResponseId, *v.RouteResponseId)
+	}
+	if v.RouteResponseKey != nil {
+		s.WriteString(schemas.CreateRouteResponseResponse_RouteResponseKey, *v.RouteResponseKey)
+	}
+}
+func (v *CreateRouteResponseOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateRouteResponseResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateRouteResponseResponse_ModelSelectionExpression:
+			v.ModelSelectionExpression = new(string)
+			return d.ReadString(schemas.CreateRouteResponseResponse_ModelSelectionExpression, v.ModelSelectionExpression)
+		case schemas.CreateRouteResponseResponse_ResponseModels:
+			return deserializeRouteModels(d, schemas.CreateRouteResponseResponse_ResponseModels, &v.ResponseModels)
+		case schemas.CreateRouteResponseResponse_ResponseParameters:
+			return deserializeRouteParameters(d, schemas.CreateRouteResponseResponse_ResponseParameters, &v.ResponseParameters)
+		case schemas.CreateRouteResponseResponse_RouteResponseId:
+			v.RouteResponseId = new(string)
+			return d.ReadString(schemas.CreateRouteResponseResponse_RouteResponseId, v.RouteResponseId)
+		case schemas.CreateRouteResponseResponse_RouteResponseKey:
+			v.RouteResponseKey = new(string)
+			return d.ReadString(schemas.CreateRouteResponseResponse_RouteResponseKey, v.RouteResponseKey)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateRouteResponseMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpCreateRouteResponse{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateRouteResponse, schemas.CreateRouteResponseRequest, schemas.CreateRouteResponseResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpCreateRouteResponse{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateRouteResponse, schemas.CreateRouteResponseRequest, schemas.CreateRouteResponseResponse), output: &CreateRouteResponseOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateRouteResponseValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateRouteResponse"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

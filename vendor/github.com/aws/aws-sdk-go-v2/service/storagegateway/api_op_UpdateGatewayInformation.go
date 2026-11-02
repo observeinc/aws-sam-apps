@@ -4,9 +4,10 @@ package storagegateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/storagegateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/storagegateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Updates a gateway's metadata, which includes the gateway's name, time zone, and
@@ -63,6 +64,30 @@ type UpdateGatewayInformationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateGatewayInformationInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateGatewayInformationInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateGatewayInformationInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CloudWatchLogGroupARN != nil {
+		s.WriteString(schemas.UpdateGatewayInformationInput_CloudWatchLogGroupARN, *v.CloudWatchLogGroupARN)
+	}
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.UpdateGatewayInformationInput_GatewayARN, *v.GatewayARN)
+	}
+	if v.GatewayCapacity != "" {
+		s.WriteString(schemas.UpdateGatewayInformationInput_GatewayCapacity, string(v.GatewayCapacity))
+	}
+	if v.GatewayName != nil {
+		s.WriteString(schemas.UpdateGatewayInformationInput_GatewayName, *v.GatewayName)
+	}
+	if v.GatewayTimezone != nil {
+		s.WriteString(schemas.UpdateGatewayInformationInput_GatewayTimezone, *v.GatewayTimezone)
+	}
+}
+
 // A JSON object containing the Amazon Resource Name (ARN) of the gateway that was
 // updated.
 type UpdateGatewayInformationOutput struct {
@@ -80,44 +105,54 @@ type UpdateGatewayInformationOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *UpdateGatewayInformationOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UpdateGatewayInformationOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UpdateGatewayInformationOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GatewayARN != nil {
+		s.WriteString(schemas.UpdateGatewayInformationOutput_GatewayARN, *v.GatewayARN)
+	}
+	if v.GatewayName != nil {
+		s.WriteString(schemas.UpdateGatewayInformationOutput_GatewayName, *v.GatewayName)
+	}
+}
+func (v *UpdateGatewayInformationOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.UpdateGatewayInformationOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.UpdateGatewayInformationOutput_GatewayARN:
+			v.GatewayARN = new(string)
+			return d.ReadString(schemas.UpdateGatewayInformationOutput_GatewayARN, v.GatewayARN)
+		case schemas.UpdateGatewayInformationOutput_GatewayName:
+			v.GatewayName = new(string)
+			return d.ReadString(schemas.UpdateGatewayInformationOutput_GatewayName, v.GatewayName)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationUpdateGatewayInformationMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdateGatewayInformation{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateGatewayInformation, schemas.UpdateGatewayInformationInput, schemas.UpdateGatewayInformationOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpUpdateGatewayInformation{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.UpdateGatewayInformation, schemas.UpdateGatewayInformationInput, schemas.UpdateGatewayInformationOutput), output: &UpdateGatewayInformationOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateGatewayInformationValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "UpdateGatewayInformation"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

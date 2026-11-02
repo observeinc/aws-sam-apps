@@ -4,15 +4,20 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Modifies the specified instance profile using the provided parameters.
 //
+// Required permissions: dms:UpdateInstanceProfile . For more information, see [Actions, resources, and condition keys for Database Migration Service].
+//
 // All migration projects associated with the instance profile must be deleted or
 // modified before you can modify the instance profile.
+//
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
 func (c *Client) ModifyInstanceProfile(ctx context.Context, params *ModifyInstanceProfileInput, optFns ...func(*Options)) (*ModifyInstanceProfileOutput, error) {
 	if params == nil {
 		params = &ModifyInstanceProfileInput{}
@@ -76,6 +81,40 @@ type ModifyInstanceProfileInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ModifyInstanceProfileInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyInstanceProfileMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyInstanceProfileInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AvailabilityZone != nil {
+		s.WriteString(schemas.ModifyInstanceProfileMessage_AvailabilityZone, *v.AvailabilityZone)
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.ModifyInstanceProfileMessage_Description, *v.Description)
+	}
+	if v.InstanceProfileIdentifier != nil {
+		s.WriteString(schemas.ModifyInstanceProfileMessage_InstanceProfileIdentifier, *v.InstanceProfileIdentifier)
+	}
+	if v.InstanceProfileName != nil {
+		s.WriteString(schemas.ModifyInstanceProfileMessage_InstanceProfileName, *v.InstanceProfileName)
+	}
+	if v.KmsKeyArn != nil {
+		s.WriteString(schemas.ModifyInstanceProfileMessage_KmsKeyArn, *v.KmsKeyArn)
+	}
+	if v.NetworkType != nil {
+		s.WriteString(schemas.ModifyInstanceProfileMessage_NetworkType, *v.NetworkType)
+	}
+	if v.PubliclyAccessible != nil {
+		s.WriteBool(schemas.ModifyInstanceProfileMessage_PubliclyAccessible, *v.PubliclyAccessible)
+	}
+	if v.SubnetGroupIdentifier != nil {
+		s.WriteString(schemas.ModifyInstanceProfileMessage_SubnetGroupIdentifier, *v.SubnetGroupIdentifier)
+	}
+	serializeStringList(s, schemas.ModifyInstanceProfileMessage_VpcSecurityGroups, v.VpcSecurityGroups)
+}
+
 type ModifyInstanceProfileOutput struct {
 
 	// The instance profile that was modified.
@@ -87,44 +126,50 @@ type ModifyInstanceProfileOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ModifyInstanceProfileOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ModifyInstanceProfileResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ModifyInstanceProfileOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.InstanceProfile != nil {
+		s.WriteStruct(schemas.ModifyInstanceProfileResponse_InstanceProfile)
+		v.InstanceProfile.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *ModifyInstanceProfileOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ModifyInstanceProfileResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ModifyInstanceProfileResponse_InstanceProfile:
+			v.InstanceProfile = &types.InstanceProfile{}
+			return v.InstanceProfile.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationModifyInstanceProfileMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpModifyInstanceProfile{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyInstanceProfile, schemas.ModifyInstanceProfileMessage, schemas.ModifyInstanceProfileResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpModifyInstanceProfile{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ModifyInstanceProfile, schemas.ModifyInstanceProfileMessage, schemas.ModifyInstanceProfileResponse), output: &ModifyInstanceProfileOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyInstanceProfileValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ModifyInstanceProfile"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

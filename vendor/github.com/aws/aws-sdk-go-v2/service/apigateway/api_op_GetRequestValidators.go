@@ -4,9 +4,10 @@ package apigateway
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Gets the RequestValidators collection of a given RestApi.
@@ -43,6 +44,24 @@ type GetRequestValidatorsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetRequestValidatorsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetRequestValidatorsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetRequestValidatorsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Limit != nil {
+		s.WriteInt32(schemas.GetRequestValidatorsRequest_limit, *v.Limit)
+	}
+	if v.Position != nil {
+		s.WriteString(schemas.GetRequestValidatorsRequest_position, *v.Position)
+	}
+	if v.RestApiId != nil {
+		s.WriteString(schemas.GetRequestValidatorsRequest_restApiId, *v.RestApiId)
+	}
+}
+
 // A collection of RequestValidator resources of a given RestApi.
 type GetRequestValidatorsOutput struct {
 
@@ -58,44 +77,51 @@ type GetRequestValidatorsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetRequestValidatorsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.RequestValidators)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetRequestValidatorsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeListOfRequestValidator(s, schemas.RequestValidators_items, v.Items)
+	if v.Position != nil {
+		s.WriteString(schemas.RequestValidators_position, *v.Position)
+	}
+}
+func (v *GetRequestValidatorsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.RequestValidators, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.RequestValidators_items:
+			return deserializeListOfRequestValidator(d, schemas.RequestValidators_items, &v.Items)
+		case schemas.RequestValidators_position:
+			v.Position = new(string)
+			return d.ReadString(schemas.RequestValidators_position, v.Position)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetRequestValidatorsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpGetRequestValidators{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetRequestValidators, schemas.GetRequestValidatorsRequest, schemas.RequestValidators)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpGetRequestValidators{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetRequestValidators, schemas.GetRequestValidatorsRequest, schemas.RequestValidators), output: &GetRequestValidatorsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetRequestValidatorsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetRequestValidators"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

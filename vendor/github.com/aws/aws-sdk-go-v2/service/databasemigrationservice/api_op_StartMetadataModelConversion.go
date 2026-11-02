@@ -4,12 +4,57 @@ package databasemigrationservice
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Converts your source database objects to a format compatible with the target
-// database.
+// Queues a conversion of the selected source metadata models (database objects
+// such as tables, views, and procedures) to the target database format. If other
+// requests created by Start* operations are already in the migration project's
+// queue, the conversion begins after they complete.
+//
+// The conversion request loads metadata models that are not yet in the metadata
+// tree, but does not reload metadata models that are already present. If your
+// source database has changed since the metadata was loaded, refresh the affected
+// metadata models with [StartMetadataModelImport]before calling this operation.
+//
+// If converted objects already exist in the target metadata tree, the conversion
+// overwrites them, including any manual edits.
+//
+// To check the status of the conversion request, call [DescribeMetadataModelConversions] using the returned
+// RequestIdentifier as a filter.
+//
+// To cancel a queued or in-progress request, call [CancelMetadataModelConversion] with the returned
+// RequestIdentifier .
+//
+// After the conversion completes successfully:
+//
+//   - To export a post-conversion assessment report, call [ExportMetadataModelAssessment].
+//
+//   - To retrieve converted code, use any of the following options:
+//
+// [DescribeMetadataModel]
+//   - and [DescribeMetadataModelChildren]– navigate the target metadata tree and retrieve converted definitions.
+//
+// [StartMetadataModelExportAsScript]
+//   - – export as data definition language (DDL) scripts to your Amazon S3 bucket.
+//
+// [StartMetadataModelExportToTarget]
+//   - – apply directly to your target database.
+//
+// Required permissions: dms:StartMetadataModelConversion . For more information,
+// see [Actions, resources, and condition keys for Database Migration Service].
+//
+// [StartMetadataModelImport]: https://docs.aws.amazon.com/dms/latest/APIReference/API_StartMetadataModelImport.html
+// [StartMetadataModelExportToTarget]: https://docs.aws.amazon.com/dms/latest/APIReference/API_StartMetadataModelExportToTarget.html
+// [DescribeMetadataModelConversions]: https://docs.aws.amazon.com/dms/latest/APIReference/API_DescribeMetadataModelConversions.html
+// [ExportMetadataModelAssessment]: https://docs.aws.amazon.com/dms/latest/APIReference/API_ExportMetadataModelAssessment.html
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
+// [DescribeMetadataModelChildren]: https://docs.aws.amazon.com/dms/latest/APIReference/API_DescribeMetadataModelChildren.html
+// [CancelMetadataModelConversion]: https://docs.aws.amazon.com/dms/latest/APIReference/API_CancelMetadataModelConversion.html
+// [StartMetadataModelExportAsScript]: https://docs.aws.amazon.com/dms/latest/APIReference/API_StartMetadataModelExportAsScript.html
+// [DescribeMetadataModel]: https://docs.aws.amazon.com/dms/latest/APIReference/API_DescribeMetadataModel.html
 func (c *Client) StartMetadataModelConversion(ctx context.Context, params *StartMetadataModelConversionInput, optFns ...func(*Options)) (*StartMetadataModelConversionOutput, error) {
 	if params == nil {
 		params = &StartMetadataModelConversionInput{}
@@ -32,7 +77,17 @@ type StartMetadataModelConversionInput struct {
 	// This member is required.
 	MigrationProjectIdentifier *string
 
-	// A value that specifies the database objects to convert.
+	// A JSON string that identifies the metadata models to convert. For the selection
+	// rule format and examples, see [Selection rules in DMS Schema Conversion].
+	//
+	// Usage:
+	//
+	//   - Accepts only source selection rules, where server-name in the object locator
+	//   matches the source data provider.
+	//
+	//   - Supports explicit , include , and exclude rule actions.
+	//
+	// [Selection rules in DMS Schema Conversion]: https://docs.aws.amazon.com/dms/latest/userguide/sc-selection-rules.html
 	//
 	// This member is required.
 	SelectionRules *string
@@ -40,9 +95,24 @@ type StartMetadataModelConversionInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartMetadataModelConversionInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartMetadataModelConversionMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartMetadataModelConversionInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.MigrationProjectIdentifier != nil {
+		s.WriteString(schemas.StartMetadataModelConversionMessage_MigrationProjectIdentifier, *v.MigrationProjectIdentifier)
+	}
+	if v.SelectionRules != nil {
+		s.WriteString(schemas.StartMetadataModelConversionMessage_SelectionRules, *v.SelectionRules)
+	}
+}
+
 type StartMetadataModelConversionOutput struct {
 
-	// The identifier for the conversion operation.
+	// The identifier for the conversion request.
 	RequestIdentifier *string
 
 	// Metadata pertaining to the operation's result.
@@ -51,44 +121,48 @@ type StartMetadataModelConversionOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *StartMetadataModelConversionOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.StartMetadataModelConversionResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *StartMetadataModelConversionOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.RequestIdentifier != nil {
+		s.WriteString(schemas.StartMetadataModelConversionResponse_RequestIdentifier, *v.RequestIdentifier)
+	}
+}
+func (v *StartMetadataModelConversionOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.StartMetadataModelConversionResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.StartMetadataModelConversionResponse_RequestIdentifier:
+			v.RequestIdentifier = new(string)
+			return d.ReadString(schemas.StartMetadataModelConversionResponse_RequestIdentifier, v.RequestIdentifier)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationStartMetadataModelConversionMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpStartMetadataModelConversion{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartMetadataModelConversion, schemas.StartMetadataModelConversionMessage, schemas.StartMetadataModelConversionResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpStartMetadataModelConversion{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.StartMetadataModelConversion, schemas.StartMetadataModelConversionMessage, schemas.StartMetadataModelConversionResponse), output: &StartMetadataModelConversionOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpStartMetadataModelConversionValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "StartMetadataModelConversion"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

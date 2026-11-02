@@ -5,15 +5,22 @@ package databasemigrationservice
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithytime "github.com/aws/smithy-go/time"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
 	"time"
 )
 
-// Returns a paginated list of metadata model exports.
+// Returns a paginated list of metadata model export requests for a migration
+// project, initiated by [StartMetadataModelExportToTarget].
+//
+// Required permissions: dms:ListMetadataModelExports . For more information, see [Actions, resources, and condition keys for Database Migration Service].
+//
+// [StartMetadataModelExportToTarget]: https://docs.aws.amazon.com/dms/latest/APIReference/API_StartMetadataModelExportToTarget.html
+// [Actions, resources, and condition keys for Database Migration Service]: https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsdatabasemigrationservice.html
 func (c *Client) DescribeMetadataModelExportsToTarget(ctx context.Context, params *DescribeMetadataModelExportsToTargetInput, optFns ...func(*Options)) (*DescribeMetadataModelExportsToTargetOutput, error) {
 	if params == nil {
 		params = &DescribeMetadataModelExportsToTargetInput{}
@@ -36,8 +43,14 @@ type DescribeMetadataModelExportsToTargetInput struct {
 	// This member is required.
 	MigrationProjectIdentifier *string
 
-	// Filters applied to the metadata model exports described in the form of
-	// key-value pairs.
+	// The filters to apply to the metadata model export requests.
+	//
+	// The following filter names are supported:
+	//
+	//   - request-id – The request identifier.
+	//
+	//   - status – The request status. Valid values: RECEIVED , IN_PROGRESS , SUCCESS
+	//   , FAILED .
 	Filters []types.Filter
 
 	// Specifies the unique pagination token that makes it possible to display the
@@ -58,6 +71,25 @@ type DescribeMetadataModelExportsToTargetInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeMetadataModelExportsToTargetInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeMetadataModelExportsToTargetMessage)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeMetadataModelExportsToTargetInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeFilterList(s, schemas.DescribeMetadataModelExportsToTargetMessage_Filters, v.Filters)
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeMetadataModelExportsToTargetMessage_Marker, *v.Marker)
+	}
+	if v.MaxRecords != nil {
+		s.WriteInt32(schemas.DescribeMetadataModelExportsToTargetMessage_MaxRecords, *v.MaxRecords)
+	}
+	if v.MigrationProjectIdentifier != nil {
+		s.WriteString(schemas.DescribeMetadataModelExportsToTargetMessage_MigrationProjectIdentifier, *v.MigrationProjectIdentifier)
+	}
+}
+
 type DescribeMetadataModelExportsToTargetOutput struct {
 
 	// Specifies the unique pagination token that makes it possible to display the
@@ -70,7 +102,9 @@ type DescribeMetadataModelExportsToTargetOutput struct {
 	// arguments unchanged.
 	Marker *string
 
-	// A paginated list of metadata model exports.
+	// A paginated list of metadata model export requests.
+	//
+	// DMS never populates the ExportSqlDetails field for this operation.
 	Requests []types.SchemaConversionRequest
 
 	// Metadata pertaining to the operation's result.
@@ -79,44 +113,51 @@ type DescribeMetadataModelExportsToTargetOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeMetadataModelExportsToTargetOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeMetadataModelExportsToTargetResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeMetadataModelExportsToTargetOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeMetadataModelExportsToTargetResponse_Marker, *v.Marker)
+	}
+	serializeSchemaConversionRequestList(s, schemas.DescribeMetadataModelExportsToTargetResponse_Requests, v.Requests)
+}
+func (v *DescribeMetadataModelExportsToTargetOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeMetadataModelExportsToTargetResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeMetadataModelExportsToTargetResponse_Marker:
+			v.Marker = new(string)
+			return d.ReadString(schemas.DescribeMetadataModelExportsToTargetResponse_Marker, v.Marker)
+		case schemas.DescribeMetadataModelExportsToTargetResponse_Requests:
+			return deserializeSchemaConversionRequestList(d, schemas.DescribeMetadataModelExportsToTargetResponse_Requests, &v.Requests)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeMetadataModelExportsToTargetMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeMetadataModelExportsToTarget{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeMetadataModelExportsToTarget, schemas.DescribeMetadataModelExportsToTargetMessage, schemas.DescribeMetadataModelExportsToTargetResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeMetadataModelExportsToTarget{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeMetadataModelExportsToTarget, schemas.DescribeMetadataModelExportsToTargetMessage, schemas.DescribeMetadataModelExportsToTargetResponse), output: &DescribeMetadataModelExportsToTargetOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeMetadataModelExportsToTargetValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "DescribeMetadataModelExportsToTarget"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -4,9 +4,11 @@ package cloudwatch
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"time"
 )
 
 // Returns the current status of vended metric enrichment for the account,
@@ -34,6 +36,15 @@ type GetOTelEnrichmentInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetOTelEnrichmentInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetOTelEnrichmentInput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetOTelEnrichmentInput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+
 type GetOTelEnrichmentOutput struct {
 
 	// The status of OTel enrichment for the account. Valid values are Running
@@ -42,50 +53,94 @@ type GetOTelEnrichmentOutput struct {
 	// This member is required.
 	Status types.OTelEnrichmentStatus
 
+	// The date and time that enrichment started for the account. This parameter is
+	// omitted when enrichment is stopped.
+	CreatedAt *time.Time
+
+	// The metric namespaces, and the metric names, that are left unenriched. This
+	// parameter is omitted when enrichment is stopped, and when enrichment is running
+	// with no exclude filters, which means that nothing is excluded.
+	ExcludeFilters []types.OTelEnrichmentMetricSelector
+
+	// The metric namespaces, and the metric names, that are enriched. This parameter
+	// is omitted when enrichment is stopped, and when enrichment is running with no
+	// include filters, which means that every supported namespace is in scope.
+	IncludeFilters []types.OTelEnrichmentMetricSelector
+
+	// The date and time that the enrichment configuration for the account was last
+	// stored.
+	UpdatedAt *time.Time
+
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
 
 	noSmithyDocumentSerde
 }
 
+func (v *GetOTelEnrichmentOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetOTelEnrichmentOutput)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetOTelEnrichmentOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CreatedAt != nil {
+		s.WriteTime(schemas.GetOTelEnrichmentOutput_CreatedAt, *v.CreatedAt)
+	}
+	serializeOTelEnrichmentMetricSelectorList(s, schemas.GetOTelEnrichmentOutput_ExcludeFilters, v.ExcludeFilters)
+	serializeOTelEnrichmentMetricSelectorList(s, schemas.GetOTelEnrichmentOutput_IncludeFilters, v.IncludeFilters)
+	if v.Status != "" {
+		s.WriteString(schemas.GetOTelEnrichmentOutput_Status, string(v.Status))
+	}
+	if v.UpdatedAt != nil {
+		s.WriteTime(schemas.GetOTelEnrichmentOutput_UpdatedAt, *v.UpdatedAt)
+	}
+}
+func (v *GetOTelEnrichmentOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetOTelEnrichmentOutput, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetOTelEnrichmentOutput_CreatedAt:
+			v.CreatedAt = new(time.Time)
+			return d.ReadTime(schemas.GetOTelEnrichmentOutput_CreatedAt, v.CreatedAt)
+		case schemas.GetOTelEnrichmentOutput_ExcludeFilters:
+			return deserializeOTelEnrichmentMetricSelectorList(d, schemas.GetOTelEnrichmentOutput_ExcludeFilters, &v.ExcludeFilters)
+		case schemas.GetOTelEnrichmentOutput_IncludeFilters:
+			return deserializeOTelEnrichmentMetricSelectorList(d, schemas.GetOTelEnrichmentOutput_IncludeFilters, &v.IncludeFilters)
+		case schemas.GetOTelEnrichmentOutput_Status:
+			var ev string
+			if err := d.ReadString(schemas.GetOTelEnrichmentOutput_Status, &ev); err != nil {
+				return err
+			}
+			v.Status = types.OTelEnrichmentStatus(ev)
+			return nil
+		case schemas.GetOTelEnrichmentOutput_UpdatedAt:
+			v.UpdatedAt = new(time.Time)
+			return d.ReadTime(schemas.GetOTelEnrichmentOutput_UpdatedAt, v.UpdatedAt)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetOTelEnrichmentMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpGetOTelEnrichment{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetOTelEnrichment, schemas.GetOTelEnrichmentInput, schemas.GetOTelEnrichmentOutput)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpGetOTelEnrichment{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetOTelEnrichment, schemas.GetOTelEnrichmentInput, schemas.GetOTelEnrichmentOutput), output: &GetOTelEnrichmentOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "GetOTelEnrichment"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

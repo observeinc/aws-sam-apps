@@ -5,9 +5,10 @@ package amp
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/amp/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns a paginated list of anomaly detectors for a workspace with optional
@@ -47,6 +48,27 @@ type ListAnomalyDetectorsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListAnomalyDetectorsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListAnomalyDetectorsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListAnomalyDetectorsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Alias != nil {
+		s.WriteString(schemas.ListAnomalyDetectorsRequest_alias, *v.Alias)
+	}
+	if v.MaxResults != nil {
+		s.WriteInt32(schemas.ListAnomalyDetectorsRequest_maxResults, *v.MaxResults)
+	}
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListAnomalyDetectorsRequest_nextToken, *v.NextToken)
+	}
+	if v.WorkspaceId != nil {
+		s.WriteString(schemas.ListAnomalyDetectorsRequest_workspaceId, *v.WorkspaceId)
+	}
+}
+
 type ListAnomalyDetectorsOutput struct {
 
 	// The list of anomaly detectors in the workspace.
@@ -63,44 +85,51 @@ type ListAnomalyDetectorsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListAnomalyDetectorsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListAnomalyDetectorsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListAnomalyDetectorsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeAnomalyDetectorSummaryList(s, schemas.ListAnomalyDetectorsResponse_anomalyDetectors, v.AnomalyDetectors)
+	if v.NextToken != nil {
+		s.WriteString(schemas.ListAnomalyDetectorsResponse_nextToken, *v.NextToken)
+	}
+}
+func (v *ListAnomalyDetectorsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListAnomalyDetectorsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListAnomalyDetectorsResponse_anomalyDetectors:
+			return deserializeAnomalyDetectorSummaryList(d, schemas.ListAnomalyDetectorsResponse_anomalyDetectors, &v.AnomalyDetectors)
+		case schemas.ListAnomalyDetectorsResponse_nextToken:
+			v.NextToken = new(string)
+			return d.ReadString(schemas.ListAnomalyDetectorsResponse_nextToken, v.NextToken)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListAnomalyDetectorsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpListAnomalyDetectors{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListAnomalyDetectors, schemas.ListAnomalyDetectorsRequest, schemas.ListAnomalyDetectorsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpListAnomalyDetectors{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListAnomalyDetectors, schemas.ListAnomalyDetectorsRequest, schemas.ListAnomalyDetectorsResponse), output: &ListAnomalyDetectorsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListAnomalyDetectorsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListAnomalyDetectors"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
