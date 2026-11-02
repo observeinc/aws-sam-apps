@@ -121,6 +121,7 @@ type CognitoEventUserPoolsPreSignupResponse struct {
 type CognitoEventUserPoolsPreAuthenticationRequest struct {
 	UserAttributes map[string]string `json:"userAttributes"`
 	ValidationData map[string]string `json:"validationData"`
+	UserNotFound   bool              `json:"userNotFound"`
 }
 
 // CognitoEventUserPoolsPreAuthenticationResponse contains the response portion of a PreAuthentication event
@@ -309,6 +310,7 @@ type CognitoEventUserPoolsCreateAuthChallengeRequest struct {
 	ChallengeName  string                                  `json:"challengeName"`
 	Session        []*CognitoEventUserPoolsChallengeResult `json:"session"`
 	ClientMetadata map[string]string                       `json:"clientMetadata"`
+	UserNotFound   bool                                    `json:"userNotFound"`
 }
 
 // CognitoEventUserPoolsCreateAuthChallengeResponse defines create auth challenge response rarameters
@@ -331,6 +333,7 @@ type CognitoEventUserPoolsVerifyAuthChallengeRequest struct {
 	PrivateChallengeParameters map[string]string `json:"privateChallengeParameters"`
 	ChallengeAnswer            interface{}       `json:"challengeAnswer"`
 	ClientMetadata             map[string]string `json:"clientMetadata"`
+	UserNotFound               bool              `json:"userNotFound"`
 }
 
 // CognitoEventUserPoolsVerifyAuthChallengeResponse defines verify auth challenge response parameters
